@@ -19,6 +19,17 @@ import {
   planMeetingCreate,
   planMeetingStart,
 } from "./meeting-commands";
+import {
+  planPolicyAdjust,
+  planPolicyApprove,
+  planPolicyCancel,
+  planPolicyIssue,
+  planPolicyPropose,
+  planPolicyReject,
+  planPolicyResume,
+  planPolicySuspend,
+  type PolicyCommandAssets,
+} from "./policy-commands";
 import { applyMutations, invertMutation, validateMutatedState } from "./mutation";
 import { createDeterministicRandomSource, type RandomSource } from "./rng";
 import { hashState } from "./stable-json";
@@ -38,6 +49,11 @@ export interface TimeAdvanceHook {
 export interface StateEngineOptions {
   clock?: Clock;
   timeAdvanceHooks?: readonly TimeAdvanceHook[];
+}
+
+/** applyCommand 的可选装配上下文：政策命令所需模板与规则（由 save-system 装配层提供） */
+export interface ApplyCommandContext {
+  readonly policyAssets?: PolicyCommandAssets;
 }
 
 export interface StateTransition {
@@ -192,7 +208,11 @@ export class StateEngine {
     this.timeAdvanceHooks = options.timeAdvanceHooks ?? [];
   }
 
-  applyCommand(inputState: Readonly<GameState>, inputCommand: GameCommand): StateTransition {
+  applyCommand(
+    inputState: Readonly<GameState>,
+    inputCommand: GameCommand,
+    context: ApplyCommandContext = {},
+  ): StateTransition {
     const stateResult = GameStateSchema.safeParse(inputState);
     if (!stateResult.success) {
       throw new StateEngineError(
@@ -263,6 +283,36 @@ export class StateEngine {
       mutations.push(...planMeetingConclude(state, command));
     } else if (command.commandType === "meeting.cancel") {
       mutations.push(...planMeetingCancel(state, command));
+    } else if (command.commandType.startsWith("policy.")) {
+      const assets = context.policyAssets;
+      if (!assets) {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          `政策命令需要装配政策资产（templates/rules）：${command.commandType}`,
+        );
+      }
+      if (command.commandType === "policy.propose") {
+        mutations.push(...planPolicyPropose(state, command, assets));
+      } else if (command.commandType === "policy.approve") {
+        mutations.push(...planPolicyApprove(state, command, assets));
+      } else if (command.commandType === "policy.reject") {
+        mutations.push(...planPolicyReject(state, command));
+      } else if (command.commandType === "policy.issue") {
+        mutations.push(...planPolicyIssue(state, command, assets));
+      } else if (command.commandType === "policy.adjust") {
+        mutations.push(...planPolicyAdjust(state, command));
+      } else if (command.commandType === "policy.suspend") {
+        mutations.push(...planPolicySuspend(state, command));
+      } else if (command.commandType === "policy.resume") {
+        mutations.push(...planPolicyResume(state, command));
+      } else if (command.commandType === "policy.cancel") {
+        mutations.push(...planPolicyCancel(state, command, assets));
+      } else {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          `政策命令 ${command.commandType} 尚未接入（policy.resolve-tick 于 M3 结算引擎实现）`,
+        );
+      }
     } else {
       throw new StateEngineError(
         "COMMAND_NOT_SUPPORTED",
@@ -365,6 +415,7 @@ export class StateEngine {
       "policies",
       "regions",
       "meetings",
+      "modifiers",
       "eventQueue",
       "flags",
       "hidden",

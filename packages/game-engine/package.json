@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@mandate/domain": "*"
+    "@mandate/domain": "*",
+    "@mandate/rule-engine": "*"
   }
 }

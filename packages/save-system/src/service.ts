@@ -11,6 +11,7 @@ import {
   type GameState,
   type JsonValue,
   type ProposedMutation,
+  type Rule,
   type SaveRollbackCommand,
   type SaveMetadata,
   type SaveValidationReport,
@@ -32,6 +33,7 @@ import {
   sha256Hex,
   stableStringify,
   type Clock,
+  type PolicyCommandAssets,
 } from "@mandate/game-engine";
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
@@ -212,27 +214,56 @@ export class GameStateService {
     }
     const state = this.options.repository.loadHeadState(command.saveId);
     try {
-      const transition = this.stateEngine.applyCommand(state, command);
+      // Phase 5：政策命令与时间推进需要模板/规则资产（缓存的场景包，首次已在 createSave 加载）
+      const needsPolicyAssets =
+        command.commandType.startsWith("policy.") || command.commandType === "time.advance";
+      const context = needsPolicyAssets
+        ? { policyAssets: await this.loadPolicyAssets(save.scenarioId) }
+        : {};
+      const transition = this.stateEngine.applyCommand(state, command, context);
       return this.options.repository.commitTransition(command, transition);
     } catch (error) {
       if (error instanceof StateEngineError) {
         if (error.code === "STATE_REVISION_CONFLICT") {
           throw new SaveSystemError(error.code, error.message, error.details);
         }
-        // Phase 4：会议生命周期错误保留原码，供 API 层映射 404/409
-        if (
-          error.code === "MEETING_NOT_FOUND" ||
-          error.code === "MEETING_INVALID_STATE" ||
-          error.code === "MEETING_ALREADY_STARTED" ||
-          error.code === "MEETING_ALREADY_CONCLUDED" ||
-          error.code === "MEETING_PARTICIPANT_INVALID"
-        ) {
-          throw new SaveSystemError(error.code, error.message, error.details);
+        // Phase 4/5：会议与政策生命周期错误保留原码，供 API 层映射 404/409/422
+        if (error.code.startsWith("MEETING_") || error.code.startsWith("POLICY_")) {
+          throw new SaveSystemError(error.code as never, error.message, error.details);
         }
         throw new SaveSystemError("STATE_INVALID", error.message, error.details);
       }
       throw error;
     }
+  }
+
+  private readonly policyAssetsCache = new Map<string, PolicyCommandAssets>();
+
+  private async loadPolicyAssets(scenarioId: string): Promise<PolicyCommandAssets> {
+    const cached = this.policyAssetsCache.get(scenarioId);
+    if (cached) return cached;
+    const bundle = await this.options.scenarioLoader.loadScenarioBundle(scenarioId);
+    const assets: PolicyCommandAssets = {
+      // 场景包为深冻结只读：克隆一份供引擎（引擎自身不修改，克隆仅为脱 DeepReadonly 类型）
+      templates: structuredClone(
+        bundle.policyTemplates,
+      ) as unknown as PolicyCommandAssets["templates"],
+      rules: (structuredClone(bundle.rulePacks) as unknown as { rules: Rule[] }[]).flatMap(
+        (pack) => pack.rules,
+      ),
+      // 人物卡无 moralFlexibility 字段：以廉直（integrity）反相换算（ADR-025）
+      characterMetrics: Object.fromEntries(
+        bundle.characters.map((character) => [
+          character.id,
+          {
+            moralFlexibility: 100 - character.personality.integrity,
+            competence: character.competence.administration,
+          },
+        ]),
+      ),
+    };
+    this.policyAssetsCache.set(scenarioId, assets);
+    return assets;
   }
 
   async submitPlayerCommand(saveId: string, input: SubmitCommandRequest): Promise<CommitResult> {

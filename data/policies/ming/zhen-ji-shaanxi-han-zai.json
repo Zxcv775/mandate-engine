@@ -1,0 +1,91 @@
+{
+  "id": "policy-zhenji-shaanxi",
+  "name": "赈济陕西旱灾",
+  "dynastyId": "ming",
+  "category": "relief",
+  "summary": "陕西连岁亢旱，饥民流离。发帑截漕，遣官核灾，开仓平粜并放赈，以安秦地民心。",
+  "objective": "核实灾伤分数，赈济饥民，遏制流民之势",
+  "scope": { "kind": "regional", "regionIds": ["shaanxi"] },
+  "responsibleInstitutionId": "hu-bu",
+  "allowedOfficeIds": ["hu-bu-shang-shu", "nei-ge-shou-fu"],
+  "cost": {
+    "startup": { "treasuryTaels": 120000, "grainReserveShi": 80000 },
+    "upkeepPerTick": { "treasuryTaels": 800, "grainReserveShi": 600, "administrativeCapacity": 4 }
+  },
+  "duration": {
+    "estimatedTicks": 90,
+    "stages": [
+      {
+        "stageId": "stage-kanzai",
+        "title": "遣官勘灾",
+        "objective": "分道核实灾伤分数与应赈户口",
+        "expectedTicks": 30,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-fangzhen",
+        "title": "开仓放赈",
+        "objective": "平粜放赈，设粥厂收养流民",
+        "expectedTicks": 60,
+        "successCriteria": { "minFundingRatio": 0.6 },
+        "onCompleteEffects": [
+          {
+            "type": "adjust-region-metric",
+            "region": "context",
+            "metric": "stability",
+            "amount": 6,
+            "reason": "赈粮到境，饥民得食，秦地稍安"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": 3,
+        "reason": "赈务底定，流民渐归籍"
+      },
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": 2,
+        "reason": "朝廷恤民之名布于天下"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": -4,
+        "reason": "赈务不举，饥民啸聚为乱"
+      }
+    ],
+    "longTermModifiers": [
+      {
+        "target": { "kind": "country" },
+        "metric": "stability",
+        "operation": "add",
+        "value": 2,
+        "durationTicks": 180,
+        "stacking": "unique-by-source",
+        "reason": "赈济之泽未远，民心暂附"
+      }
+    ]
+  },
+  "resistance": {
+    "administrativeDifficulty": 55,
+    "affectedInterestGroups": [],
+    "expectedOpposition": []
+  },
+  "legitimacy": { "baseImpact": 3, "politicalCost": 6 },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu", "mingshi-jishi-benmo"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "崇祯元年陕西大旱与其后民变史实明确（《明史·庄烈帝纪》《明史纪事本末·卷75》）；本模板阶段划分与数值为游戏建模。地区实体（regions）Phase 5 尚未落地，region 效果在结算中跳过并留痕，Phase 6 世界模拟接入。文字表述待 Phase 7 复核。"
+  }
+}
