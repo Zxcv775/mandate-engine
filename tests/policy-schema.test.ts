@@ -5,7 +5,6 @@ import {
   RulePackSchema,
   RuleSchema,
   measureConditionDepth,
-  type Rule,
   type RuleCondition,
 } from "@mandate/domain";
 import { describe, expect, it } from "vitest";
