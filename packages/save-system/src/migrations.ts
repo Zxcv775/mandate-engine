@@ -198,6 +198,190 @@ CREATE INDEX idx_character_turns_character
 PRAGMA user_version = 2;
 `;
 
+/**
+ * Phase 4：会议编排持久层（ADR-018）。
+ * meeting_sessions 为富运行态 head（meeting_version 乐观锁 + pending JSON）；
+ * meeting_turns 为 append-only Transcript（meeting_id+turn_number 唯一、action_id 唯一
+ * → 两阶段 Agent 回合幂等，ADR-020）。会议内部推进不产生 StateChangeLog。
+ */
+const MEETING_SCHEMA = `
+CREATE TABLE meeting_sessions (
+  meeting_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('court-assembly', 'imperial-council', 'secret-council')),
+  status TEXT NOT NULL CHECK (status IN (
+    'draft', 'scheduled', 'preparing', 'in-progress', 'waiting-for-player',
+    'waiting-for-agent', 'resolving', 'paused', 'concluded', 'cancelled', 'failed')),
+  title TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  created_at_revision INTEGER NOT NULL CHECK (created_at_revision >= 0),
+  started_at_revision INTEGER,
+  concluded_at_revision INTEGER,
+  meeting_version INTEGER NOT NULL CHECK (meeting_version >= 0),
+  turn_number INTEGER NOT NULL CHECK (turn_number >= 0),
+  participant_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(participant_ids_json)),
+  chair_character_id TEXT NOT NULL,
+  agenda_item_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(agenda_item_ids_json)),
+  current_agenda_item_id TEXT,
+  current_speaker_id TEXT,
+  pending_player_action_json TEXT
+    CHECK (pending_player_action_json IS NULL OR json_valid(pending_player_action_json)),
+  pending_agent_action_json TEXT
+    CHECK (pending_agent_action_json IS NULL OR json_valid(pending_agent_action_json)),
+  limits_json TEXT NOT NULL CHECK (json_valid(limits_json)),
+  used_turns INTEGER NOT NULL CHECK (used_turns >= 0),
+  visibility TEXT NOT NULL CHECK (visibility IN ('court', 'meeting', 'private', 'sealed')),
+  outcome_candidate_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(outcome_candidate_ids_json)),
+  pause_reason TEXT,
+  failure_code TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE meeting_participants (
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  character_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN (
+    'chair', 'principal', 'advisor', 'minister', 'observer', 'recorder')),
+  attendance TEXT NOT NULL CHECK (attendance IN (
+    'invited', 'present', 'absent', 'dismissed', 'removed')),
+  speaking_rights TEXT NOT NULL CHECK (speaking_rights IN (
+    'normal', 'by-permission', 'observer-only', 'silenced')),
+  turns_spoken INTEGER NOT NULL DEFAULT 0 CHECK (turns_spoken >= 0),
+  last_spoke_at_turn INTEGER,
+  requested_to_speak INTEGER NOT NULL DEFAULT 0 CHECK (requested_to_speak IN (0, 1)),
+  granted_by_emperor_at_turn INTEGER,
+  challenged_character_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(challenged_character_ids_json)),
+  visible_until_turn INTEGER,
+  runtime_flags_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(runtime_flags_json)),
+  PRIMARY KEY (meeting_id, character_id)
+) STRICT;
+
+CREATE TABLE meeting_agenda_items (
+  agenda_item_id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  topic_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(topic_ids_json)),
+  proposer_id TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN (
+    'queued', 'open', 'discussing', 'decision-pending',
+    'resolved', 'deferred', 'rejected', 'cancelled')),
+  priority INTEGER NOT NULL CHECK (priority BETWEEN 0 AND 100),
+  sequence INTEGER NOT NULL CHECK (sequence >= 0),
+  max_turns INTEGER NOT NULL CHECK (max_turns > 0),
+  used_turns INTEGER NOT NULL DEFAULT 0 CHECK (used_turns >= 0),
+  related_entity_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(related_entity_ids_json)),
+  required_office_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(required_office_ids_json)),
+  visibility TEXT NOT NULL CHECK (visibility IN ('court', 'meeting', 'private', 'sealed'))
+) STRICT;
+
+CREATE TABLE meeting_turns (
+  turn_id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  agenda_item_id TEXT,
+  turn_number INTEGER NOT NULL CHECK (turn_number >= 0),
+  type TEXT NOT NULL CHECK (type IN (
+    'opening', 'player-statement', 'player-question', 'request-to-speak',
+    'character-speech', 'character-answer', 'character-rebuttal', 'character-warning',
+    'chair-intervention', 'player-interruption', 'player-ruling',
+    'agenda-transition', 'adjournment')),
+  speaker_id TEXT NOT NULL,
+  addressed_character_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(addressed_character_ids_json)),
+  public_text TEXT NOT NULL,
+  private_metadata_json TEXT
+    CHECK (private_metadata_json IS NULL OR json_valid(private_metadata_json)),
+  visibility TEXT NOT NULL CHECK (visibility IN ('court', 'meeting', 'private', 'sealed')),
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  meeting_version INTEGER NOT NULL CHECK (meeting_version >= 0),
+  action_id TEXT,
+  source_turn_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_turn_ids_json)),
+  prompt_versions_json TEXT
+    CHECK (prompt_versions_json IS NULL OR json_valid(prompt_versions_json)),
+  provider_trace_json TEXT
+    CHECK (provider_trace_json IS NULL OR json_valid(provider_trace_json)),
+  created_at TEXT NOT NULL,
+  UNIQUE (meeting_id, turn_number)
+) STRICT;
+
+CREATE UNIQUE INDEX idx_meeting_turns_action
+  ON meeting_turns(action_id) WHERE action_id IS NOT NULL;
+
+CREATE TABLE meeting_outcome_candidates (
+  outcome_candidate_id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  agenda_item_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN (
+    'policy-proposal', 'appointment-proposal', 'dismissal-proposal',
+    'investigation-request', 'resource-allocation-request', 'military-order-proposal',
+    'information-request', 'agenda-deferral', 'no-action')),
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  proposer_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(proposer_ids_json)),
+  supporter_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(supporter_ids_json)),
+  opponent_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(opponent_ids_json)),
+  rationale_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(rationale_json)),
+  risks_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(risks_json)),
+  source_turn_ids_json TEXT NOT NULL CHECK (json_valid(source_turn_ids_json)),
+  status TEXT NOT NULL CHECK (status IN (
+    'draft', 'presented', 'accepted', 'rejected', 'deferred', 'expired')),
+  command_preview_json TEXT
+    CHECK (command_preview_json IS NULL OR json_valid(command_preview_json)),
+  unsupported_command INTEGER NOT NULL DEFAULT 0 CHECK (unsupported_command IN (0, 1)),
+  created_at_revision INTEGER NOT NULL CHECK (created_at_revision >= 0),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE meeting_minutes (
+  minutes_id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('official', 'private')),
+  audience_character_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(audience_character_ids_json)),
+  title TEXT NOT NULL,
+  participant_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(participant_ids_json)),
+  entries_json TEXT NOT NULL CHECK (json_valid(entries_json)),
+  accepted_outcome_candidate_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(accepted_outcome_candidate_ids_json)),
+  deferred_agenda_item_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(deferred_agenda_item_ids_json)),
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE meeting_leak_assessments (
+  meeting_id TEXT PRIMARY KEY REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  risk_score INTEGER NOT NULL CHECK (risk_score BETWEEN 0 AND 100),
+  risk_level TEXT NOT NULL CHECK (risk_level IN (
+    'minimal', 'low', 'moderate', 'high', 'critical')),
+  contributing_factors_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(contributing_factors_json)),
+  deterministic_roll_json TEXT
+    CHECK (deterministic_roll_json IS NULL OR json_valid(deterministic_roll_json)),
+  potential_audience_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(potential_audience_ids_json)),
+  created_at_revision INTEGER NOT NULL CHECK (created_at_revision >= 0),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX idx_meeting_sessions_save ON meeting_sessions(save_id, status);
+CREATE INDEX idx_meeting_turns_meeting ON meeting_turns(meeting_id, turn_number);
+CREATE INDEX idx_meeting_turns_speaker ON meeting_turns(meeting_id, speaker_id);
+CREATE INDEX idx_meeting_turns_agenda ON meeting_turns(meeting_id, agenda_item_id);
+CREATE INDEX idx_meeting_outcomes_meeting ON meeting_outcome_candidates(meeting_id, status);
+
+PRAGMA user_version = 3;
+`;
+
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
     id: "001-initial-save-schema",
@@ -212,6 +396,13 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
     fromVersion: 1,
     toVersion: 2,
     sql: CHARACTER_MEMORY_SCHEMA,
+  },
+  {
+    id: "003-meeting-orchestration",
+    appVersion: "0.4.0",
+    fromVersion: 2,
+    toVersion: 3,
+    sql: MEETING_SCHEMA,
   },
 ];
 
@@ -234,10 +425,7 @@ export function applyDatabaseMigrations(database: DatabaseSync, now: string): vo
         .get(migration.id) as { checksum: string; to_version: number } | undefined;
       if (existing) {
         if (existing.checksum !== checksum || Number(existing.to_version) !== migration.toVersion) {
-          throw new SaveSystemError(
-            "MIGRATION_FAILED",
-            `数据库迁移校验和不匹配：${migration.id}`,
-          );
+          throw new SaveSystemError("MIGRATION_FAILED", `数据库迁移校验和不匹配：${migration.id}`);
         }
         currentVersion = Math.max(currentVersion, migration.toVersion);
         continue;

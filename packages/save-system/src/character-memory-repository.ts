@@ -262,7 +262,9 @@ export class CharacterMemoryRepository {
     }
   }
 
-  insertTurn(turn: Omit<CharacterConversationTurn, "turnId" | "createdAt">): CharacterConversationTurn {
+  insertTurn(
+    turn: Omit<CharacterConversationTurn, "turnId" | "createdAt">,
+  ): CharacterConversationTurn {
     const record = CharacterConversationTurnSchema.parse({
       ...turn,
       turnId: `turn_${this.idFactory()}`,
@@ -294,11 +296,7 @@ export class CharacterMemoryRepository {
     return record;
   }
 
-  listRecentTurns(
-    saveId: string,
-    characterId: string,
-    limit = 10,
-  ): CharacterConversationTurn[] {
+  listRecentTurns(saveId: string, characterId: string, limit = 10): CharacterConversationTurn[] {
     const rows = this.database
       .prepare(
         `SELECT * FROM character_conversation_turns

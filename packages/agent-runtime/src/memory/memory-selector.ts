@@ -74,9 +74,7 @@ export function selectRelevantMemories(input: MemorySelectionInput): MemorySelec
 
   const ranked: ScoredMemory[] = eligible
     .map((memory) => ({ memory, score: scoreMemory(memory, input.context) }))
-    .sort(
-      (a, b) => b.score - a.score || a.memory.memoryId.localeCompare(b.memory.memoryId),
-    );
+    .sort((a, b) => b.score - a.score || a.memory.memoryId.localeCompare(b.memory.memoryId));
 
   const selected: CharacterMemory[] = [];
   let totalCharacters = 0;

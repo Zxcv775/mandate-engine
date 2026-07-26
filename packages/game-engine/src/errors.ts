@@ -8,7 +8,12 @@ export type StateEngineErrorCode =
   | "MUTATION_BEFORE_MISMATCH"
   | "CHARACTER_NOT_FOUND"
   | "OFFICE_NOT_FOUND"
-  | "OFFICE_OCCUPIED";
+  | "OFFICE_OCCUPIED"
+  | "MEETING_NOT_FOUND"
+  | "MEETING_INVALID_STATE"
+  | "MEETING_ALREADY_STARTED"
+  | "MEETING_ALREADY_CONCLUDED"
+  | "MEETING_PARTICIPANT_INVALID";
 
 export class StateEngineError extends Error {
   constructor(

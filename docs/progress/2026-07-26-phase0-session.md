@@ -18,12 +18,12 @@
 
 ## 3. 用户做出的关键决策
 
-| # | 问题 | 决策 |
-|---|---|---|
-| 1 | 项目位置 | 新建 `@work/mandate-engine/` 独立子目录 |
-| 2 | 技术栈 | TypeScript 全栈（而非 Python 后端） |
-| 3 | 存储方案 | SQLite（node:sqlite 内置；薄仓储层隔离，可替换 better-sqlite3） |
-| 4 | GitHub 可见性 | Private（账号 Zxcv775） |
+| #   | 问题          | 决策                                                            |
+| --- | ------------- | --------------------------------------------------------------- |
+| 1   | 项目位置      | 新建 `@work/mandate-engine/` 独立子目录                         |
+| 2   | 技术栈        | TypeScript 全栈（而非 Python 后端）                             |
+| 3   | 存储方案      | SQLite（node:sqlite 内置；薄仓储层隔离，可替换 better-sqlite3） |
+| 4   | GitHub 可见性 | Private（账号 Zxcv775）                                         |
 
 ## 4. 完成的工作
 
@@ -47,25 +47,25 @@
 
 ## 5. 验证结果（实跑证据）
 
-| 命令 | 结果 |
-|---|---|
-| `npm install` | ✅ 281 包，0 vulnerabilities |
-| `npm run lint` | ✅ 0 错误 |
-| `npm run typecheck` | ✅ 13 个 workspace 全过 |
-| `npm test` | ✅ 19/19 通过 |
-| `npm run build` | ✅ server 编译验证 + web 产物（gzip 61.6 KB） |
-| `npm run check:data` | ✅ data/ 全部 JSON 通过 |
-| 冒烟测试 | ✅ `/api/health` 返回 `{"status":"ok","phase":0}` |
+| 命令                 | 结果                                              |
+| -------------------- | ------------------------------------------------- |
+| `npm install`        | ✅ 281 包，0 vulnerabilities                      |
+| `npm run lint`       | ✅ 0 错误                                         |
+| `npm run typecheck`  | ✅ 13 个 workspace 全过                           |
+| `npm test`           | ✅ 19/19 通过                                     |
+| `npm run build`      | ✅ server 编译验证 + web 产物（gzip 61.6 KB）     |
+| `npm run check:data` | ✅ data/ 全部 JSON 通过                           |
+| 冒烟测试             | ✅ `/api/health` 返回 `{"status":"ok","phase":0}` |
 
 ## 6. 遇到的问题与修复（复用经验）
 
-| 问题 | 修复 |
-|---|---|
-| ESLint 报 .mjs 脚本 `no-undef`（console/process/URL） | eslint.config.js 为 `**/*.mjs`、`**/*.js` 增加 Node globals |
-| `LLMProviderError.cause` 触发 TS4114（noImplicitOverride） | 移除重复声明，改用 Error 自带 `cause` 字段 |
+| 问题                                                                  | 修复                                                                            |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| ESLint 报 .mjs 脚本 `no-undef`（console/process/URL）                 | eslint.config.js 为 `**/*.mjs`、`**/*.js` 增加 Node globals                     |
+| `LLMProviderError.cause` 触发 TS4114（noImplicitOverride）            | 移除重复声明，改用 Error 自带 `cause` 字段                                      |
 | vite 双主版本（web=vite6，vitest 链=vite7）导致 plugin-react 类型冲突 | web 升级 vite ^7 + @vitejs/plugin-react ^5，全树统一 vite 7.3.6；已同步 docs/04 |
-| npm audit 5 个高危（eslint 链 brace-expansion ≤5.0.7） | 根 package.json `overrides: { "brace-expansion": "^5.0.8" }`，归零 |
-| npm install 后残留 invalid 依赖 | 删 node_modules + package-lock.json 重装后正常 |
+| npm audit 5 个高危（eslint 链 brace-expansion ≤5.0.7）                | 根 package.json `overrides: { "brace-expansion": "^5.0.8" }`，归零              |
+| npm install 后残留 invalid 依赖                                       | 删 node_modules + package-lock.json 重装后正常                                  |
 
 ## 7. Git / GitHub 状态
 

@@ -1,9 +1,10 @@
-import type { CharacterAgentModelOutput, CharacterConversationMode } from "@mandate/domain";
-import {
-  LLMProviderError,
-  MockLLMProvider,
-  type LLMMessage,
-} from "@mandate/llm-adapters";
+import type {
+  CharacterAgentModelOutput,
+  CharacterConversationMode,
+  MeetingCharacterOutput,
+  MeetingResponseType,
+} from "@mandate/domain";
+import { LLMProviderError, MockLLMProvider, type LLMMessage } from "@mandate/llm-adapters";
 
 /**
  * Mock Character Agent Fixture（§12）。
@@ -22,7 +23,10 @@ export type CharacterMockFixture =
   | "mock-character-unavailable";
 
 const SPEECH_BY_STANCE: Readonly<
-  Record<"support" | "oppose" | "evasive" | "uncertain", Partial<Record<CharacterConversationMode, string>> & { default: string }>
+  Record<
+    "support" | "oppose" | "evasive" | "uncertain",
+    Partial<Record<CharacterConversationMode, string>> & { default: string }
+  >
 > = {
   support: {
     "court-assembly": "臣谨奏：此议关系国本，臣以为可行，惟须循祖宗成宪，次第而图，不宜骤更。",
@@ -128,7 +132,11 @@ export function buildMockCharacterOutput(
       {
         type: "episodic",
         content: `皇帝垂询要务，朝议氛围${isPrivate ? "私密" : "公开"}，本次答以${
-          positionMap[stance] === "support" ? "赞成" : positionMap[stance] === "oppose" ? "谏阻" : "持重"
+          positionMap[stance] === "support"
+            ? "赞成"
+            : positionMap[stance] === "oppose"
+              ? "谏阻"
+              : "持重"
         }之词`,
         relatedCharacterIds: ["emperor"],
         relatedEntityIds: [],
@@ -143,6 +151,29 @@ export function buildMockCharacterOutput(
   };
 }
 
+/** Phase 4：会议输出 Fixture——在基础输出上追加会议字段 */
+export interface BuildMockMeetingOutputOptions extends BuildMockOutputOptions {
+  readonly responseType?: MeetingResponseType;
+  readonly addressedCharacterIds?: readonly string[];
+  readonly referencedTurnIds?: readonly string[];
+  readonly suggestsAgendaResolution?: boolean;
+}
+
+export function buildMockMeetingOutput(
+  stance: "support" | "oppose" | "evasive" | "uncertain",
+  options: BuildMockMeetingOutputOptions = {},
+): MeetingCharacterOutput {
+  const base = buildMockCharacterOutput(stance, options);
+  return {
+    ...base,
+    responseType: options.responseType ?? (stance === "evasive" ? "decline" : ("speech" as const)),
+    addressedCharacterIds: [...(options.addressedCharacterIds ?? ["emperor"])],
+    requestsToSpeakAgain: false,
+    suggestsAgendaResolution: options.suggestsAgendaResolution ?? stance === "support",
+    referencedTurnIds: [...(options.referencedTurnIds ?? [])],
+  };
+}
+
 /** 非法 JSON：无任何可提取的 JSON 片段 */
 export const MOCK_INVALID_JSON_TEXT = "臣不知所云，此段输出并非结构化之物，亦无花括号可寻。";
 
@@ -154,9 +185,7 @@ export const MOCK_SCHEMA_ERROR_TEXT = JSON.stringify({
 
 export interface CharacterMockProviderConfig {
   /** 按人物 ID 指定固定立场；未命中用 defaultStance */
-  readonly byCharacterId?: Readonly<
-    Record<string, "support" | "oppose" | "evasive" | "uncertain">
-  >;
+  readonly byCharacterId?: Readonly<Record<string, "support" | "oppose" | "evasive" | "uncertain">>;
   readonly defaultStance?: "support" | "oppose" | "evasive" | "uncertain";
   /** 首次调用返回非法输出（修复后成功），用于测试受控修复 */
   readonly firstCallInvalid?: "invalid-json" | "schema-error";
@@ -220,6 +249,33 @@ export function createCharacterMockProvider(
         (characterId ? config.byCharacterId?.[characterId] : undefined) ??
         config.defaultStance ??
         "support";
+      const fullText = messages.map((message) => message.content).join("\n");
+      // 会议模式：Prompt 含会议输出补充契约 → 返回带会议字段的输出
+      if (fullText.includes("会议输出补充字段")) {
+        // 只认议程段的明确标记，避免被契约说明文本误导
+        const modeLabel = /你被要求的应对方式：(陈奏|答问|回应他人|警示)/.exec(fullText)?.[1];
+        const labelMap: Record<string, MeetingResponseType> = {
+          陈奏: "speech",
+          答问: "answer",
+          回应他人: "rebuttal",
+          警示: "warning",
+        };
+        const responseType: MeetingResponseType =
+          (modeLabel ? labelMap[modeLabel] : undefined) ??
+          (stance === "evasive" ? "decline" : "speech");
+        // 引用席间最近一条回合（若有）以覆盖 referencedTurnIds 路径
+        const referenced = [...fullText.matchAll(/^\[([^\]\n]+)\] /gm)]
+          .map((match) => match[1]!)
+          .slice(-1);
+        return JSON.stringify(
+          buildMockMeetingOutput(stance, {
+            mode,
+            responseType,
+            referencedTurnIds: referenced,
+            ...(characterId === undefined ? {} : { characterId }),
+          }),
+        );
+      }
       return JSON.stringify(
         buildMockCharacterOutput(stance, {
           mode,

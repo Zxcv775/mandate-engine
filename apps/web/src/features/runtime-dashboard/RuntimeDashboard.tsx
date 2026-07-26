@@ -34,7 +34,10 @@ export function RuntimeDashboard() {
           <h1>运行时与存档控制台</h1>
           <p>用于确认配置装配、历史模板、GameState、SQLite 存档与审计链状态。</p>
         </div>
-        <button type="button" onClick={() => void Promise.all([state.refresh(), saveStore.getState().refresh()])}>
+        <button
+          type="button"
+          onClick={() => void Promise.all([state.refresh(), saveStore.getState().refresh()])}
+        >
           重新加载
         </button>
       </header>
@@ -46,10 +49,22 @@ export function RuntimeDashboard() {
         <StatusCard title="系统状态" status={state.runtime.status}>
           {state.runtime.status === "success" && state.runtime.data ? (
             <dl className="status-list">
-              <div><dt>前端版本</dt><dd>{ENGINE_INFO.version}</dd></div>
-              <div><dt>后端环境</dt><dd>{state.runtime.data.environment}</dd></div>
-              <div><dt>最近刷新</dt><dd>{displayTime(state.lastRefreshedAt)}</dd></div>
-              <div><dt>当前范围</dt><dd>事务状态引擎与 SQLite 存档底座</dd></div>
+              <div>
+                <dt>前端版本</dt>
+                <dd>{ENGINE_INFO.version}</dd>
+              </div>
+              <div>
+                <dt>后端环境</dt>
+                <dd>{state.runtime.data.environment}</dd>
+              </div>
+              <div>
+                <dt>最近刷新</dt>
+                <dd>{displayTime(state.lastRefreshedAt)}</dd>
+              </div>
+              <div>
+                <dt>当前范围</dt>
+                <dd>事务状态引擎与 SQLite 存档底座</dd>
+              </div>
             </dl>
           ) : (
             <StatusDetails panel={state.runtime} />

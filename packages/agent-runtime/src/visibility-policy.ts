@@ -22,11 +22,7 @@ import type {
 
 /** 知识领域：与人物卡 knowledgeProfile.accessLevels 的 domain 值对齐 */
 export type KnowledgeDomain =
-  | "state-finance"
-  | "military"
-  | "court-politics"
-  | "palace"
-  | "intelligence";
+  "state-finance" | "military" | "court-politics" | "palace" | "intelligence";
 
 const ACCESS_ORDER: readonly KnowledgeAccessLevel[] = ["none", "limited", "normal", "privileged"];
 
@@ -97,7 +93,9 @@ export function effectiveAccessLevel(
     context.template.knowledgeProfile.accessLevels.find((entry) => entry.domain === domain)
       ?.level ?? "none";
   const institutional = context.isActive
-    ? (context.institution ? (INSTITUTION_ACCESS[context.institution.type][domain] ?? "none") : "none")
+    ? context.institution
+      ? (INSTITUTION_ACCESS[context.institution.type][domain] ?? "none")
+      : "none"
     : "none";
   // 身在朝中之人对朝局至少有体感（limited 下限），无须任何官职
   const activeFloor: KnowledgeAccessLevel =
@@ -193,11 +191,13 @@ export function resolveKnownCharacter(
 export function resolveKnownPolicy(
   context: AccessContext,
   policy: PolicyRuntimeState,
-): CharacterKnowledgeItem<{
-  policyId: string;
-  status: string;
-  responsibleOfficeIds: string[];
-}> | undefined {
+):
+  | CharacterKnowledgeItem<{
+      policyId: string;
+      status: string;
+      responsibleOfficeIds: string[];
+    }>
+  | undefined {
   const value = {
     policyId: policy.policyId,
     status: policy.status,
@@ -207,7 +207,9 @@ export function resolveKnownPolicy(
     context.selfRuntime.officeId !== null &&
     policy.responsibleOfficeIds.includes(context.selfRuntime.officeId);
   if (policy.status === "draft") {
-    return isResponsible ? knowledgeItem(value, "known", 80, "official", policy.sourceIds) : undefined;
+    return isResponsible
+      ? knowledgeItem(value, "known", 80, "official", policy.sourceIds)
+      : undefined;
   }
   if (!context.isActive) {
     return knowledgeItem(value, "reported", 50, "rumor", policy.sourceIds);
@@ -225,12 +227,14 @@ export function resolveKnownPolicy(
 export function resolveKnownMeeting(
   context: AccessContext,
   meeting: MeetingRuntimeState,
-): CharacterKnowledgeItem<{
-  meetingId: string;
-  type: string;
-  status: string;
-  participantIds: string[];
-}> | undefined {
+):
+  | CharacterKnowledgeItem<{
+      meetingId: string;
+      type: string;
+      status: string;
+      participantIds: string[];
+    }>
+  | undefined {
   const isParticipant = meeting.participantIds.includes(context.template.id);
   if (isParticipant) {
     return knowledgeItem(

@@ -50,7 +50,10 @@ export const CountryAdjustResourceCommandSchema = z
     payload: z
       .object({
         resource: CountryResourceNameSchema,
-        delta: z.number().int().refine((value) => value !== 0, "调整量不得为零"),
+        delta: z
+          .number()
+          .int()
+          .refine((value) => value !== 0, "调整量不得为零"),
         reason: z.string().trim().min(1),
         sourceIds: z.array(IdSchema).optional(),
       })
@@ -78,6 +81,70 @@ export const TimeAdvanceCommandSchema = z
     ...CommandBaseShape,
     commandType: z.literal("time.advance"),
     payload: z.object({ days: z.number().int().min(1).max(365) }).strict(),
+  })
+  .strict();
+
+/**
+ * Phase 4 会议生命周期命令（ADR-015）：
+ * 只有会议的创建/开始/结束/取消进入 GameState（最小投影 + revision + StateChangeLog）；
+ * 会议内部推进（回合/议程/发言者）在 SQLite meeting_sessions 以 meetingVersion 乐观锁管理。
+ */
+export const MeetingCreateCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("meeting.create"),
+    payload: z
+      .object({
+        meetingId: IdSchema,
+        meetingType: z.enum(["court-assembly", "imperial-council", "secret-council"]),
+        participantIds: z.array(IdSchema).min(1),
+        chairCharacterId: IdSchema,
+        visibility: z.enum(["court", "meeting", "private", "sealed"]),
+        reason: z.string().trim().min(1).optional(),
+        sourceIds: z.array(IdSchema).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const MeetingStartCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("meeting.start"),
+    payload: z
+      .object({
+        meetingId: IdSchema,
+        reason: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const MeetingConcludeCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("meeting.conclude"),
+    payload: z
+      .object({
+        meetingId: IdSchema,
+        /** 确定性泄密评估触发的候选事件（写入 hidden.queuedEventIds，sealed） */
+        leakEventCandidateIds: z.array(IdSchema).optional(),
+        reason: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const MeetingCancelCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("meeting.cancel"),
+    payload: z
+      .object({
+        meetingId: IdSchema,
+        reason: z.string().trim().min(1),
+      })
+      .strict(),
   })
   .strict();
 
@@ -124,6 +191,10 @@ export const GameCommandSchema = z.discriminatedUnion("commandType", [
   TimeAdvanceCommandSchema,
   CheckpointCreateCommandSchema,
   SaveRollbackCommandSchema,
+  MeetingCreateCommandSchema,
+  MeetingStartCommandSchema,
+  MeetingConcludeCommandSchema,
+  MeetingCancelCommandSchema,
 ]);
 export type GameCommand = z.infer<typeof GameCommandSchema>;
 export type GameCreateCommand = z.infer<typeof GameCreateCommandSchema>;
@@ -132,3 +203,7 @@ export type CharacterAssignOfficeCommand = z.infer<typeof CharacterAssignOfficeC
 export type TimeAdvanceCommand = z.infer<typeof TimeAdvanceCommandSchema>;
 export type CheckpointCreateCommand = z.infer<typeof CheckpointCreateCommandSchema>;
 export type SaveRollbackCommand = z.infer<typeof SaveRollbackCommandSchema>;
+export type MeetingCreateCommand = z.infer<typeof MeetingCreateCommandSchema>;
+export type MeetingStartCommand = z.infer<typeof MeetingStartCommandSchema>;
+export type MeetingConcludeCommand = z.infer<typeof MeetingConcludeCommandSchema>;
+export type MeetingCancelCommand = z.infer<typeof MeetingCancelCommandSchema>;

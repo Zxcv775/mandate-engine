@@ -1,8 +1,5 @@
 import type { PropsWithChildren } from "react";
-import type {
-  PanelState,
-  RuntimeLoadStatus,
-} from "../../store/runtime-store";
+import type { PanelState, RuntimeLoadStatus } from "../../store/runtime-store";
 
 const statusLabels: Record<RuntimeLoadStatus, string> = {
   loading: "加载中",

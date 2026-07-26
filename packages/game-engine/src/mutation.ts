@@ -51,7 +51,43 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
   const segments = decodePointer(mutation.path);
   const parent = parentAtPath(next, segments);
   const key = segments.at(-1) as string;
-  if (!Object.prototype.hasOwnProperty.call(parent, key)) {
+  const exists = Object.prototype.hasOwnProperty.call(parent, key);
+
+  // Phase 4：add/remove 获得逐键语义（新增/删除 record 条目），与 inverse 定义对称
+  if (mutation.operation === "add") {
+    if (exists) {
+      throw new StateEngineError("MUTATION_PATH_INVALID", `add 目标已存在：${mutation.path}`);
+    }
+    if (mutation.before !== null) {
+      throw new StateEngineError(
+        "MUTATION_BEFORE_MISMATCH",
+        `add 的 before 必须为 null：${mutation.path}`,
+      );
+    }
+    parent[key] = structuredClone(mutation.after);
+    return next as unknown as GameState;
+  }
+  if (mutation.operation === "remove") {
+    if (!exists) {
+      throw new StateEngineError("MUTATION_PATH_INVALID", `remove 目标不存在：${mutation.path}`);
+    }
+    if (!sameValue(parent[key], mutation.before)) {
+      throw new StateEngineError(
+        "MUTATION_BEFORE_MISMATCH",
+        `Mutation before 与当前值不一致：${mutation.path}`,
+      );
+    }
+    if (mutation.after !== null) {
+      throw new StateEngineError(
+        "MUTATION_BEFORE_MISMATCH",
+        `remove 的 after 必须为 null：${mutation.path}`,
+      );
+    }
+    delete parent[key];
+    return next as unknown as GameState;
+  }
+
+  if (!exists) {
     throw new StateEngineError("MUTATION_PATH_INVALID", `Mutation path 不存在：${mutation.path}`);
   }
   if (!sameValue(parent[key], mutation.before)) {
@@ -68,7 +104,10 @@ export function applyMutations(
   state: Readonly<GameState>,
   mutations: readonly ProposedMutation[],
 ): GameState {
-  return mutations.reduce((current, mutation) => applyMutation(current, mutation), state as GameState);
+  return mutations.reduce(
+    (current, mutation) => applyMutation(current, mutation),
+    state as GameState,
+  );
 }
 
 const inverseOperations = {
@@ -94,7 +133,11 @@ export function invertMutation(mutation: ProposedMutation): ProposedMutation {
 export function validateMutatedState(state: unknown): GameState {
   const result = GameStateSchema.safeParse(state);
   if (!result.success) {
-    throw new StateEngineError("STATE_VALIDATION_FAILED", "变更后的 GameState 无效", result.error.issues);
+    throw new StateEngineError(
+      "STATE_VALIDATION_FAILED",
+      "变更后的 GameState 无效",
+      result.error.issues,
+    );
   }
   return result.data;
 }

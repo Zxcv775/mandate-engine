@@ -5,6 +5,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { openSaveDatabase } from "./database";
 import { CharacterMemoryRepository } from "./character-memory-repository";
+import { MeetingRepository } from "./meeting-repository";
 import { SqliteSaveRepository } from "./repository";
 import { GameStateService } from "./service";
 import type { CommitFailureStage } from "./types";
@@ -26,6 +27,7 @@ export interface SaveSystem {
   repository: SqliteSaveRepository;
   service: GameStateService;
   characterMemories: CharacterMemoryRepository;
+  meetings: MeetingRepository;
   close(): void;
 }
 
@@ -52,11 +54,13 @@ export function createSaveSystem(options: CreateSaveSystemOptions): SaveSystem {
   const characterMemories = options.memoryIdFactory
     ? new CharacterMemoryRepository(database, clock, options.memoryIdFactory)
     : new CharacterMemoryRepository(database, clock);
+  const meetings = new MeetingRepository(database, clock);
   return {
     database,
     repository,
     service,
     characterMemories,
+    meetings,
     close: () => database.close(),
   };
 }

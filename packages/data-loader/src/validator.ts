@@ -187,7 +187,13 @@ function addParsedFile(state: ValidationState, relativePath: string, raw: unknow
       state.catalog.worldbooks.push(value);
       registerMeta(state, file, value.id, value.meta);
       value.entries.forEach((entry, index) => {
-        registerMeta(state, file, `${value.id}.entries[${index}]`, entry.meta, `entries[${index}].meta`);
+        registerMeta(
+          state,
+          file,
+          `${value.id}.entries[${index}]`,
+          entry.meta,
+          `entries[${index}].meta`,
+        );
       });
     }
     return;
@@ -299,7 +305,13 @@ async function validateReferences(state: ValidationState, dataRoot: string): Pro
     const target = resolve(dataRoot, ...normalizedRef.split("/").filter(Boolean));
     const relativeTarget = relative(dataRoot, target);
     if (relativeTarget.startsWith("..") || relativeTarget.includes(`${sep}..${sep}`)) {
-      addReferenceIssue(state, file, scenario.id, "initialDataRef", "initialDataRef 超出 data 根目录");
+      addReferenceIssue(
+        state,
+        file,
+        scenario.id,
+        "initialDataRef",
+        "initialDataRef 超出 data 根目录",
+      );
     } else {
       try {
         await stat(target);
@@ -473,7 +485,10 @@ export async function validateDataDirectory(dataRootInput: string | URL): Promis
       state.issues.push({
         type: "data-json-invalid",
         file: `data/${relativePath}`,
-        entity: fullPath.split(sep).at(-1)?.replace(/\.json$/, ""),
+        entity: fullPath
+          .split(sep)
+          .at(-1)
+          ?.replace(/\.json$/, ""),
         path: "$",
         message: error instanceof Error ? error.message : "JSON 解析失败",
       });

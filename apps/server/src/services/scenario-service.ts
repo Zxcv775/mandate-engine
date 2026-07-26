@@ -43,7 +43,9 @@ export function createScenarioService(loader: ScenarioLoader): ScenarioService {
       try {
         const scenarios = await loader.listScenarios();
         return await Promise.all(
-          scenarios.map(async (scenario) => toSummary(await loader.loadScenarioBundle(scenario.id))),
+          scenarios.map(async (scenario) =>
+            toSummary(await loader.loadScenarioBundle(scenario.id)),
+          ),
         );
       } catch (error) {
         return toApiError(error);

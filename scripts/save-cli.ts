@@ -27,7 +27,10 @@ const DEFAULT_IO: SaveCliIo = {
 
 function parseArguments(argv: readonly string[]): ParsedArguments {
   const command = argv[0];
-  if (!command || !["check", "repair", "rollback", "export", "import", "migrate"].includes(command)) {
+  if (
+    !command ||
+    !["check", "repair", "rollback", "export", "import", "migrate"].includes(command)
+  ) {
     throw new CliArgumentError("命令必须是 check、repair、rollback、export、import 或 migrate");
   }
   const values = new Map<string, string | true>();

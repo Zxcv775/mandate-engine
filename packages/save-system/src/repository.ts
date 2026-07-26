@@ -100,7 +100,11 @@ function json<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
-function saveMetadataFromRow(row: SaveRow, currentDate: string, snapshotCount: number): SaveMetadata {
+function saveMetadataFromRow(
+  row: SaveRow,
+  currentDate: string,
+  snapshotCount: number,
+): SaveMetadata {
   return SaveMetadataSchema.parse({
     saveId: row.save_id,
     scenarioId: row.scenario_id,
@@ -161,8 +165,7 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
 
   private requireSaveRow(saveId: string): SaveRow {
     const row = this.database.prepare("SELECT * FROM saves WHERE save_id = ?").get(saveId) as
-      | SaveRow
-      | undefined;
+      SaveRow | undefined;
     if (!row || row.status === "deleted") {
       throw new SaveSystemError("SAVE_NOT_FOUND", `存档不存在：${saveId}`);
     }
@@ -239,8 +242,7 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
 
   getSave(saveId: string): SaveMetadata | null {
     const row = this.database.prepare("SELECT * FROM saves WHERE save_id = ?").get(saveId) as
-      | SaveRow
-      | undefined;
+      SaveRow | undefined;
     if (!row || row.status === "deleted") return null;
     const state = this.loadStateAtRevision(saveId, Number(row.head_revision));
     return saveMetadataFromRow(row, state.currentDate, this.snapshotCount(saveId));
@@ -249,9 +251,12 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
   archiveSave(saveId: string): void {
     const now = this.clock.now().toISOString();
     const result = this.database
-      .prepare("UPDATE saves SET status = 'archived', updated_at = ? WHERE save_id = ? AND status <> 'deleted'")
+      .prepare(
+        "UPDATE saves SET status = 'archived', updated_at = ? WHERE save_id = ? AND status <> 'deleted'",
+      )
       .run(now, saveId);
-    if (changesCount(result) !== 1) throw new SaveSystemError("SAVE_NOT_FOUND", `存档不存在：${saveId}`);
+    if (changesCount(result) !== 1)
+      throw new SaveSystemError("SAVE_NOT_FOUND", `存档不存在：${saveId}`);
   }
 
   loadHeadState(saveId: string): GameState {

@@ -1,13 +1,7 @@
 import { z } from "zod";
 import { ApiResponseMetaSchema } from "./api";
-import {
-  CharacterConversationModeSchema,
-  CharacterPublicResponseSchema,
-} from "./character-agent";
-import {
-  CharacterMemoryTypeSchema,
-  MemoryStatusSchema,
-} from "./character-memory";
+import { CharacterConversationModeSchema, CharacterPublicResponseSchema } from "./character-agent";
+import { CharacterMemoryTypeSchema, MemoryStatusSchema } from "./character-memory";
 import { CharacterRuntimeStatusSchema } from "./state";
 
 /**
@@ -19,7 +13,11 @@ import { CharacterRuntimeStatusSchema } from "./state";
  * - Debug API 生产环境默认禁用。
  */
 
-const IdSchema = z.string().trim().min(1).regex(/^[A-Za-z0-9_.:-]+$/);
+const IdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z0-9_.:-]+$/);
 
 export const CharacterIdParamsSchema = z
   .object({ saveId: IdSchema, characterId: IdSchema })

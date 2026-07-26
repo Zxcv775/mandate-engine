@@ -186,13 +186,14 @@ describe("Memory Policy（候选审批）", () => {
       limits: { maxPerCharacter: 10 },
     });
     expect(decision.accepted).toHaveLength(1);
-    expect(
-      decision.rejected.filter((item) => item.code === "MEMORY_DUPLICATE"),
-    ).toHaveLength(2);
+    expect(decision.rejected.filter((item) => item.code === "MEMORY_DUPLICATE")).toHaveLength(2);
   });
 
   it("超出单角色上限报 CHARACTER_MEMORY_LIMIT_EXCEEDED", () => {
-    const existing = [makeMemory({ memoryId: "m1" }), makeMemory({ memoryId: "m2", content: "另一条" })];
+    const existing = [
+      makeMemory({ memoryId: "m1" }),
+      makeMemory({ memoryId: "m2", content: "另一条" }),
+    ];
     const decision = evaluateMemoryCandidates({
       candidates: [candidate({ content: "第三条记忆" })],
       existingMemories: existing,
@@ -288,7 +289,13 @@ describe("确定性记忆选择器", () => {
 describe("受控记忆摘要", () => {
   it("摘要只取材原文、保留来源 memoryIds 与 revision 范围", () => {
     const memories = [
-      makeMemory({ memoryId: "m1", content: "皇上许诺补发辽饷", importance: 90, sourceRevision: 2, type: "commitment" }),
+      makeMemory({
+        memoryId: "m1",
+        content: "皇上许诺补发辽饷",
+        importance: 90,
+        sourceRevision: 2,
+        type: "commitment",
+      }),
       makeMemory({ memoryId: "m2", content: "崔尚书当廷失色", importance: 60, sourceRevision: 5 }),
     ];
     const summary = summarizeMemories(memories);
@@ -308,7 +315,12 @@ describe("受控记忆摘要", () => {
 
   it("低可信与传闻内容标注不确定性", () => {
     const summary = summarizeMemories([
-      makeMemory({ memoryId: "m1", content: "风闻魏氏私藏甲兵", sourceType: "rumor", confidence: 30 }),
+      makeMemory({
+        memoryId: "m1",
+        content: "风闻魏氏私藏甲兵",
+        sourceType: "rumor",
+        confidence: 30,
+      }),
     ]);
     expect(summary.content).toContain("（未确证）");
     expect(summary.uncertaintyNotes.length).toBeGreaterThan(0);

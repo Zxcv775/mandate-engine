@@ -52,9 +52,7 @@ beforeAll(async () => {
     { saveId: "save_agent", seed: "agent-seed" },
     clock,
   );
-  characterNames = Object.fromEntries(
-    templates.characters.map((value) => [value.id, value.name]),
-  );
+  characterNames = Object.fromEntries(templates.characters.map((value) => [value.id, value.name]));
 });
 
 function makeAgent(provider: MockLLMProvider, maxRepairAttempts = 1) {
@@ -149,10 +147,7 @@ describe("单人物 Character Agent（ADR-014）", () => {
   });
 
   it("修复后仍非法 → LLM_OUTPUT_REPAIR_FAILED，且不超过修复上限", async () => {
-    const provider = createCharacterMockProvider(
-      { alwaysInvalid: "schema-error" },
-      characterNames,
-    );
+    const provider = createCharacterMockProvider({ alwaysInvalid: "schema-error" }, characterNames);
     const agent = makeAgent(provider, 1);
     await expect(agent.respond(request())).rejects.toMatchObject({
       code: "LLM_OUTPUT_REPAIR_FAILED",
@@ -161,10 +156,7 @@ describe("单人物 Character Agent（ADR-014）", () => {
   });
 
   it("禁用修复（maxRepairAttempts=0）时首败即 CHARACTER_OUTPUT_INVALID", async () => {
-    const provider = createCharacterMockProvider(
-      { alwaysInvalid: "invalid-json" },
-      characterNames,
-    );
+    const provider = createCharacterMockProvider({ alwaysInvalid: "invalid-json" }, characterNames);
     const agent = makeAgent(provider, 0);
     await expect(agent.respond(request())).rejects.toMatchObject({
       code: "CHARACTER_OUTPUT_INVALID",
@@ -199,9 +191,9 @@ describe("单人物 Character Agent（ADR-014）", () => {
 
   it("去职人物不可交谈 → CHARACTER_NOT_AVAILABLE（袁崇焕开局在籍）", async () => {
     const agent = makeAgent(createCharacterMockProvider({}, characterNames));
-    await expect(
-      agent.respond(request({ characterId: "yuan-chonghuan" })),
-    ).rejects.toMatchObject({ code: "CHARACTER_NOT_AVAILABLE" });
+    await expect(agent.respond(request({ characterId: "yuan-chonghuan" }))).rejects.toMatchObject({
+      code: "CHARACTER_NOT_AVAILABLE",
+    });
   });
 
   it("Agent 调用不修改 GameState：hash 与 revision 不变，候选行动只是建议", async () => {
@@ -268,7 +260,10 @@ describe("一致性检查器单元规则", () => {
     uncertainties: [],
   } as const;
 
-  function evaluate(speech: string, extras: Partial<Parameters<typeof evaluateCharacterConsistency>[0]> = {}) {
+  function evaluate(
+    speech: string,
+    extras: Partial<Parameters<typeof evaluateCharacterConsistency>[0]> = {},
+  ) {
     return evaluateCharacterConsistency({
       template,
       view: view as never,

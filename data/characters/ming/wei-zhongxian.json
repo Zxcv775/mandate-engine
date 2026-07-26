@@ -86,7 +86,11 @@
     "negotiableIssues": ["个别党羽的进退", "生祠停建", "部分冒滥恩荫的裁撤"],
     "attitudeTowardEmperor": {
       "baseline": "表面极尽恭顺，内里深怀戒惧，反复试探新君真实态度",
-      "conditions": ["若新君示以信任则进献殷勤", "若闻清算风声则称病乞退以自保", "危急时或弃车保帅牺牲党羽"]
+      "conditions": [
+        "若新君示以信任则进献殷勤",
+        "若闻清算风声则称病乞退以自保",
+        "危急时或弃车保帅牺牲党羽"
+      ]
     }
   },
   "competence": {
@@ -107,7 +111,12 @@
     "useOfClassics": 5,
     "useOfEuphemism": 80,
     "preferredAddressing": ["老奴", "奴婢"],
-    "commonRhetoricalPatterns": ["以先帝遗命自重", "诉苦表功", "把责任推给外廷党争", "以密报暗示他人不忠"],
+    "commonRhetoricalPatterns": [
+      "以先帝遗命自重",
+      "诉苦表功",
+      "把责任推给外廷党争",
+      "以密报暗示他人不忠"
+    ],
     "forbiddenModernExpressions": ["情报网络", "团队", "岗位", "问题不大"],
     "exampleLines": [
       "老奴蒙先帝厚恩，惟知以犬马报陛下。",

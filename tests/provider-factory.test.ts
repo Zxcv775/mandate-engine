@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  MockLLMProvider,
-  OpenAiCompatibleProvider,
-  type LLMMessage,
-} from "@mandate/llm-adapters";
+import { MockLLMProvider, OpenAiCompatibleProvider, type LLMMessage } from "@mandate/llm-adapters";
 import type { RuntimeConfig } from "../apps/server/src/config/index";
 import {
   ProviderInitializationError,
@@ -73,10 +69,34 @@ describe("createLlmProvider", () => {
     expect(JSON.parse(String(init.body))).toMatchObject({ model: "remote-model", messages });
   });
 
+  it("默认 Mock 兜底：人物 Prompt 返回基础输出；会议 Prompt 返回带会议字段的输出", async () => {
+    const provider = createLlmProvider(mockConfig());
+    const characterPrompt: LLMMessage[] = [
+      { role: "system", content: "天命人物扮演系统\n当前场合：单独召见" },
+      { role: "user", content: "请奏对。" },
+    ];
+    const characterResult = await provider.generate(characterPrompt);
+    const characterOutput = JSON.parse(characterResult.text) as Record<string, unknown>;
+    expect(characterOutput.speech).toBeDefined();
+    expect(characterOutput.responseType).toBeUndefined();
+
+    const meetingPrompt: LLMMessage[] = [
+      {
+        role: "system",
+        content: "天命人物扮演系统\n当前场合：御前会议\n会议输出补充字段：responseType 等",
+      },
+      { role: "user", content: "你被要求的应对方式：答问\n请答问。" },
+    ];
+    const meetingResult = await provider.generate(meetingPrompt);
+    const meetingOutput = JSON.parse(meetingResult.text) as Record<string, unknown>;
+    expect(meetingOutput.responseType).toBe("answer");
+    expect(Array.isArray(meetingOutput.addressedCharacterIds)).toBe(true);
+  });
+
   it("未知 Provider 给出明确初始化错误", () => {
-    expect(() =>
-      createLlmProvider({ ...mockConfig(), provider: "unknown" } as never),
-    ).toThrow(/unknown/);
+    expect(() => createLlmProvider({ ...mockConfig(), provider: "unknown" } as never)).toThrow(
+      /unknown/,
+    );
   });
 
   it("无效 OpenAI Base URL 给出清晰构造错误", () => {

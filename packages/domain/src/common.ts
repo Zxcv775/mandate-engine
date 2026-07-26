@@ -53,30 +53,24 @@ export type ModifierOperation = z.infer<typeof ModifierOperationSchema>;
  */
 export const ModifierSchema = z
   .object({
-  id: z.string().trim().min(1),
-  /** 来源实体 ID（政策/人物/制度/事件），用于溯源与 ruleRefs */
-  sourceId: z.string().trim().min(1),
-  /** 状态路径，例如 "country.treasury"、"region:shaanxi.publicOrder" */
-  targetPath: z.string().trim().min(1),
-  operation: ModifierOperationSchema,
-  value: z.number(),
-  /** 生效回合数；缺省为一次性 */
-  durationTurns: z.number().int().positive().optional(),
-  /** 白名单条件 DSL 表达式（禁止 eval，见 ADR-003） */
-  condition: z.string().trim().min(1).optional(),
-  reason: z.string().trim().min(1).optional(),
+    id: z.string().trim().min(1),
+    /** 来源实体 ID（政策/人物/制度/事件），用于溯源与 ruleRefs */
+    sourceId: z.string().trim().min(1),
+    /** 状态路径，例如 "country.treasury"、"region:shaanxi.publicOrder" */
+    targetPath: z.string().trim().min(1),
+    operation: ModifierOperationSchema,
+    value: z.number(),
+    /** 生效回合数；缺省为一次性 */
+    durationTurns: z.number().int().positive().optional(),
+    /** 白名单条件 DSL 表达式（禁止 eval，见 ADR-003） */
+    condition: z.string().trim().min(1).optional(),
+    reason: z.string().trim().min(1).optional(),
   })
   .strict();
 export type Modifier = z.infer<typeof ModifierSchema>;
 
 /** 标准化资源类型 */
-export const ResourceTypeSchema = z.enum([
-  "silver",
-  "grain",
-  "population",
-  "manpower",
-  "prestige",
-]);
+export const ResourceTypeSchema = z.enum(["silver", "grain", "population", "manpower", "prestige"]);
 export type ResourceType = z.infer<typeof ResourceTypeSchema>;
 
 /** 资源值对象（随宿主实体归属） */

@@ -13,7 +13,7 @@ Phase 0-2 的 `CharacterSchema` 只有自由 record 人格与 4 维能力，无�
 ## 决策
 
 - 人物模板重构为分层结构：`identity / historicalProfile / personality / politicalProfile /
-  competence / communication / behaviorRules / initialRelations / knowledgeProfile / meta`
+competence / communication / behaviorRules / initialRelations / knowledgeProfile / meta`
   （`packages/domain/src/character-template.ts`，全部 strict Zod）。
 - 数值维度统一 0-100 整数；关系强度 -100..100。
 - 三层分离：历史模板（data/ 只读）≠ 运行状态（GameState.characters）≠ 人物记忆（独立仓储）。

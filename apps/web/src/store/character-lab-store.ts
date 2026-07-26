@@ -88,10 +88,7 @@ export const characterLabStore = createStore<CharacterLabState>()((set, get) => 
       error: undefined,
     });
     try {
-      const [characters, state] = await Promise.all([
-        listCharacters(saveId),
-        getSaveState(saveId),
-      ]);
+      const [characters, state] = await Promise.all([listCharacters(saveId), getSaveState(saveId)]);
       set({
         characters,
         charactersStatus: "success",

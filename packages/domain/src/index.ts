@@ -27,3 +27,6 @@ export * from "./character-view";
 export * from "./character-memory";
 export * from "./character-agent";
 export * from "./character-api";
+export * from "./meeting-runtime";
+export * from "./meeting-agent";
+export * from "./meeting-api";

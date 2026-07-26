@@ -65,7 +65,7 @@
   `initialRelations`、`knowledgeProfile`（领域访问级别/渠道/偏见/盲区）、`meta`
   （整卡必须 `gameplay-adjusted`：数值为游戏建模，非史料测量）。
 - 运行时对应（Phase 2 实际 Schema，未变）：`CharacterRuntimeState { characterId, status,
-  officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
+officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
 - 记忆对应（Phase 3，独立于 GameState）：`CharacterMemory`（来源 revision/类型/可信度/
   重要度/可见性/状态），存 SQLite `character_memories`，见 ADR-012。
 - 视图对应：`CharacterStateView`（角色有限知识视图，逐条认知标注），见 ADR-011。
@@ -226,20 +226,20 @@
 
 ## 2. 实体—归属速查表
 
-| 类别 | 实体 |
-|---|---|
-| 纯模板 | Dynasty、Scenario、Institution、EventChain、HistoricalSource |
-| 模板+运行时 | Character、Office、Faction、Event |
-| 纯运行时 | Country、Region、Relationship、Meeting、MeetingParticipant、Memorial、IntelligenceReport、Policy、ImperialDecree、Army、War、Memory、GameSession、GameState、StateChangeLog |
-| 值对象 | Resource、Modifier（随宿主） |
+| 类别        | 实体                                                                                                                                                                        |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 纯模板      | Dynasty、Scenario、Institution、EventChain、HistoricalSource                                                                                                                |
+| 模板+运行时 | Character、Office、Faction、Event                                                                                                                                           |
+| 纯运行时    | Country、Region、Relationship、Meeting、MeetingParticipant、Memorial、IntelligenceReport、Policy、ImperialDecree、Army、War、Memory、GameSession、GameState、StateChangeLog |
+| 值对象      | Resource、Modifier（随宿主）                                                                                                                                                |
 
 ## 3. LLM 可写白名单（全集）
 
-| 内容 | 落入实体 | 校验与落地 |
-|---|---|---|
-| 发言/奏折/情报/叙事文本 | Meeting 发言、Memorial、IntelligenceReport、Memory | Schema + 系统写入 |
-| 政策草案 | Policy(status=draft) | Schema + 制度校验 + 玩家裁决 |
-| 记忆摘要 | Memory.content | Memory Manager 写入 |
+| 内容                    | 落入实体                                           | 校验与落地                   |
+| ----------------------- | -------------------------------------------------- | ---------------------------- |
+| 发言/奏折/情报/叙事文本 | Meeting 发言、Memorial、IntelligenceReport、Memory | Schema + 系统写入            |
+| 政策草案                | Policy(status=draft)                               | Schema + 制度校验 + 玩家裁决 |
+| 记忆摘要                | Memory.content                                     | Memory Manager 写入          |
 
 除上表外，LLM 对任何实体字段均无写权限。
 

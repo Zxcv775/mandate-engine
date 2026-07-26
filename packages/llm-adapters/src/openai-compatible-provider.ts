@@ -46,10 +46,7 @@ export class OpenAiCompatibleProvider extends BaseLLMProvider {
     };
   }
 
-  async generate(
-    messages: LLMMessage[],
-    options: LLMGenerateOptions = {},
-  ): Promise<LLMResult> {
+  async generate(messages: LLMMessage[], options: LLMGenerateOptions = {}): Promise<LLMResult> {
     const timeoutMs = options.timeoutMs ?? this.config.timeoutMs;
     const maxRetries = this.config.maxRetries;
     let lastError: unknown;

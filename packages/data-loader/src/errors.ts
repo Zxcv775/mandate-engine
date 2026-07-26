@@ -1,8 +1,5 @@
 export type DataValidationIssueType =
-  | "data-json-invalid"
-  | "data-schema-invalid"
-  | "data-reference-invalid"
-  | "data-file-not-found";
+  "data-json-invalid" | "data-schema-invalid" | "data-reference-invalid" | "data-file-not-found";
 
 export interface DataValidationIssue {
   type: DataValidationIssueType;
@@ -20,9 +17,7 @@ export class DataValidationError extends Error {
 }
 
 export type ScenarioLoaderErrorCode =
-  | "SCENARIO_NOT_FOUND"
-  | "DATA_FILE_NOT_FOUND"
-  | "DATA_SCHEMA_INVALID";
+  "SCENARIO_NOT_FOUND" | "DATA_FILE_NOT_FOUND" | "DATA_SCHEMA_INVALID";
 
 export class ScenarioLoaderError extends Error {
   constructor(

@@ -7,6 +7,8 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 import { ApiError } from "./api-error";
 import { redactSensitiveString, SaveSystemError } from "@mandate/save-system";
+import { MeetingEngineError } from "@mandate/meeting-engine";
+import { StateEngineError } from "@mandate/game-engine";
 
 const CHARACTER_ERROR_STATUS: Record<CharacterAgentError["code"], number> = {
   CHARACTER_NOT_FOUND: 404,
@@ -40,9 +42,7 @@ function errorResponse(
 
 export function registerErrorHandlers(app: FastifyInstance): void {
   app.setNotFoundHandler((request, reply) => {
-    return reply
-      .code(404)
-      .send(errorResponse(request, "ROUTE_NOT_FOUND", "请求的 API 路由不存在"));
+    return reply.code(404).send(errorResponse(request, "ROUTE_NOT_FOUND", "请求的 API 路由不存在"));
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -62,12 +62,7 @@ export function registerErrorHandlers(app: FastifyInstance): void {
       return reply
         .code(error.statusCode)
         .send(
-          errorResponse(
-            request,
-            error.code,
-            redactSensitiveString(error.message),
-            error.details,
-          ),
+          errorResponse(request, error.code, redactSensitiveString(error.message), error.details),
         );
     }
 
@@ -84,6 +79,29 @@ export function registerErrorHandlers(app: FastifyInstance): void {
               : "历史模板数据加载失败",
           ),
         );
+    }
+
+    if (error instanceof MeetingEngineError) {
+      request.log.warn({ code: error.code }, "预期会议引擎错误");
+      const statusCode =
+        error.code === "MEETING_NOT_FOUND" || error.code === "MEETING_AGENDA_NOT_FOUND" ? 404 : 409;
+      return reply
+        .code(statusCode)
+        .send(errorResponse(request, error.code, redactSensitiveString(error.message)));
+    }
+
+    if (
+      error instanceof StateEngineError &&
+      (error.code === "MEETING_NOT_FOUND" ||
+        error.code === "MEETING_INVALID_STATE" ||
+        error.code === "MEETING_ALREADY_STARTED" ||
+        error.code === "MEETING_ALREADY_CONCLUDED" ||
+        error.code === "MEETING_PARTICIPANT_INVALID")
+    ) {
+      request.log.warn({ code: error.code }, "预期会议命令错误");
+      return reply
+        .code(error.code === "MEETING_NOT_FOUND" ? 404 : 409)
+        .send(errorResponse(request, error.code, redactSensitiveString(error.message)));
     }
 
     if (error instanceof CharacterAgentError) {
@@ -109,18 +127,25 @@ export function registerErrorHandlers(app: FastifyInstance): void {
 
     if (error instanceof SaveSystemError) {
       const statusCode =
-        error.code === "SAVE_NOT_FOUND"
+        error.code === "SAVE_NOT_FOUND" || error.code === "MEETING_NOT_FOUND"
           ? 404
           : error.code === "SAVE_ALREADY_EXISTS" ||
               error.code === "SAVE_ARCHIVED" ||
               error.code === "STATE_REVISION_CONFLICT" ||
               error.code === "ROLLBACK_TARGET_INVALID" ||
-              error.code === "SAVE_VERSION_UNSUPPORTED"
+              error.code === "SAVE_VERSION_UNSUPPORTED" ||
+              error.code === "MEETING_VERSION_STALE" ||
+              error.code === "MEETING_AGENT_RESPONSE_DUPLICATE" ||
+              error.code === "MEETING_INVALID_STATE" ||
+              error.code === "MEETING_ALREADY_STARTED" ||
+              error.code === "MEETING_ALREADY_CONCLUDED" ||
+              error.code === "MEETING_PARTICIPANT_INVALID"
             ? 409
             : error.code === "DATABASE_ERROR" ||
                 error.code === "MIGRATION_FAILED" ||
                 error.code === "SAVE_IMPORT_FAILED" ||
-                error.code === "SAVE_EXPORT_FAILED"
+                error.code === "SAVE_EXPORT_FAILED" ||
+                error.code === "MEETING_TRANSCRIPT_WRITE_FAILED"
               ? 500
               : 400;
       request.log.warn({ code: error.code }, "预期存档 API 错误");
@@ -133,8 +158,6 @@ export function registerErrorHandlers(app: FastifyInstance): void {
       { errorName: error instanceof Error ? error.name : "UnknownError" },
       "未处理的 API 异常",
     );
-    return reply
-      .code(500)
-      .send(errorResponse(request, "INTERNAL_ERROR", "服务器内部错误"));
+    return reply.code(500).send(errorResponse(request, "INTERNAL_ERROR", "服务器内部错误"));
   });
 }

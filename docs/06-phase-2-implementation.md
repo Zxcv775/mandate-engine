@@ -50,15 +50,15 @@ WAL、5 秒 busy timeout、defensive mode；所有表为 STRICT，SQL 参数化�
 
 核心表：
 
-| 表 | 用途 |
-| --- | --- |
-| `saves` | 存档元数据、状态、head revision、lineage |
-| `command_transactions` | 命令事务、幂等键与提交摘要 |
-| `save_snapshots` | initial/periodic/manual/pre_migration/pre_import 快照 |
-| `state_change_log` | 追加 mutation、inverse、visibility 与 hash chain |
-| `schema_migrations` | 数据库迁移 checksum registry |
-| `save_state_migrations` | 单存档状态迁移和备份 checkpoint |
-| `import_history` | 包 hash、来源客户端与冲突分类 |
+| 表                      | 用途                                                  |
+| ----------------------- | ----------------------------------------------------- |
+| `saves`                 | 存档元数据、状态、head revision、lineage              |
+| `command_transactions`  | 命令事务、幂等键与提交摘要                            |
+| `save_snapshots`        | initial/periodic/manual/pre_migration/pre_import 快照 |
+| `state_change_log`      | 追加 mutation、inverse、visibility 与 hash chain      |
+| `schema_migrations`     | 数据库迁移 checksum registry                          |
+| `save_state_migrations` | 单存档状态迁移和备份 checkpoint                       |
+| `import_history`        | 包 hash、来源客户端与冲突分类                         |
 
 状态迁移前创建 `pre_migration` checkpoint，在同一事务中迁移 snapshot、兼容路径和 hash chain；完整 validate
 通过后才 commit。Phase 2 示例为 `country.treasury → country.treasuryTaels`。

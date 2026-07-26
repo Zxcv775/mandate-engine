@@ -6,7 +6,11 @@ import { PlayerStateViewSchema } from "./state";
 import { StateChangeLogEntrySchema } from "./mutations";
 import { ApiResponseMetaSchema } from "./api";
 
-const IdSchema = z.string().trim().min(1).regex(/^[A-Za-z0-9_.:-]+$/);
+const IdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z0-9_.:-]+$/);
 
 export const SaveIdParamsSchema = z.object({ saveId: IdSchema }).strict();
 
@@ -43,7 +47,10 @@ export const SubmitCommandRequestSchema = z.discriminatedUnion("commandType", [
       payload: z
         .object({
           resource: CountryResourceNameSchema,
-          delta: z.number().int().refine((value) => value !== 0),
+          delta: z
+            .number()
+            .int()
+            .refine((value) => value !== 0),
           reason: z.string().trim().min(1),
           sourceIds: z.array(IdSchema).optional(),
         })
@@ -83,11 +90,7 @@ export const CreateCheckpointRequestSchema = z
   })
   .strict();
 
-const optionalIntegerQuery = z
-  .string()
-  .regex(/^\d+$/)
-  .transform(Number)
-  .optional();
+const optionalIntegerQuery = z.string().regex(/^\d+$/).transform(Number).optional();
 
 export const SaveChangesQuerySchema = z
   .object({
@@ -131,7 +134,10 @@ export const ExportSaveRequestSchema = z
 
 export const ImportSaveRequestSchema = z
   .object({
-    packageBase64: z.string().min(1).max(100 * 1024 * 1024),
+    packageBase64: z
+      .string()
+      .min(1)
+      .max(100 * 1024 * 1024),
     password: z.string().min(8).max(1_024).optional(),
     clientId: IdSchema.optional(),
   })

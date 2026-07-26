@@ -13,15 +13,19 @@ import { registerVersionRoute } from "./routes/version";
 import { registerSaveRoutes } from "./routes/saves";
 import { registerCharacterRoutes } from "./routes/characters";
 import { registerDebugCharacterRoutes } from "./routes/debug-characters";
+import { registerMeetingRoutes } from "./routes/meetings";
+import { registerDebugMeetingRoutes } from "./routes/debug-meetings";
 import { createLlmService, type LlmService } from "./services/llm-service";
 import { createScenarioService } from "./services/scenario-service";
 import { CharacterService } from "./services/character-service";
+import { MeetingService } from "./services/meeting-service";
 
 declare module "fastify" {
   interface FastifyInstance {
     llmService: LlmService;
     gameStateService: GameStateService;
     characterService: CharacterService;
+    meetingService: MeetingService;
   }
 }
 
@@ -103,6 +107,17 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   });
   app.decorate("characterService", characterService);
 
+  const meetingService = new MeetingService({
+    gameStateService: saveSystem.service,
+    meetings: saveSystem.meetings,
+    memories: saveSystem.characterMemories,
+    scenarioLoader,
+    llm: { generate: (messages) => app.llmService.generateText(messages) },
+    config,
+    logger: app.log,
+  });
+  app.decorate("meetingService", meetingService);
+
   registerErrorHandlers(app);
   registerHealthRoute(app);
   registerVersionRoute(app);
@@ -110,8 +125,10 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerScenarioRoutes(app, scenarioService);
   registerSaveRoutes(app, saveSystem.service);
   registerCharacterRoutes(app, characterService);
+  registerMeetingRoutes(app, meetingService);
   if (config.debug.apiEnabled) {
     registerDebugCharacterRoutes(app, characterService);
+    registerDebugMeetingRoutes(app, meetingService);
   }
 
   return app;

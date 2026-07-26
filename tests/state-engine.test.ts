@@ -44,9 +44,7 @@ function command(
 
 describe("stable serialization and hashing", () => {
   it("sorts object keys recursively and preserves array order", () => {
-    expect(stableStringify({ b: 2, a: { d: 4, c: [2, 1] } })).toBe(
-      '{"a":{"c":[2,1],"d":4},"b":2}',
-    );
+    expect(stableStringify({ b: 2, a: { d: 4, c: [2, 1] } })).toBe('{"a":{"c":[2,1],"d":4},"b":2}');
   });
 
   it("produces the same SHA-256 for structurally equal states", () => {
@@ -144,12 +142,10 @@ describe("mutation applier", () => {
     expect(() => applyMutation(state(), { ...setMutation, path: "/country/missing" })).toThrow(
       StateEngineError,
     );
-    expect(() =>
-      applyMutation(state(), { ...setMutation, path: "/__proto__/polluted" }),
-    ).toThrow(StateEngineError);
-    expect(() => applyMutation(state(), { ...setMutation, before: 99 })).toThrow(
-      /before/i,
+    expect(() => applyMutation(state(), { ...setMutation, path: "/__proto__/polluted" })).toThrow(
+      StateEngineError,
     );
+    expect(() => applyMutation(state(), { ...setMutation, before: 99 })).toThrow(/before/i);
   });
 
   it("leaves the source state unchanged when a later mutation fails", () => {
@@ -192,11 +188,15 @@ describe("StateEngine.applyCommand", () => {
     expect(() =>
       engine.applyCommand(
         state(),
-        command("country.adjust-resource", {
-          resource: "treasuryTaels",
-          delta: -1,
-          reason: "test",
-        }, 1),
+        command(
+          "country.adjust-resource",
+          {
+            resource: "treasuryTaels",
+            delta: -1,
+            reason: "test",
+          },
+          1,
+        ),
       ),
     ).toThrowError(expect.objectContaining({ code: "STATE_REVISION_CONFLICT" }));
   });
@@ -222,9 +222,7 @@ describe("StateEngine.applyCommand", () => {
         officeId: "chief-grand-secretary",
       }),
     );
-    expect(result.nextState.characters["wei-zhongxian"]?.officeId).toBe(
-      "chief-grand-secretary",
-    );
+    expect(result.nextState.characters["wei-zhongxian"]?.officeId).toBe("chief-grand-secretary");
     expect(result.nextState.offices["chief-grand-secretary"]?.holderCharacterId).toBe(
       "wei-zhongxian",
     );
@@ -247,7 +245,8 @@ describe("StateEngine.applyCommand", () => {
       }),
       command("time.advance", { days: 1 }, 1),
     ];
-    const run = () => commands.reduce((current, item) => engine.applyCommand(current, item).nextState, state());
+    const run = () =>
+      commands.reduce((current, item) => engine.applyCommand(current, item).nextState, state());
     expect(hashState(run())).toBe(hashState(run()));
   });
 });

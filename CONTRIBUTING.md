@@ -10,20 +10,20 @@
 
 ## 常用命令
 
-| 命令 | 作用 |
-|---|---|
-| `npm run dev` | 并发启动后端与前端 |
-| `npm run dev:server` | 启动后端（tsx watch） |
-| `npm run dev:web` | 启动前端（Vite） |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | 全 workspace 类型检查 |
-| `npm test` | Vitest（不触网） |
-| `npm run build` | 构建/编译验证 |
-| `npm run check:data` | data/ JSON、Domain Schema 与引用校验 |
-| `npm run check` | 串行执行全部质量门禁 |
-| `npm run check:saves` | 使用临时 SQLite 验证存档闭环 |
-| `npm run check:phase2` | 串行执行 Phase 2 全部门禁 |
-| `npm run benchmark:phase2` | 生成真实状态/存档性能报告 |
+| 命令                       | 作用                                 |
+| -------------------------- | ------------------------------------ |
+| `npm run dev`              | 并发启动后端与前端                   |
+| `npm run dev:server`       | 启动后端（tsx watch）                |
+| `npm run dev:web`          | 启动前端（Vite）                     |
+| `npm run lint`             | ESLint                               |
+| `npm run typecheck`        | 全 workspace 类型检查                |
+| `npm test`                 | Vitest（不触网）                     |
+| `npm run build`            | 构建/编译验证                        |
+| `npm run check:data`       | data/ JSON、Domain Schema 与引用校验 |
+| `npm run check`            | 串行执行全部质量门禁                 |
+| `npm run check:saves`      | 使用临时 SQLite 验证存档闭环         |
+| `npm run check:phase2`     | 串行执行 Phase 2 全部门禁            |
+| `npm run benchmark:phase2` | 生成真实状态/存档性能报告            |
 
 提交前请确保以上命令全部通过。
 

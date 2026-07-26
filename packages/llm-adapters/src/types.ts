@@ -49,13 +49,7 @@ export interface LLMProvider {
   /** 普通文本生成 */
   generate(messages: LLMMessage[], options?: LLMGenerateOptions): Promise<LLMResult>;
   /** 结构化 JSON 输出（Schema 校验 + 重试；最终失败抛 StructuredOutputError） */
-  generateStructured<T>(
-    messages: LLMMessage[],
-    options: LLMStructuredOptions<T>,
-  ): Promise<T>;
+  generateStructured<T>(messages: LLMMessage[], options: LLMStructuredOptions<T>): Promise<T>;
   /** 流式生成（可选；Phase 4 启用，FR-LLM-101） */
-  generateStream?(
-    messages: LLMMessage[],
-    options?: LLMGenerateOptions,
-  ): AsyncIterable<string>;
+  generateStream?(messages: LLMMessage[], options?: LLMGenerateOptions): AsyncIterable<string>;
 }

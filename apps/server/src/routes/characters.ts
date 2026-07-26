@@ -12,10 +12,7 @@ import { successResponse } from "./response";
  * respond 不提交任何 GameState 变更；响应为公开投影，
  * 不含 internalAssessment / 记忆候选 / hidden state。
  */
-export function registerCharacterRoutes(
-  app: FastifyInstance,
-  service: CharacterService,
-): void {
+export function registerCharacterRoutes(app: FastifyInstance, service: CharacterService): void {
   app.get("/api/saves/:saveId/characters", async (request) => {
     const { saveId } = SaveIdParamsSchema.parse(request.params);
     return successResponse(request, await service.listCharacters(saveId));

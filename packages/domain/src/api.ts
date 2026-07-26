@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  HistoricalDataCompletenessSchema,
-  ScenarioStatusSchema,
-} from "./templates";
+import { HistoricalDataCompletenessSchema, ScenarioStatusSchema } from "./templates";
 
 export const ApiResponseMetaSchema = z
   .object({
@@ -48,6 +45,25 @@ export const ApiErrorCodeSchema = z.enum([
   "PROMPT_VARIABLE_MISSING",
   "PROMPT_BUDGET_EXCEEDED",
   "LLM_OUTPUT_REPAIR_FAILED",
+  "MEETING_NOT_FOUND",
+  "MEETING_INVALID_STATE",
+  "MEETING_VERSION_STALE",
+  "MEETING_ALREADY_STARTED",
+  "MEETING_ALREADY_CONCLUDED",
+  "MEETING_PARTICIPANT_INVALID",
+  "MEETING_PARTICIPANT_NOT_PRESENT",
+  "MEETING_SPEAKER_INELIGIBLE",
+  "MEETING_AGENDA_NOT_FOUND",
+  "MEETING_AGENDA_INVALID_STATE",
+  "MEETING_TURN_LIMIT_REACHED",
+  "MEETING_ACTION_NOT_ALLOWED",
+  "MEETING_AGENT_REQUEST_PENDING",
+  "MEETING_AGENT_RESPONSE_DUPLICATE",
+  "MEETING_TRANSCRIPT_WRITE_FAILED",
+  "MEETING_OUTCOME_INVALID",
+  "MEETING_OUTCOME_UNSUPPORTED",
+  "MEETING_RULING_INVALID",
+  "MEETING_RECOVERY_REQUIRED",
   "INTERNAL_ERROR",
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCodeSchema>;

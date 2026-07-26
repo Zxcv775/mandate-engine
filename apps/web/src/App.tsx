@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { CharacterLab } from "./features/character-lab/CharacterLab";
+import { MeetingLab } from "./features/meeting-lab/MeetingLab";
 import { RuntimeDashboard } from "./features/runtime-dashboard/RuntimeDashboard";
 import "./app.css";
 
-type AppView = "dashboard" | "character-lab";
+type AppView = "dashboard" | "character-lab" | "meeting-lab";
 
 export function App() {
   const [view, setView] = useState<AppView>("dashboard");
@@ -25,8 +26,21 @@ export function App() {
         >
           Character Lab
         </button>
+        <button
+          type="button"
+          className={view === "meeting-lab" ? "active" : ""}
+          onClick={() => setView("meeting-lab")}
+        >
+          Meeting Lab
+        </button>
       </nav>
-      {view === "dashboard" ? <RuntimeDashboard /> : <CharacterLab />}
+      {view === "dashboard" ? (
+        <RuntimeDashboard />
+      ) : view === "character-lab" ? (
+        <CharacterLab />
+      ) : (
+        <MeetingLab />
+      )}
     </>
   );
 }

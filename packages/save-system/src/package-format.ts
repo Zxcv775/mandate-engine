@@ -1,14 +1,6 @@
-import {
-  SaveExportManifestSchema,
-  type SaveExportManifest,
-} from "@mandate/domain";
+import { SaveExportManifestSchema, type SaveExportManifest } from "@mandate/domain";
 import { sha256Hex, stableStringify } from "@mandate/game-engine";
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-  scryptSync,
-} from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -159,7 +151,9 @@ export function parseSavePackage(bytes: Uint8Array, password?: string): ParsedSa
     const entryNames = Object.keys(entries);
     if (
       entryNames.length !== REQUIRED_ENTRIES.length ||
-      entryNames.some((name) => !REQUIRED_ENTRIES.includes(name as (typeof REQUIRED_ENTRIES)[number]))
+      entryNames.some(
+        (name) => !REQUIRED_ENTRIES.includes(name as (typeof REQUIRED_ENTRIES)[number]),
+      )
     ) {
       throw new Error("unexpected archive entry");
     }

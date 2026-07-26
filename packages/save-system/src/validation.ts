@@ -184,9 +184,7 @@ export function validateSave(
     .prepare("SELECT revision FROM save_snapshots WHERE save_id = ? ORDER BY revision")
     .all(saveId) as Array<{ revision: number }>;
   const headRevision = Number(save.head_revision);
-  const hasHeadSnapshot = snapshotRevisionRows.some(
-    (row) => Number(row.revision) === headRevision,
-  );
+  const hasHeadSnapshot = snapshotRevisionRows.some((row) => Number(row.revision) === headRevision);
   const committedRevisions = new Set(
     transactionRows
       .filter((row) => row.status === "committed")
@@ -201,13 +199,17 @@ export function validateSave(
     check(
       "REVISION_CONTINUITY",
       missingRevisions.length === 0 ? "passed" : "failed",
-      missingRevisions.length === 0 ? "revision 连续或由 head snapshot 完整锚定" : "revision 存在缺口",
+      missingRevisions.length === 0
+        ? "revision 连续或由 head snapshot 完整锚定"
+        : "revision 存在缺口",
       missingRevisions,
     ),
   );
 
   const snapshotRows = database
-    .prepare("SELECT snapshot_id, revision, state_json, state_hash FROM save_snapshots WHERE save_id = ?")
+    .prepare(
+      "SELECT snapshot_id, revision, state_json, state_hash FROM save_snapshots WHERE save_id = ?",
+    )
     .all(saveId) as Array<{
     snapshot_id: string;
     revision: number;
@@ -217,7 +219,10 @@ export function validateSave(
   const badSnapshots = snapshotRows
     .filter((row) => {
       try {
-        return Number(row.revision) > headRevision || hashState(JSON.parse(row.state_json)) !== row.state_hash;
+        return (
+          Number(row.revision) > headRevision ||
+          hashState(JSON.parse(row.state_json)) !== row.state_hash
+        );
       } catch {
         return true;
       }
@@ -286,7 +291,8 @@ export function validateSave(
         sourceIssues.push("顶层或国家 sourceIds 为空");
       }
       for (const character of Object.values(parsed.data.characters)) {
-        if (character.sourceIds.length === 0) sourceIssues.push(`人物 ${character.characterId} sourceIds 为空`);
+        if (character.sourceIds.length === 0)
+          sourceIssues.push(`人物 ${character.characterId} sourceIds 为空`);
       }
       if (
         !Number.isInteger(parsed.data.rng.cursor) ||
@@ -295,10 +301,7 @@ export function validateSave(
       ) {
         rngIssues.push("RNG seed/cursor 无效");
       }
-      if (
-        save.source_metadata_mode === "omit_catalog" &&
-        parsed.data.meta.sourceCatalogPresent
-      ) {
+      if (save.source_metadata_mode === "omit_catalog" && parsed.data.meta.sourceCatalogPresent) {
         sourceIssues.push("source catalog 已剥离但状态未标记");
       }
     }

@@ -93,11 +93,7 @@ export async function respondCharacterWithDebug(
   ).data;
 }
 
-export async function getDebugContext(
-  saveId: string,
-  characterId: string,
-  signal?: AbortSignal,
-) {
+export async function getDebugContext(saveId: string, characterId: string, signal?: AbortSignal) {
   return (
     await apiClient.get(
       `/api/debug/saves/${encodeURIComponent(saveId)}/characters/${encodeURIComponent(characterId)}/context`,

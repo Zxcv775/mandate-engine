@@ -1,9 +1,5 @@
 import { createScenarioLoader } from "@mandate/data-loader";
-import {
-  FixedClock,
-  StateEngine,
-  type TimeAdvanceHook,
-} from "@mandate/game-engine";
+import { FixedClock, StateEngine, type TimeAdvanceHook } from "@mandate/game-engine";
 import { createSaveSystem, type SaveSystem } from "@mandate/save-system";
 import { cpus, platform, release, totalmem } from "node:os";
 import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
@@ -90,7 +86,11 @@ async function fileSize(path: string): Promise<number> {
   }
 }
 
-async function advanceTo(system: SaveSystem, saveId: string, targetRevision: number): Promise<void> {
+async function advanceTo(
+  system: SaveSystem,
+  saveId: string,
+  targetRevision: number,
+): Promise<void> {
   let revision = (await system.service.getSave(saveId)).headRevision;
   while (revision < targetRevision) {
     await system.service.advanceTime(saveId, {
@@ -145,7 +145,9 @@ function tenMutationHook(): TimeAdvanceHook {
 
 function collectAnomalies(timings: Record<string, TimingSummary>): string[] {
   return Object.entries(timings)
-    .filter(([, value]) => value.runs > 1 && value.minimum > 0 && value.maximum / value.minimum >= 3)
+    .filter(
+      ([, value]) => value.runs > 1 && value.minimum > 0 && value.maximum / value.minimum >= 3,
+    )
     .map(
       ([name, value]) =>
         `${name} 最大值 ${value.maximum}ms 是最小值 ${value.minimum}ms 的至少 3 倍`,
@@ -405,7 +407,8 @@ function markdown(result: Phase2BenchmarkResult): string {
         `| ${name} | ${value.runs} | ${value.average} | ${value.minimum} | ${value.maximum} |`,
     )
     .join("\n");
-  return `# Phase 2 性能基准\n\n` +
+  return (
+    `# Phase 2 性能基准\n\n` +
     `- 生成时间：${result.generatedAt}\n` +
     `- 环境：${result.environment.platform} ${result.environment.release} / ${result.environment.cpu} / Node ${result.environment.node}\n` +
     `- Fixture：revision ${result.fixture.maxRevision}，日志 ${result.fixture.actualLogCount}，重复 ${result.fixture.repeats} 次\n\n` +
@@ -419,7 +422,8 @@ function markdown(result: Phase2BenchmarkResult): string {
     `- 导出（剥离来源目录）：${result.sizes.exportWithoutSourcesBytes}\n` +
     `- WAL 观测值：${result.sizes.observedWalBytes}\n\n` +
     `## 异常值\n\n${result.anomalies.length ? result.anomalies.map((value) => `- ${value}`).join("\n") : "- 未检测到最大/最小比达到 3 倍的样本"}\n\n` +
-    `## 估算前提\n\n${result.assumptions.map((value) => `- ${value}`).join("\n")}\n`;
+    `## 估算前提\n\n${result.assumptions.map((value) => `- ${value}`).join("\n")}\n`
+  );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

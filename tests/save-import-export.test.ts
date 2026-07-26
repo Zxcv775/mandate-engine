@@ -251,7 +251,9 @@ describe(".mesave package", () => {
         includeSourceMetadata: false,
         sourceMetadataMode: "omit_catalog",
       });
-      expect((await target.service.loadState(imported.saveId)).meta.sourceCatalogPresent).toBe(false);
+      expect((await target.service.loadState(imported.saveId)).meta.sourceCatalogPresent).toBe(
+        false,
+      );
     },
   );
 
@@ -371,5 +373,155 @@ describe(".mesave package", () => {
       await expect(target.service.importSave({ bytes })).rejects.toMatchObject({ code });
       expect(await target.service.listSaves({ includeArchived: true })).toHaveLength(0);
     }
+  });
+});
+
+describe("人物记忆随存档迁移（P4.0）", () => {
+  function seedMemory(
+    system: SaveSystem,
+    content: string,
+    options: {
+      visibility?: "self" | "private" | "shareable" | "sealed";
+      sourceRevision?: number;
+    } = {},
+  ) {
+    return system.characterMemories.insertMemory({
+      saveId: "save_demo",
+      characterId: "wei-zhongxian",
+      candidate: {
+        type: "episodic",
+        content,
+        relatedCharacterIds: ["emperor"],
+        relatedEntityIds: [],
+        topicTags: ["export-test"],
+        sourceType: "observed",
+        confidence: 80,
+        importance: 60,
+        visibility: options.visibility ?? "self",
+      },
+      confidence: 80,
+      sourceRevision: options.sourceRevision ?? 1,
+    });
+  }
+
+  it("导出载荷包含记忆行，导入空库后记忆与对话记录保留", async () => {
+    const source = await setup("mem-src");
+    const target = await setup("mem-dst");
+    await createAndAdvance(source);
+    seedMemory(source, "皇上垂询辽东军情，语气峻切");
+    source.characterMemories.insertTurn({
+      saveId: "save_demo",
+      characterId: "wei-zhongxian",
+      speakerId: "emperor",
+      mode: "private-audience",
+      inputText: "厂卫所报可有欺瞒？",
+      speech: "老奴不敢。",
+      stateRevision: 1,
+      promptVersions: { "system.character-agent-base": "v1" },
+    });
+
+    const exported = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+    const imported = await target.service.importSave({ bytes: exported.bytes });
+    expect(imported).toMatchObject({ result: "fast_forward", saveId: "save_demo" });
+
+    const memories = target.characterMemories.listMemories("save_demo", "wei-zhongxian");
+    expect(memories.memories).toHaveLength(1);
+    expect(memories.memories[0]?.content).toContain("辽东军情");
+    const turns = target.characterMemories.listRecentTurns("save_demo", "wei-zhongxian");
+    expect(turns).toHaveLength(1);
+    expect(turns[0]?.speech).toBe("老奴不敢。");
+  });
+
+  it("同世界线快进按主键去重合并记忆", async () => {
+    const source = await setup("mem-ff-src");
+    const target = await setup("mem-ff-dst");
+    await createAndAdvance(source);
+    seedMemory(source, "第一条记忆");
+    const first = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+    await target.service.importSave({ bytes: first.bytes });
+
+    await source.service.commitCommand({
+      commandId: "cmd_ff",
+      commandType: "country.adjust-resource",
+      saveId: "save_demo",
+      baseRevision: 1,
+      actor: { type: "player", id: "player" },
+      payload: { resource: "treasuryTaels", delta: -50, reason: "ff" },
+      createdAt: NOW,
+    });
+    seedMemory(source, "第二条记忆");
+    const second = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+    const imported = await target.service.importSave({ bytes: second.bytes });
+    expect(imported).toMatchObject({ result: "fast_forward" });
+    const memories = target.characterMemories.listMemories("save_demo", "wei-zhongxian");
+    expect(memories.memories).toHaveLength(2);
+  });
+
+  it("fork 导入重映射 saveId 并重写记忆主键", async () => {
+    const source = await setup("mem-fork-src");
+    const target = await setup("mem-fork-dst");
+    await createAndAdvance(source);
+    seedMemory(source, "世界线甲的记忆");
+    // 目标库独立创建同名存档（不同 lineage）→ 导入触发 fork
+    await createAndAdvance(target, "different-seed");
+
+    const exported = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+    const imported = await target.service.importSave({ bytes: exported.bytes });
+    expect(imported.result).toBe("forked");
+    const forkSaveId = imported.saveId;
+    expect(forkSaveId).not.toBe("save_demo");
+
+    const forkMemories = target.characterMemories.listMemories(forkSaveId, "wei-zhongxian");
+    expect(forkMemories.memories).toHaveLength(1);
+    expect(forkMemories.memories[0]?.content).toBe("世界线甲的记忆");
+    expect(forkMemories.memories[0]?.memoryId.startsWith("fork_")).toBe(true);
+    // 原 save_demo 不受影响
+    const originalMemories = target.characterMemories.listMemories("save_demo", "wei-zhongxian");
+    expect(originalMemories.memories).toHaveLength(0);
+  });
+
+  it("safe_share 导出剥离 sealed 记忆，其余保留", async () => {
+    const source = await setup("mem-seal-src");
+    const target = await setup("mem-seal-dst");
+    await createAndAdvance(source);
+    seedMemory(source, "可分享的记忆", { visibility: "shareable" });
+    seedMemory(source, "SEALED_SECRET_CONTENT", { visibility: "sealed" });
+
+    const exported = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "safe_share",
+    });
+    const imported = await target.service.importSave({ bytes: exported.bytes });
+    const memories = target.characterMemories.listMemories(imported.saveId, "wei-zhongxian");
+    expect(memories.memories).toHaveLength(1);
+    expect(JSON.stringify(memories.memories)).not.toContain("SEALED_SECRET_CONTENT");
+  });
+
+  it("记忆 sourceRevision 超出 head 的载荷被拒绝且不产生部分写入", async () => {
+    const source = await setup("mem-bad-src");
+    const target = await setup("mem-bad-dst");
+    await createAndAdvance(source);
+    seedMemory(source, "来自未来的记忆", { sourceRevision: 99 });
+
+    const exported = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+    await expect(target.service.importSave({ bytes: exported.bytes })).rejects.toMatchObject({
+      code: "SAVE_PACKAGE_INVALID",
+    });
+    expect((await target.service.listSaves({ includeArchived: true })).length).toBe(0);
   });
 });

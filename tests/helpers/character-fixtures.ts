@@ -1,8 +1,4 @@
-import type {
-  CharacterMemory,
-  CharacterTemplate,
-  GameState,
-} from "@mandate/domain";
+import type { CharacterMemory, CharacterTemplate, GameState } from "@mandate/domain";
 import {
   FixedClock,
   createInitialGameState,

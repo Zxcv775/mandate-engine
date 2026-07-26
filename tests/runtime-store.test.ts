@@ -6,10 +6,7 @@ import type {
 } from "@mandate/domain";
 import { describe, expect, it, vi } from "vitest";
 import { ApiClientError } from "../apps/web/src/api/client";
-import {
-  createRuntimeStore,
-  type RuntimeApi,
-} from "../apps/web/src/store/runtime-store";
+import { createRuntimeStore, type RuntimeApi } from "../apps/web/src/store/runtime-store";
 
 const health: HealthData = {
   status: "ok",

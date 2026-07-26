@@ -62,9 +62,7 @@ describe("RuntimeConfig", () => {
       parseRuntimeConfig(env);
     } catch (error) {
       expect(error).toBeInstanceOf(RuntimeConfigError);
-      expect((error as RuntimeConfigError).issues.some((issue) => issue.path === field)).toBe(
-        true,
-      );
+      expect((error as RuntimeConfigError).issues.some((issue) => issue.path === field)).toBe(true);
       expect((error as Error).message).toContain(field);
     }
   });

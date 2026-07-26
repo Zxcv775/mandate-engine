@@ -99,9 +99,7 @@ export function CharacterLab() {
           场合
           <select
             value={state.mode}
-            onChange={(event) =>
-              state.setMode(event.target.value as CharacterConversationMode)
-            }
+            onChange={(event) => state.setMode(event.target.value as CharacterConversationMode)}
           >
             {Object.entries(MODE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>

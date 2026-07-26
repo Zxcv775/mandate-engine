@@ -50,9 +50,7 @@ describe("历史模板深度 Schema", () => {
     };
 
     expect(ScenarioSchema.safeParse(base).success).toBe(true);
-    expect(ScenarioSchema.safeParse({ ...base, startGameDate: "1627-02-30" }).success).toBe(
-      false,
-    );
+    expect(ScenarioSchema.safeParse({ ...base, startGameDate: "1627-02-30" }).success).toBe(false);
     expect(
       ScenarioSchema.safeParse({ ...base, historicalDataCompleteness: "unknown" }).success,
     ).toBe(false);
@@ -78,9 +76,7 @@ describe("历史模板深度 Schema", () => {
   });
 
   it("Faction、Office 与 InstitutionPack 复用统一 Schema", () => {
-    expect(
-      FactionSchema.safeParse({ id: "yan-dang", name: "阉党", meta }).success,
-    ).toBe(true);
+    expect(FactionSchema.safeParse({ id: "yan-dang", name: "阉党", meta }).success).toBe(true);
     expect(
       OfficeSchema.safeParse({
         id: "shang-shu",
@@ -119,7 +115,13 @@ describe("历史模板深度 Schema", () => {
         kind: "disaster",
         trigger: { expression: "risk > 0.5" },
         effects: [
-          { id: "modifier", sourceId: "event", targetPath: "country.stability", operation: "add", value: -1 },
+          {
+            id: "modifier",
+            sourceId: "event",
+            targetPath: "country.stability",
+            operation: "add",
+            value: -1,
+          },
         ],
         meta,
       }).success,
@@ -129,7 +131,13 @@ describe("历史模板深度 Schema", () => {
         packId: "rules",
         description: "测试规则",
         modifiers: [
-          { id: "modifier", sourceId: "rules", targetPath: "country.stability", operation: "hack", value: -1 },
+          {
+            id: "modifier",
+            sourceId: "rules",
+            targetPath: "country.stability",
+            operation: "hack",
+            value: -1,
+          },
         ],
         meta,
       }).success,

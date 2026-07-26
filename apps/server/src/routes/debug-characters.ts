@@ -27,13 +27,10 @@ export function registerDebugCharacterRoutes(
   });
 
   /** 带调试信息的 respond：额外返回一致性/预算/记忆选择摘要（仍不含完整 Prompt） */
-  app.post(
-    "/api/debug/saves/:saveId/characters/:characterId/respond",
-    async (request) => {
-      const { saveId, characterId } = CharacterIdParamsSchema.parse(request.params);
-      const body = CharacterRespondRequestSchema.parse(request.body);
-      const outcome = await service.respond(saveId, characterId, body, request.id);
-      return successResponse(request, outcome);
-    },
-  );
+  app.post("/api/debug/saves/:saveId/characters/:characterId/respond", async (request) => {
+    const { saveId, characterId } = CharacterIdParamsSchema.parse(request.params);
+    const body = CharacterRespondRequestSchema.parse(request.body);
+    const outcome = await service.respond(saveId, characterId, body, request.id);
+    return successResponse(request, outcome);
+  });
 }

@@ -113,14 +113,7 @@ describe("save CLI", () => {
     const imported = capture();
     expect(
       await runSaveCli(
-        [
-          "import",
-          "--database",
-          join(directory, "target.sqlite"),
-          "--file",
-          packagePath,
-          "--json",
-        ],
+        ["import", "--database", join(directory, "target.sqlite"), "--file", packagePath, "--json"],
         imported.io,
       ),
     ).toBe(0);

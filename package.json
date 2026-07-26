@@ -1,6 +1,6 @@
 {
   "name": "mandate-engine",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "天命：帝国推演 —— LLM 驱动的中国历史皇帝模拟游戏",
   "type": "module",
@@ -48,7 +48,15 @@
     "test:character-security": "vitest run tests/character-security.test.ts tests/phase3-integration.test.ts",
     "test:prompt-assets": "vitest run tests/prompt-system.test.ts tests/character-prompt.test.ts",
     "benchmark:phase3": "tsx scripts/benchmark-phase3.ts",
-    "check:phase3": "npm run check:phase2 && npm run check:characters && npm run test:character-views && npm run test:character-memory && npm run test:character-security && npm run test:prompt-assets"
+    "check:phase3": "npm run check:phase2 && npm run check:characters && npm run test:character-views && npm run test:character-memory && npm run test:character-security && npm run test:prompt-assets",
+    "check:meetings": "vitest run tests/meeting-state.test.ts",
+    "test:meeting-state": "vitest run tests/meeting-state.test.ts",
+    "test:meeting-scheduler": "vitest run tests/meeting-scheduler.test.ts",
+    "test:meeting-recovery": "vitest run tests/meeting-recovery.test.ts",
+    "test:meeting-security": "vitest run tests/meeting-security.test.ts tests/meeting-memory-leak.test.ts",
+    "test:meeting-integration": "vitest run tests/meeting-outcome.test.ts tests/phase4-integration.test.ts",
+    "benchmark:phase4": "tsx scripts/benchmark-phase4.ts",
+    "check:phase4": "npm run check:phase3 && npm run check:meetings && npm run test:meeting-scheduler && npm run test:meeting-recovery && npm run test:meeting-security && npm run test:meeting-integration"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
