@@ -26,13 +26,17 @@ process.env
 成功：
 
 ```json
-{"ok":true,"data":{},"meta":{"requestId":"..."}}
+{ "ok": true, "data": {}, "meta": { "requestId": "..." } }
 ```
 
 错误：
 
 ```json
-{"ok":false,"error":{"code":"...","message":"...","details":[]},"meta":{"requestId":"..."}}
+{
+  "ok": false,
+  "error": { "code": "...", "message": "...", "details": [] },
+  "meta": { "requestId": "..." }
+}
 ```
 
 DTO 与 Zod Schema 位于 `@mandate/domain`，前后端共用。未知异常只返回

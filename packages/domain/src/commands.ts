@@ -50,7 +50,10 @@ export const CountryAdjustResourceCommandSchema = z
     payload: z
       .object({
         resource: CountryResourceNameSchema,
-        delta: z.number().int().refine((value) => value !== 0, "调整量不得为零"),
+        delta: z
+          .number()
+          .int()
+          .refine((value) => value !== 0, "调整量不得为零"),
         reason: z.string().trim().min(1),
         sourceIds: z.array(IdSchema).optional(),
       })

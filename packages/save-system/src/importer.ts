@@ -13,10 +13,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  DatabaseSync,
-  type SQLInputValue,
-} from "node:sqlite";
+import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { SaveSystemError } from "./errors";
 import { DATABASE_MIGRATIONS } from "./migrations";
 import type { ParsedSavePackage } from "./package-format";
@@ -193,9 +190,8 @@ const MEMORY_TABLES: readonly TableDefinition[] = [
 
 function tableExists(database: DatabaseSync, table: string): boolean {
   return (
-    database
-      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .get(table) !== undefined
+    database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table) !==
+    undefined
   );
 }
 
@@ -214,11 +210,7 @@ const MEETING_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ig
   { table: "meeting_leak_assessments", strategy: "replace" },
 ];
 
-function copyMeetingRows(
-  source: DatabaseSync,
-  target: DatabaseSync,
-  saveId: string,
-): void {
+function copyMeetingRows(source: DatabaseSync, target: DatabaseSync, saveId: string): void {
   for (const { table, strategy } of MEETING_IMPORT_TABLES) {
     if (!tableExists(source, table)) continue;
     const rows = source
@@ -297,8 +289,7 @@ function copyMemoryRows(
 
 function importedSave(database: DatabaseSync, saveId: string): SaveRow {
   const row = database.prepare("SELECT * FROM saves WHERE save_id = ?").get(saveId) as
-    | SaveRow
-    | undefined;
+    SaveRow | undefined;
   if (!row) throw new SaveSystemError("SAVE_PACKAGE_INVALID", "payload 中找不到 manifest 存档");
   return row;
 }
@@ -344,9 +335,7 @@ function storedSourceCatalog(row: SaveRow): HistoricalSource[] {
   return metadata.sourceCatalog ?? [];
 }
 
-function result(
-  value: Omit<SaveImportResult, "message"> & { message: string },
-): SaveImportResult {
+function result(value: Omit<SaveImportResult, "message"> & { message: string }): SaveImportResult {
   return SaveImportResultSchema.parse(value);
 }
 
@@ -466,8 +455,7 @@ export async function importVerifiedPackage(
         parsed.manifest.sourceMetadataMode === "omit_catalog");
     if (
       prior ||
-      (sameRevision &&
-        (hashState(localHead) === hashState(importedHead) || derivedSharePackage))
+      (sameRevision && (hashState(localHead) === hashState(importedHead) || derivedSharePackage))
     ) {
       if (!prior) {
         recordImport(
@@ -495,8 +483,9 @@ export async function importVerifiedPackage(
     ) {
       try {
         ancestor =
-          hashState(importedRepository.loadStateAtRevision(importedRow.save_id, localHead.revision)) ===
-          hashState(localHead);
+          hashState(
+            importedRepository.loadStateAtRevision(importedRow.save_id, localHead.revision),
+          ) === hashState(localHead);
       } catch {
         ancestor = false;
       }
@@ -505,18 +494,12 @@ export async function importVerifiedPackage(
       try {
         local.database.exec("BEGIN IMMEDIATE");
         for (const table of CHILD_TABLES) {
-          insertRows(
-            importedDatabase,
-            local.database,
-            table,
-            importedRow.save_id,
-            (row) => {
-              if (table.table === "command_transactions") {
-                return Number(row.target_revision) > localHead.revision;
-              }
-              return Number(row.revision) > localHead.revision;
-            },
-          );
+          insertRows(importedDatabase, local.database, table, importedRow.save_id, (row) => {
+            if (table.table === "command_transactions") {
+              return Number(row.target_revision) > localHead.revision;
+            }
+            return Number(row.revision) > localHead.revision;
+          });
         }
         // 记忆行按主键去重合并（同世界线快进：本地已有行保持不变）
         copyMemoryRows(importedDatabase, local.database, importedRow.save_id);

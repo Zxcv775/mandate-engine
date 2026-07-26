@@ -1,11 +1,7 @@
 import type { GameState, Institution, Office } from "@mandate/domain";
 import { buildCharacterView, CharacterAgentError } from "@mandate/agent-runtime";
 import { describe, expect, it } from "vitest";
-import {
-  makeCharacterTemplate,
-  makeFixtureState,
-  makeMemory,
-} from "./helpers/character-fixtures";
+import { makeCharacterTemplate, makeFixtureState, makeMemory } from "./helpers/character-fixtures";
 
 /**
  * 角色有限知识视图测试（ADR-011）。
@@ -131,7 +127,11 @@ function fixtureState(): GameState {
   return state;
 }
 
-function view(characterId: string, state = fixtureState(), memories: Parameters<typeof buildCharacterView>[0]["memories"] = []) {
+function view(
+  characterId: string,
+  state = fixtureState(),
+  memories: Parameters<typeof buildCharacterView>[0]["memories"] = [],
+) {
   return buildCharacterView({
     state,
     characterId,

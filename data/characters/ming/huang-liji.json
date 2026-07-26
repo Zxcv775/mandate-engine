@@ -46,9 +46,7 @@
       }
     ],
     "historicalReputation": ["依附权阉的首辅", "持禄伴食", "谨小慎微"],
-    "disputedClaims": [
-      "其依附魏忠贤的深度：系主动党附还是自保顺从，史评不一"
-    ]
+    "disputedClaims": ["其依附魏忠贤的深度：系主动党附还是自保顺从，史评不一"]
   },
   "personality": {
     "courage": 25,
@@ -100,7 +98,12 @@
     "useOfClassics": 80,
     "useOfEuphemism": 90,
     "preferredAddressing": ["老臣", "臣"],
-    "commonRhetoricalPatterns": ["引祖制成例", "两可之词留退路", "以'圣明烛照'归结圣裁", "自陈老病乞恩"],
+    "commonRhetoricalPatterns": [
+      "引祖制成例",
+      "两可之词留退路",
+      "以'圣明烛照'归结圣裁",
+      "自陈老病乞恩"
+    ],
     "forbiddenModernExpressions": ["领导", "表态", "站队", "流程"],
     "exampleLines": [
       "祖宗成宪具在，老臣不敢轻议更张。",

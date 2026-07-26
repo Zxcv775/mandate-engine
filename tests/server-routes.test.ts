@@ -127,9 +127,7 @@ describe("场景元数据路由", () => {
     await app.close();
 
     expect(response.statusCode).toBe(404);
-    expect(ApiErrorResponseSchema.parse(response.json()).error.code).toBe(
-      "SCENARIO_NOT_FOUND",
-    );
+    expect(ApiErrorResponseSchema.parse(response.json()).error.code).toBe("SCENARIO_NOT_FOUND");
   });
 
   it("空白场景 ID 返回 VALIDATION_ERROR", async () => {

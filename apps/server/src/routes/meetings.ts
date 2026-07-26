@@ -28,9 +28,7 @@ export function registerMeetingRoutes(app: FastifyInstance, service: MeetingServ
       title: body.title,
       purpose: body.purpose,
       participantIds: body.participantIds,
-      ...(body.chairCharacterId === undefined
-        ? {}
-        : { chairCharacterId: body.chairCharacterId }),
+      ...(body.chairCharacterId === undefined ? {} : { chairCharacterId: body.chairCharacterId }),
       ...(body.visibility === undefined ? {} : { visibility: body.visibility }),
       expectedRevision: body.expectedRevision,
     });

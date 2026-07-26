@@ -159,9 +159,7 @@ export function scheduleNextSpeaker(
   const rankings = candidates
     .filter((candidate) => eligibleIds.has(candidate.eligibility.characterId))
     .map((candidate) => scoreCandidate(candidate, session, agendaItem, challengedBy))
-    .sort(
-      (a, b) => b.total - a.total || a.characterId.localeCompare(b.characterId),
-    );
+    .sort((a, b) => b.total - a.total || a.characterId.localeCompare(b.characterId));
 
   if (rankings.length === 0) {
     return { rankings, ineligible, tieBreakUsed: false };

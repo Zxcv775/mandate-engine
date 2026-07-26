@@ -60,14 +60,19 @@
 - 延后：农历日期显示方案评审（CONFLICT-001）与 Phase 7 一并处理；记忆语义检索留待后续评审。
 - 不做：会议编排、政策解析、向量数据库。
 
-## Phase 4 · 会议对话原型
+## Phase 4 · 会议对话原型（已完成）
 
 - 目标：三种会议端到端可玩（Mock 或真实 LLM 均可驱动）。
 - 前置：Phase 3。
 - 主要任务：Meeting 状态机（scheduled→in_progress→concluded/leaked）；
   Meeting Director 流程控制；发言意愿/坦率受 MeetingRules 约束；
   会议记录（meeting_record）与泄密判定（种子随机）；SSE 流式发言；会议 UI 原型。
-- 交付物：会议 API + UI 原型；会议状态机测试；泄密复现测试。
+- 交付物（实际）：@mandate/meeting-engine（状态机/资格/调度/Director/白名单映射/泄密评估/纪要）、
+  SQLite migration 003 七表 + MeetingRepository（两阶段提交）、12+3 会议 API、Meeting Lab、
+  6 个会议测试文件（含 §27 双闭环与跨进程恢复）、ADR-015~021、check:phase4 门与 phase4 基准。
+- 实际证据：docs/08-phase-4-implementation.md、docs/progress/2026-07-26-phase4-session.md、
+  docs/progress/phase4-benchmark.json。
+- 延后：SSE 流式发言（Phase 4 提示词未要求，保留 FR-LLM-101 到界面阶段评审）。
 - 验收标准：FR-MEET-001~006。
 - 风险：多 NPC 轮次成本与延迟（限制 MVP 参与人数）。
 - 不做：政策结算、事件联动。

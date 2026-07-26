@@ -4,11 +4,7 @@ import type {
   MeetingCharacterOutput,
   MeetingResponseType,
 } from "@mandate/domain";
-import {
-  LLMProviderError,
-  MockLLMProvider,
-  type LLMMessage,
-} from "@mandate/llm-adapters";
+import { LLMProviderError, MockLLMProvider, type LLMMessage } from "@mandate/llm-adapters";
 
 /**
  * Mock Character Agent Fixture（§12）。
@@ -27,7 +23,10 @@ export type CharacterMockFixture =
   | "mock-character-unavailable";
 
 const SPEECH_BY_STANCE: Readonly<
-  Record<"support" | "oppose" | "evasive" | "uncertain", Partial<Record<CharacterConversationMode, string>> & { default: string }>
+  Record<
+    "support" | "oppose" | "evasive" | "uncertain",
+    Partial<Record<CharacterConversationMode, string>> & { default: string }
+  >
 > = {
   support: {
     "court-assembly": "臣谨奏：此议关系国本，臣以为可行，惟须循祖宗成宪，次第而图，不宜骤更。",
@@ -133,7 +132,11 @@ export function buildMockCharacterOutput(
       {
         type: "episodic",
         content: `皇帝垂询要务，朝议氛围${isPrivate ? "私密" : "公开"}，本次答以${
-          positionMap[stance] === "support" ? "赞成" : positionMap[stance] === "oppose" ? "谏阻" : "持重"
+          positionMap[stance] === "support"
+            ? "赞成"
+            : positionMap[stance] === "oppose"
+              ? "谏阻"
+              : "持重"
         }之词`,
         relatedCharacterIds: ["emperor"],
         relatedEntityIds: [],
@@ -163,8 +166,7 @@ export function buildMockMeetingOutput(
   const base = buildMockCharacterOutput(stance, options);
   return {
     ...base,
-    responseType:
-      options.responseType ?? (stance === "evasive" ? "decline" : ("speech" as const)),
+    responseType: options.responseType ?? (stance === "evasive" ? "decline" : ("speech" as const)),
     addressedCharacterIds: [...(options.addressedCharacterIds ?? ["emperor"])],
     requestsToSpeakAgain: false,
     suggestsAgendaResolution: options.suggestsAgendaResolution ?? stance === "support",
@@ -183,9 +185,7 @@ export const MOCK_SCHEMA_ERROR_TEXT = JSON.stringify({
 
 export interface CharacterMockProviderConfig {
   /** 按人物 ID 指定固定立场；未命中用 defaultStance */
-  readonly byCharacterId?: Readonly<
-    Record<string, "support" | "oppose" | "evasive" | "uncertain">
-  >;
+  readonly byCharacterId?: Readonly<Record<string, "support" | "oppose" | "evasive" | "uncertain">>;
   readonly defaultStance?: "support" | "oppose" | "evasive" | "uncertain";
   /** 首次调用返回非法输出（修复后成功），用于测试受控修复 */
   readonly firstCallInvalid?: "invalid-json" | "schema-error";

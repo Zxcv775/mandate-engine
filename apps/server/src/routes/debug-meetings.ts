@@ -8,10 +8,7 @@ import { successResponse } from "./response";
  * 可见完整 Transcript（含 sealed/private 与 providerTrace）、泄密评估与私密纪要；
  * 仍不返回 API Key 与完整系统 Prompt。
  */
-export function registerDebugMeetingRoutes(
-  app: FastifyInstance,
-  service: MeetingService,
-): void {
+export function registerDebugMeetingRoutes(app: FastifyInstance, service: MeetingService): void {
   app.get("/api/debug/saves/:saveId/meetings/:meetingId/turns", async (request) => {
     const { saveId, meetingId } = MeetingIdParamsSchema.parse(request.params);
     const query = MeetingTurnsQuerySchema.parse(request.query);

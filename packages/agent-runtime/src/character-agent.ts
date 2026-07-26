@@ -15,10 +15,7 @@ import {
   type MeetingPromptContext,
 } from "@mandate/prompt-system";
 import { CharacterAgentError } from "./errors";
-import {
-  CharacterContextBuilder,
-  type CharacterAgentContext,
-} from "./character-context-builder";
+import { CharacterContextBuilder, type CharacterAgentContext } from "./character-context-builder";
 import { evaluateCharacterConsistency } from "./character-consistency-evaluator";
 import { generateCharacterOutputWithRepair } from "./output-repair";
 

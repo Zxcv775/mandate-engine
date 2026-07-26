@@ -35,7 +35,9 @@ async function setup(failureInjector?: (stage: CommitFailureStage) => void) {
   return system;
 }
 
-function worldProjection(state: Awaited<ReturnType<ReturnType<typeof createSaveSystem>["service"]["loadState"]>>) {
+function worldProjection(
+  state: Awaited<ReturnType<ReturnType<typeof createSaveSystem>["service"]["loadState"]>>,
+) {
   const { revision: _revision, meta, ...world } = state;
   const { updatedAt: _updatedAt, ...stableMeta } = meta;
   return { ...world, meta: stableMeta };
@@ -104,9 +106,11 @@ describe("logical rollback", () => {
     );
     expect(system.repository.loadStateAtRevision("save_demo", 2).revision).toBe(2);
     expect(system.repository.loadStateAtRevision("save_demo", 3).revision).toBe(3);
-    expect(allLogs.filter((entry) => entry.revision === 4).every((entry) => entry.commandType === "save.rollback")).toBe(
-      true,
-    );
+    expect(
+      allLogs
+        .filter((entry) => entry.revision === 4)
+        .every((entry) => entry.commandType === "save.rollback"),
+    ).toBe(true);
     expect(allLogs.some((entry) => entry.tags.includes("rollback"))).toBe(true);
     expect(hashState(head)).toMatch(/^[a-f0-9]{64}$/);
     expect(await system.service.validateSave("save_demo")).toMatchObject({ valid: true });

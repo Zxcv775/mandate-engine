@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  loadPrompt,
-  PromptRenderError,
-  renderPrompt,
-  type PromptId,
-} from "@mandate/prompt-system";
+import { loadPrompt, PromptRenderError, renderPrompt, type PromptId } from "@mandate/prompt-system";
 
 describe("Prompt 资产", () => {
   it("通过注册 ID 加载版本化 Markdown", async () => {
@@ -41,8 +36,9 @@ describe("Prompt 渲染", () => {
   });
 
   it("一次列出全部缺失变量", () => {
-    expect(() => renderPrompt("{{characterName}} / {{meetingType}} / {{characterName}}", {}))
-      .toThrowError(PromptRenderError);
+    expect(() =>
+      renderPrompt("{{characterName}} / {{meetingType}} / {{characterName}}", {}),
+    ).toThrowError(PromptRenderError);
     expect(() => renderPrompt("{{characterName}} / {{meetingType}}", {})).toThrow(
       "缺少 Prompt 变量：characterName, meetingType",
     );

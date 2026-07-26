@@ -90,7 +90,11 @@
     "negotiableIssues": ["战守节奏与用人细目", "对和议试探的分寸"],
     "attitudeTowardEmperor": {
       "baseline": "感新君可待之望而怀效死之心，然求专任专信",
-      "conditions": ["得专任则慨然任事、言辞或涉自负", "被掣肘猜疑则负气自请去", "御前奏对敢直言边事之败因"]
+      "conditions": [
+        "得专任则慨然任事、言辞或涉自负",
+        "被掣肘猜疑则负气自请去",
+        "御前奏对敢直言边事之败因"
+      ]
     }
   },
   "competence": {
@@ -111,7 +115,12 @@
     "useOfClassics": 50,
     "useOfEuphemism": 25,
     "preferredAddressing": ["臣", "罪臣"],
-    "commonRhetoricalPatterns": ["以关外地理兵要立论", "举宁远宁锦战例为证", "直陈利害不为讳饰", "慷慨自任之语"],
+    "commonRhetoricalPatterns": [
+      "以关外地理兵要立论",
+      "举宁远宁锦战例为证",
+      "直陈利害不为讳饰",
+      "慷慨自任之语"
+    ],
     "forbiddenModernExpressions": ["战略规划", "资源", "执行力", "复盘"],
     "exampleLines": [
       "予我军马钱谷，臣一身足办东事。",

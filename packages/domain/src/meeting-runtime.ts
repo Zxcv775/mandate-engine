@@ -257,9 +257,7 @@ export type MeetingTurnRecord = z.infer<typeof MeetingTurnRecordSchema>;
 const PlayerText = z.string().trim().min(1).max(2_000);
 export const MeetingPlayerActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("address-meeting"), text: PlayerText }).strict(),
-  z
-    .object({ type: z.literal("ask-character"), characterId: IdSchema, text: PlayerText })
-    .strict(),
+  z.object({ type: z.literal("ask-character"), characterId: IdSchema, text: PlayerText }).strict(),
   z.object({ type: z.literal("ask-open-question"), text: PlayerText }).strict(),
   z.object({ type: z.literal("grant-speaking-right"), characterId: IdSchema }).strict(),
   z.object({ type: z.literal("deny-speaking-right"), characterId: IdSchema }).strict(),
@@ -306,9 +304,7 @@ export const MeetingStateEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("meeting.start") }).strict(),
   z.object({ type: z.literal("meeting.pause"), reason: TextSchema }).strict(),
   z.object({ type: z.literal("meeting.resume") }).strict(),
-  z
-    .object({ type: z.literal("meeting.await-player"), action: PendingPlayerActionSchema })
-    .strict(),
+  z.object({ type: z.literal("meeting.await-player"), action: PendingPlayerActionSchema }).strict(),
   z.object({ type: z.literal("meeting.await-agent"), characterId: IdSchema }).strict(),
   z.object({ type: z.literal("meeting.agent-completed"), characterId: IdSchema }).strict(),
   z.object({ type: z.literal("meeting.open-agenda"), agendaItemId: IdSchema }).strict(),

@@ -129,7 +129,10 @@ const RESPONSE_MODE_LABELS: Record<CharacterResponseMode, string> = {
   warning: "警示",
 };
 
-const TURN_TYPE_BY_RESPONSE: Record<MeetingCharacterOutput["responseType"], MeetingTurnRecord["type"]> = {
+const TURN_TYPE_BY_RESPONSE: Record<
+  MeetingCharacterOutput["responseType"],
+  MeetingTurnRecord["type"]
+> = {
   speech: "character-speech",
   answer: "character-answer",
   rebuttal: "character-rebuttal",
@@ -277,11 +280,7 @@ export class MeetingService {
   ): Promise<MeetingAgendaItem> {
     const session = this.requireSession(saveId, meetingId);
     if (session.status !== "draft" && session.status !== "scheduled") {
-      throw new ApiError(
-        409,
-        "MEETING_INVALID_STATE",
-        `当前状态不允许调整议程：${session.status}`,
-      );
+      throw new ApiError(409, "MEETING_INVALID_STATE", `当前状态不允许调整议程：${session.status}`);
     }
     const item: MeetingAgendaItem = {
       agendaItemId: input.agendaItemId ?? `agenda_${this.idFactory()}`,
@@ -301,7 +300,11 @@ export class MeetingService {
     };
     this.options.meetings.upsertAgendaItem(item);
     this.options.meetings.updateSession(
-      { ...session, agendaItemIds: [...session.agendaItemIds, item.agendaItemId], meetingVersion: session.meetingVersion + 1 },
+      {
+        ...session,
+        agendaItemIds: [...session.agendaItemIds, item.agendaItemId],
+        meetingVersion: session.meetingVersion + 1,
+      },
       session.meetingVersion,
     );
     return item;
@@ -657,6 +660,14 @@ export class MeetingService {
         },
       };
       this.options.meetings.updateSession(session, expected);
+    } else if (session.status !== "waiting-for-agent") {
+      // 恢复路径（如 failed→paused→resume 后）：重新宣告等待该角色，保持同一 actionId
+      const expected = session.meetingVersion;
+      session = transitionMeeting(session, {
+        type: "meeting.await-agent",
+        characterId: request.characterId,
+      }).next;
+      this.options.meetings.updateSession(session, expected);
     }
 
     // Provider 调用（不持有任何数据库事务）
@@ -665,9 +676,7 @@ export class MeetingService {
       : undefined;
     const labels = this.speakerLabels(templates);
     const visibleTurns = this.visibleTurnsFor(session, request.characterId);
-    const lastPlayerTurn = [...visibleTurns]
-      .reverse()
-      .find((turn) => turn.speakerId === "emperor");
+    const lastPlayerTurn = [...visibleTurns].reverse().find((turn) => turn.speakerId === "emperor");
     const agent = this.buildAgent(saveId, templates);
     let agentResult;
     try {
@@ -786,7 +795,11 @@ export class MeetingService {
       durationMs: agentResult.durationMs,
     });
     return {
-      ...this.stepResult(next, "agent-turn", `${labels[request.characterId] ?? request.characterId}已奏对`),
+      ...this.stepResult(
+        next,
+        "agent-turn",
+        `${labels[request.characterId] ?? request.characterId}已奏对`,
+      ),
       newTurn: turn,
       ...(request.scheduling === undefined ? {} : { scheduling: request.scheduling }),
     };
@@ -900,7 +913,11 @@ export class MeetingService {
     };
   }
 
-  async pauseMeeting(saveId: string, meetingId: string, reason: string): Promise<MeetingSessionState> {
+  async pauseMeeting(
+    saveId: string,
+    meetingId: string,
+    reason: string,
+  ): Promise<MeetingSessionState> {
     let session = this.requireSession(saveId, meetingId);
     const expected = session.meetingVersion;
     session = transitionMeeting(session, { type: "meeting.pause", reason }).next;
@@ -958,7 +975,12 @@ export class MeetingService {
       concludedAtRevision: commandResult.revision,
       turnNumber: session.turnNumber + 1,
     };
-    const turn = this.systemTurnRecord(session, "adjournment", "会议礼成，散。", commandResult.revision);
+    const turn = this.systemTurnRecord(
+      session,
+      "adjournment",
+      "会议礼成，散。",
+      commandResult.revision,
+    );
     try {
       this.options.meetings.appendTurn(turn);
     } catch (error) {
@@ -1011,7 +1033,10 @@ export class MeetingService {
     return this.options.meetings.listSessions(saveId);
   }
 
-  getMeeting(saveId: string, meetingId: string): {
+  getMeeting(
+    saveId: string,
+    meetingId: string,
+  ): {
     session: MeetingSessionState;
     participants: MeetingParticipantState[];
     agenda: MeetingAgendaItem[];
@@ -1097,17 +1122,17 @@ export class MeetingService {
   }
 
   /** 该角色可见的回合：按可见性级别 + 在场时段（visibleUntilTurn）过滤 */
-  private visibleTurnsFor(
-    session: MeetingSessionState,
-    characterId: string,
-  ): MeetingTurnRecord[] {
+  private visibleTurnsFor(session: MeetingSessionState, characterId: string): MeetingTurnRecord[] {
     const participant = this.options.meetings
       .listParticipants(session.meetingId)
       .find((p) => p.characterId === characterId);
     if (!participant) return [];
     const { turns } = this.options.meetings.listTurns(session.meetingId, { limit: 200 });
     return turns.filter((turn) => {
-      if (participant.visibleUntilTurn !== undefined && turn.turnNumber > participant.visibleUntilTurn) {
+      if (
+        participant.visibleUntilTurn !== undefined &&
+        turn.turnNumber > participant.visibleUntilTurn
+      ) {
         return false;
       }
       return true; // 参与者可见本会议全部级别回合（sealed 议题仍在会议之内）
@@ -1136,7 +1161,8 @@ export class MeetingService {
     const lastPlayerAction = this.reconstructLastPlayerAction(this.recentTurns(session.meetingId));
     const namedCharacterId =
       lastPlayerAction &&
-      (lastPlayerAction.type === "ask-character" || lastPlayerAction.type === "grant-speaking-right")
+      (lastPlayerAction.type === "ask-character" ||
+        lastPlayerAction.type === "grant-speaking-right")
         ? lastPlayerAction.characterId
         : undefined;
     return participants
@@ -1244,7 +1270,13 @@ export class MeetingService {
     sourceRevision: number,
     output: MeetingCharacterOutput,
   ): void {
-    this.persistApprovedCandidates(saveId, characterId, sourceRevision, output.memoryCandidates, {});
+    this.persistApprovedCandidates(
+      saveId,
+      characterId,
+      sourceRevision,
+      output.memoryCandidates,
+      {},
+    );
   }
 
   private persistApprovedCandidates(
@@ -1377,7 +1409,11 @@ export class MeetingService {
   private mapEngineError(error: unknown): Error {
     if (error instanceof MeetingEngineError) {
       const status =
-        error.code === "MEETING_AGENT_REQUEST_PENDING" ? 409 : error.code === "MEETING_NOT_FOUND" ? 404 : 409;
+        error.code === "MEETING_AGENT_REQUEST_PENDING"
+          ? 409
+          : error.code === "MEETING_NOT_FOUND"
+            ? 404
+            : 409;
       return new ApiError(status, error.code, error.message);
     }
     return error instanceof Error ? error : new Error(String(error));

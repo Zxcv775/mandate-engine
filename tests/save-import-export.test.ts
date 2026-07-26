@@ -251,7 +251,9 @@ describe(".mesave package", () => {
         includeSourceMetadata: false,
         sourceMetadataMode: "omit_catalog",
       });
-      expect((await target.service.loadState(imported.saveId)).meta.sourceCatalogPresent).toBe(false);
+      expect((await target.service.loadState(imported.saveId)).meta.sourceCatalogPresent).toBe(
+        false,
+      );
     },
   );
 
@@ -378,7 +380,10 @@ describe("人物记忆随存档迁移（P4.0）", () => {
   function seedMemory(
     system: SaveSystem,
     content: string,
-    options: { visibility?: "self" | "private" | "shareable" | "sealed"; sourceRevision?: number } = {},
+    options: {
+      visibility?: "self" | "private" | "shareable" | "sealed";
+      sourceRevision?: number;
+    } = {},
   ) {
     return system.characterMemories.insertMemory({
       saveId: "save_demo",
@@ -483,10 +488,7 @@ describe("人物记忆随存档迁移（P4.0）", () => {
     expect(forkMemories.memories[0]?.content).toBe("世界线甲的记忆");
     expect(forkMemories.memories[0]?.memoryId.startsWith("fork_")).toBe(true);
     // 原 save_demo 不受影响
-    const originalMemories = target.characterMemories.listMemories(
-      "save_demo",
-      "wei-zhongxian",
-    );
+    const originalMemories = target.characterMemories.listMemories("save_demo", "wei-zhongxian");
     expect(originalMemories.memories).toHaveLength(0);
   });
 
@@ -502,10 +504,7 @@ describe("人物记忆随存档迁移（P4.0）", () => {
       safeShareMode: "safe_share",
     });
     const imported = await target.service.importSave({ bytes: exported.bytes });
-    const memories = target.characterMemories.listMemories(
-      imported.saveId,
-      "wei-zhongxian",
-    );
+    const memories = target.characterMemories.listMemories(imported.saveId, "wei-zhongxian");
     expect(memories.memories).toHaveLength(1);
     expect(JSON.stringify(memories.memories)).not.toContain("SEALED_SECRET_CONTENT");
   });

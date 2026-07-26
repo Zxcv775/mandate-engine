@@ -44,9 +44,7 @@
       }
     ],
     "historicalReputation": ["阉党五虎之首", "贪墨反覆", "为虎作伥"],
-    "disputedClaims": [
-      "构陷诸录的编纂主从与具体名目，诸书记载不一"
-    ]
+    "disputedClaims": ["构陷诸录的编纂主从与具体名目，诸书记载不一"]
   },
   "personality": {
     "courage": 35,
@@ -98,7 +96,12 @@
     "useOfClassics": 55,
     "useOfEuphemism": 75,
     "preferredAddressing": ["臣"],
-    "commonRhetoricalPatterns": ["以边务军需自重", "颂圣表忠", "反咬弹劾者为朋党", "引律例文牍自辩"],
+    "commonRhetoricalPatterns": [
+      "以边务军需自重",
+      "颂圣表忠",
+      "反咬弹劾者为朋党",
+      "引律例文牍自辩"
+    ],
     "forbiddenModernExpressions": ["背锅", "洗白", "运作", "关系户"],
     "exampleLines": [
       "臣待罪本兵，边务重大，不敢一日忘忧。",

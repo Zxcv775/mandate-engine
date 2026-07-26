@@ -9,10 +9,7 @@ import type {
 } from "@mandate/domain";
 
 export type CommitFailureStage =
-  | "after_transaction"
-  | "after_logs"
-  | "after_head"
-  | "after_checkpoint";
+  "after_transaction" | "after_logs" | "after_head" | "after_checkpoint";
 
 export interface RepositoryOptions {
   checkpointInterval: number;

@@ -189,7 +189,11 @@ export class GameStateService {
   async commitCommand(input: GameCommand): Promise<CommitResult> {
     const commandResult = GameCommandSchema.safeParse(input);
     if (!commandResult.success) {
-      throw new SaveSystemError("STATE_INVALID", "Command Schema 校验失败", commandResult.error.issues);
+      throw new SaveSystemError(
+        "STATE_INVALID",
+        "Command Schema 校验失败",
+        commandResult.error.issues,
+      );
     }
     const command = GameCommandSchema.parse(redactSensitiveValue(commandResult.data));
     if (command.idempotencyKey) {
@@ -215,16 +219,23 @@ export class GameStateService {
         if (error.code === "STATE_REVISION_CONFLICT") {
           throw new SaveSystemError(error.code, error.message, error.details);
         }
+        // Phase 4：会议生命周期错误保留原码，供 API 层映射 404/409
+        if (
+          error.code === "MEETING_NOT_FOUND" ||
+          error.code === "MEETING_INVALID_STATE" ||
+          error.code === "MEETING_ALREADY_STARTED" ||
+          error.code === "MEETING_ALREADY_CONCLUDED" ||
+          error.code === "MEETING_PARTICIPANT_INVALID"
+        ) {
+          throw new SaveSystemError(error.code, error.message, error.details);
+        }
         throw new SaveSystemError("STATE_INVALID", error.message, error.details);
       }
       throw error;
     }
   }
 
-  async submitPlayerCommand(
-    saveId: string,
-    input: SubmitCommandRequest,
-  ): Promise<CommitResult> {
+  async submitPlayerCommand(saveId: string, input: SubmitCommandRequest): Promise<CommitResult> {
     const command = GameCommandSchema.parse({
       ...input,
       saveId,
@@ -308,11 +319,7 @@ export class GameStateService {
           saveId,
         );
         if (!validation.valid) {
-          throw new SaveSystemError(
-            "STATE_INVALID",
-            "逻辑回滚后完整性校验失败",
-            validation,
-          );
+          throw new SaveSystemError("STATE_INVALID", "逻辑回滚后完整性校验失败", validation);
         }
       },
     });
@@ -349,9 +356,7 @@ export class GameStateService {
       sourceMetadataMode: includeSourceMetadata ? "full" : "omit_catalog",
       encrypted: Boolean(input.password),
       safeShareMode,
-      ...(input.exportedFromClientId
-        ? { exportedFromClientId: input.exportedFromClientId }
-        : {}),
+      ...(input.exportedFromClientId ? { exportedFromClientId: input.exportedFromClientId } : {}),
     });
     const bytes = buildSavePackage(manifest, payload, input.password);
     const packageHash = sha256Hex(bytes);
@@ -416,7 +421,9 @@ export class GameStateService {
   async migrateSave(saveId: string): Promise<MigrateSaveResult> {
     const database = this.options.repository.database;
     const save = database
-      .prepare("SELECT save_id, head_revision, state_version, metadata_json FROM saves WHERE save_id = ? AND status <> 'deleted'")
+      .prepare(
+        "SELECT save_id, head_revision, state_version, metadata_json FROM saves WHERE save_id = ? AND status <> 'deleted'",
+      )
       .get(saveId) as
       | { save_id: string; head_revision: number; state_version: number; metadata_json: string }
       | undefined;
@@ -554,7 +561,9 @@ export class GameStateService {
       const metadata = JSON.parse(save.metadata_json) as Record<string, unknown>;
       delete metadata.headStateHash;
       database
-        .prepare("UPDATE saves SET state_version = ?, metadata_json = ?, updated_at = ? WHERE save_id = ?")
+        .prepare(
+          "UPDATE saves SET state_version = ?, metadata_json = ?, updated_at = ? WHERE save_id = ?",
+        )
         .run(GAME_STATE_VERSION, stableStringify(metadata), now, saveId);
 
       let previousHash: string | null = null;
@@ -582,13 +591,7 @@ export class GameStateService {
         delete normalized.entryHash;
         if (normalized.beforeHash === undefined) delete normalized.beforeHash;
         const entryHash = sha256Hex(stableStringify(normalized));
-        updateLogHash.run(
-          beforeHash,
-          afterHash,
-          previousHash,
-          entryHash,
-          entry.logId,
-        );
+        updateLogHash.run(beforeHash, afterHash, previousHash, entryHash, entry.logId);
         previousHash = entryHash;
       }
 

@@ -425,10 +425,7 @@ export function applyDatabaseMigrations(database: DatabaseSync, now: string): vo
         .get(migration.id) as { checksum: string; to_version: number } | undefined;
       if (existing) {
         if (existing.checksum !== checksum || Number(existing.to_version) !== migration.toVersion) {
-          throw new SaveSystemError(
-            "MIGRATION_FAILED",
-            `数据库迁移校验和不匹配：${migration.id}`,
-          );
+          throw new SaveSystemError("MIGRATION_FAILED", `数据库迁移校验和不匹配：${migration.id}`);
         }
         currentVersion = Math.max(currentVersion, migration.toVersion);
         continue;

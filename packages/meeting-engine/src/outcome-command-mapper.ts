@@ -27,7 +27,10 @@ export type OutcomeCommandMappingResult =
 const AdjustResourcePreviewSchema = z
   .object({
     resource: CountryResourceNameSchema,
-    delta: z.number().int().refine((value) => value !== 0, "调整量不得为零"),
+    delta: z
+      .number()
+      .int()
+      .refine((value) => value !== 0, "调整量不得为零"),
     reason: z.string().trim().min(1),
   })
   .strict();
@@ -41,10 +44,7 @@ const AssignOfficePreviewSchema = z
   .strict();
 
 /** 候选类型 → 允许的命令类型白名单 */
-const SUPPORTED_COMMAND_TYPES = new Set([
-  "country.adjust-resource",
-  "character.assign-office",
-]);
+const SUPPORTED_COMMAND_TYPES = new Set(["country.adjust-resource", "character.assign-office"]);
 
 export function mapOutcomeToCommand(
   candidate: MeetingOutcomeCandidate,

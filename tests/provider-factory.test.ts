@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  MockLLMProvider,
-  OpenAiCompatibleProvider,
-  type LLMMessage,
-} from "@mandate/llm-adapters";
+import { MockLLMProvider, OpenAiCompatibleProvider, type LLMMessage } from "@mandate/llm-adapters";
 import type { RuntimeConfig } from "../apps/server/src/config/index";
 import {
   ProviderInitializationError,
@@ -74,9 +70,9 @@ describe("createLlmProvider", () => {
   });
 
   it("未知 Provider 给出明确初始化错误", () => {
-    expect(() =>
-      createLlmProvider({ ...mockConfig(), provider: "unknown" } as never),
-    ).toThrow(/unknown/);
+    expect(() => createLlmProvider({ ...mockConfig(), provider: "unknown" } as never)).toThrow(
+      /unknown/,
+    );
   });
 
   it("无效 OpenAI Base URL 给出清晰构造错误", () => {

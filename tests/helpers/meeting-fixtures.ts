@@ -58,9 +58,7 @@ export function makeParticipant(
   };
 }
 
-export function makeAgendaItem(
-  overrides: Partial<MeetingAgendaItem> = {},
-): MeetingAgendaItem {
+export function makeAgendaItem(overrides: Partial<MeetingAgendaItem> = {}): MeetingAgendaItem {
   return {
     agendaItemId: "agenda-1",
     meetingId: "meeting-1",

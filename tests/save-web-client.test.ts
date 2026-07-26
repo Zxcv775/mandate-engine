@@ -117,9 +117,7 @@ describe("web API client write methods", () => {
       );
     });
     const client = createApiClient({ fetchImpl });
-    expect((await client.delete("/api/saves/save_demo", SaveMetadataResponseSchema)).ok).toBe(
-      true,
-    );
+    expect((await client.delete("/api/saves/save_demo", SaveMetadataResponseSchema)).ok).toBe(true);
   });
 });
 

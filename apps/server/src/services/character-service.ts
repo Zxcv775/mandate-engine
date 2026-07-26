@@ -215,9 +215,7 @@ export class CharacterService {
       characterId,
       mode: request.mode,
       input: request.input,
-      ...(request.participantIds === undefined
-        ? {}
-        : { participantIds: request.participantIds }),
+      ...(request.participantIds === undefined ? {} : { participantIds: request.participantIds }),
       ...(request.topic === undefined ? {} : { topic: request.topic }),
       expectedRevision: request.expectedRevision,
       requestId,

@@ -15,10 +15,7 @@
     "logTarget": 10000,
     "actualLogCount": 10000,
     "repeats": 5,
-    "checkpointIntervals": [
-      50,
-      100
-    ]
+    "checkpointIntervals": [50, 100]
   },
   "transactionMutationCounts": {
     "singleDomainMutation": 2,

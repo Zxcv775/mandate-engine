@@ -77,7 +77,11 @@ export function stepMeeting(saveId: string, meetingId: string, payload: unknown)
 export function submitAction(
   saveId: string,
   meetingId: string,
-  payload: { expectedRevision: number; expectedMeetingVersion: number; action: MeetingPlayerAction },
+  payload: {
+    expectedRevision: number;
+    expectedMeetingVersion: number;
+    action: MeetingPlayerAction;
+  },
 ) {
   return post(
     `/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/actions`,
@@ -120,9 +124,10 @@ export interface MeetingTurnView {
 }
 
 export function listTurns(saveId: string, meetingId: string) {
-  return get(
-    `/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/turns?limit=200`,
-  ) as Promise<{ turns: MeetingTurnView[]; nextCursor: number | null }>;
+  return get(`/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/turns?limit=200`) as Promise<{
+    turns: MeetingTurnView[];
+    nextCursor: number | null;
+  }>;
 }
 
 export interface OutcomeView {
@@ -137,9 +142,9 @@ export interface OutcomeView {
 }
 
 export function listOutcomes(saveId: string, meetingId: string) {
-  return get(
-    `/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/outcomes`,
-  ) as Promise<OutcomeView[]>;
+  return get(`/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/outcomes`) as Promise<
+    OutcomeView[]
+  >;
 }
 
 export function listMinutes(saveId: string, meetingId: string) {

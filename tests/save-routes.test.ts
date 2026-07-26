@@ -94,9 +94,9 @@ describe("Phase 2 save API", () => {
       });
       expect(changes.statusCode).toBe(200);
       expect(changes.json().data.length).toBeGreaterThan(0);
-      expect(changes.json().data.every((item: { visibility: string }) => item.visibility !== "sealed")).toBe(
-        true,
-      );
+      expect(
+        changes.json().data.every((item: { visibility: string }) => item.visibility !== "sealed"),
+      ).toBe(true);
 
       const validation = await app.inject({
         method: "POST",
@@ -168,8 +168,7 @@ describe("Phase 2 save API", () => {
       expect(archived.statusCode).toBe(200);
       expect((await app.inject({ method: "GET", url: "/api/saves" })).json().data).toEqual([]);
       expect(
-        (await app.inject({ method: "GET", url: "/api/saves?includeArchived=true" })).json()
-          .data,
+        (await app.inject({ method: "GET", url: "/api/saves?includeArchived=true" })).json().data,
       ).toMatchObject([{ saveId: "save_api", status: "archived" }]);
     } finally {
       await app.close();

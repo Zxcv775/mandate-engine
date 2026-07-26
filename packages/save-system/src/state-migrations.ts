@@ -43,10 +43,7 @@ export const STATE_DOCUMENT_MIGRATIONS: readonly StateDocumentMigration[] = [
   },
 ];
 
-export function migrateStatePointer(
-  path: string,
-  appliedMigrationIds: readonly string[],
-): string {
+export function migrateStatePointer(path: string, appliedMigrationIds: readonly string[]): string {
   if (
     appliedMigrationIds.includes(treasuryMigrationDescriptor.id) &&
     path === treasuryMigrationDescriptor.from

@@ -13,12 +13,7 @@ import {
 } from "@mandate/agent-runtime";
 import { composeCharacterPrompt } from "@mandate/prompt-system";
 import { createSaveSystem } from "@mandate/save-system";
-import type {
-  CharacterMemory,
-  CharacterTemplate,
-  Institution,
-  Office,
-} from "@mandate/domain";
+import type { CharacterMemory, CharacterTemplate, Institution, Office } from "@mandate/domain";
 
 /**
  * Phase 3 性能基准（§21）：Character View / Memory Selector / Prompt Composer /
@@ -28,7 +23,11 @@ import type {
 const NOW = "2026-07-26T00:00:00.000Z";
 const ITERATIONS = 50;
 
-function measure(label: string, iterations: number, fn: () => void): { label: string; avgMs: number } {
+function measure(
+  label: string,
+  iterations: number,
+  fn: () => void,
+): { label: string; avgMs: number } {
   fn(); // 预热
   const started = performance.now();
   for (let index = 0; index < iterations; index++) fn();

@@ -1,7 +1,4 @@
-import {
-  CharacterAgentModelOutputSchema,
-  type CharacterAgentModelOutput,
-} from "@mandate/domain";
+import { CharacterAgentModelOutputSchema, type CharacterAgentModelOutput } from "@mandate/domain";
 import { extractJson, type LLMMessage, type LLMResult } from "@mandate/llm-adapters";
 import { loadPrompt, renderPrompt, type PromptId } from "@mandate/prompt-system";
 import type { z } from "zod";
@@ -45,7 +42,9 @@ function tryParse<T>(text: string, schema: z.ZodType<T>): ParseAttempt<T> {
   try {
     candidate = JSON.parse(extractJson(text));
   } catch (error) {
-    return { errorSummary: `JSON 解析失败：${error instanceof Error ? error.message : "未知错误"}` };
+    return {
+      errorSummary: `JSON 解析失败：${error instanceof Error ? error.message : "未知错误"}`,
+    };
   }
   const result = schema.safeParse(candidate);
   if (result.success) return { output: result.data };
@@ -56,15 +55,12 @@ function tryParse<T>(text: string, schema: z.ZodType<T>): ParseAttempt<T> {
   return { errorSummary: `Schema 校验失败：${summary}` };
 }
 
-export async function generateCharacterOutputWithRepair<
-  T = CharacterAgentModelOutput,
->(
+export async function generateCharacterOutputWithRepair<T = CharacterAgentModelOutput>(
   dependencies: StructuredGenerationDependencies,
   messages: LLMMessage[],
   options: StructuredGenerationOptions<T>,
 ): Promise<StructuredGenerationOutcome<T>> {
-  const schema = (options.schema ??
-    CharacterAgentModelOutputSchema) as unknown as z.ZodType<T>;
+  const schema = (options.schema ?? CharacterAgentModelOutputSchema) as unknown as z.ZodType<T>;
   const contractPromptIds = options.contractPromptIds ?? ["output.character-response"];
 
   const first = await dependencies.generate(messages);

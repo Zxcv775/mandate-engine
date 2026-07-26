@@ -1,8 +1,4 @@
-import type {
-  PlayerStateView,
-  SaveMetadata,
-  StateChangeLogEntry,
-} from "@mandate/domain";
+import type { PlayerStateView, SaveMetadata, StateChangeLogEntry } from "@mandate/domain";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { ApiClientError } from "../api/client";
 import { getSaveChanges, getSaveState, listSaves } from "../api/saves";

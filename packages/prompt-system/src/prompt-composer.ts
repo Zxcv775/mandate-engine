@@ -89,9 +89,11 @@ export function renderMeetingData(
   ].join("\n");
 }
 
-export function renderTranscriptData(
-  context: MeetingPromptContext,
-): { text: string; includedTurns: number; trimmedTurns: number } {
+export function renderTranscriptData(context: MeetingPromptContext): {
+  text: string;
+  includedTurns: number;
+  trimmedTurns: number;
+} {
   const budget = context.budget ?? DEFAULT_MEETING_CONTEXT_BUDGET;
   const capped = context.transcript.slice(-budget.maxRecentTurns);
   const lines: string[] = [];
@@ -366,9 +368,7 @@ interface ComposeAttemptInput {
   readonly knowledgeItemCap: number;
 }
 
-export async function composeCharacterPrompt(
-  input: CharacterPromptInput,
-): Promise<ComposedPrompt> {
+export async function composeCharacterPrompt(input: CharacterPromptInput): Promise<ComposedPrompt> {
   const budget = input.budget ?? DEFAULT_CHARACTER_CONTEXT_BUDGET;
   const contextPromptId = MODE_CONTEXT_PROMPT[input.mode];
   const meeting = input.meetingContext;
@@ -388,9 +388,7 @@ export async function composeCharacterPrompt(
     "context.conversation-input",
   ];
   const assets = new Map(
-    await Promise.all(
-      promptIds.map(async (id) => [id, await loadPrompt(id)] as const),
-    ),
+    await Promise.all(promptIds.map(async (id) => [id, await loadPrompt(id)] as const)),
   );
   const template = (id: PromptId): string => assets.get(id)!.template;
 
@@ -466,9 +464,7 @@ export async function composeCharacterPrompt(
       {
         id: "knowledge.known-world-state",
         content: renderPrompt(template("knowledge.known-world-state"), {
-          knowledgeData: escapeDataText(
-            renderKnowledgeData(input.view, attempt.knowledgeItemCap),
-          ),
+          knowledgeData: escapeDataText(renderKnowledgeData(input.view, attempt.knowledgeItemCap)),
         }),
       },
       {
@@ -534,10 +530,7 @@ export async function composeCharacterPrompt(
     const totalCharacters = built.segmentReports.reduce((sum, item) => sum + item.characters, 0);
     const totalTokens = built.segmentReports.reduce((sum, item) => sum + item.estimatedTokens, 0);
     lastTotal = { characters: totalCharacters, tokens: totalTokens };
-    if (
-      totalCharacters <= budget.maxPromptCharacters &&
-      totalTokens <= budget.maxEstimatedTokens
-    ) {
+    if (totalCharacters <= budget.maxPromptCharacters && totalTokens <= budget.maxEstimatedTokens) {
       if (attempt.memoryCount < memoriesAll.length) {
         trimmed.push(`记忆由 ${memoriesAll.length} 条裁至 ${attempt.memoryCount} 条`);
       }

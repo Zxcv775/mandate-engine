@@ -22,7 +22,9 @@ import {
 
 const template = makeCharacterTemplate({ id: "wei-zhongxian", name: "魏忠贤" });
 
-function fixtureView(memories = [makeMemory({ memoryId: "mem-1", content: "皇上曾垂询厂卫之事" })]) {
+function fixtureView(
+  memories = [makeMemory({ memoryId: "mem-1", content: "皇上曾垂询厂卫之事" })],
+) {
   const state = makeFixtureState([template]);
   state.hidden.secretFlags = { conspiracy: "HIDDEN_SECRET_MARKER" };
   state.hidden.internalNotes = ["INTERNAL_NOTE_MARKER"];
@@ -85,9 +87,7 @@ describe("Prompt 资产与注册表（ADR-013）", () => {
           ),
         ),
       ].sort();
-      expect(referenced, `${entry.id} 变量声明不一致`).toEqual(
-        [...entry.requiredVariables].sort(),
-      );
+      expect(referenced, `${entry.id} 变量声明不一致`).toEqual([...entry.requiredVariables].sort());
     }
   });
 

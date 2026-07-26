@@ -59,7 +59,10 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
       throw new StateEngineError("MUTATION_PATH_INVALID", `add 目标已存在：${mutation.path}`);
     }
     if (mutation.before !== null) {
-      throw new StateEngineError("MUTATION_BEFORE_MISMATCH", `add 的 before 必须为 null：${mutation.path}`);
+      throw new StateEngineError(
+        "MUTATION_BEFORE_MISMATCH",
+        `add 的 before 必须为 null：${mutation.path}`,
+      );
     }
     parent[key] = structuredClone(mutation.after);
     return next as unknown as GameState;
@@ -75,7 +78,10 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
       );
     }
     if (mutation.after !== null) {
-      throw new StateEngineError("MUTATION_BEFORE_MISMATCH", `remove 的 after 必须为 null：${mutation.path}`);
+      throw new StateEngineError(
+        "MUTATION_BEFORE_MISMATCH",
+        `remove 的 after 必须为 null：${mutation.path}`,
+      );
     }
     delete parent[key];
     return next as unknown as GameState;
@@ -98,7 +104,10 @@ export function applyMutations(
   state: Readonly<GameState>,
   mutations: readonly ProposedMutation[],
 ): GameState {
-  return mutations.reduce((current, mutation) => applyMutation(current, mutation), state as GameState);
+  return mutations.reduce(
+    (current, mutation) => applyMutation(current, mutation),
+    state as GameState,
+  );
 }
 
 const inverseOperations = {
@@ -124,7 +133,11 @@ export function invertMutation(mutation: ProposedMutation): ProposedMutation {
 export function validateMutatedState(state: unknown): GameState {
   const result = GameStateSchema.safeParse(state);
   if (!result.success) {
-    throw new StateEngineError("STATE_VALIDATION_FAILED", "变更后的 GameState 无效", result.error.issues);
+    throw new StateEngineError(
+      "STATE_VALIDATION_FAILED",
+      "变更后的 GameState 无效",
+      result.error.issues,
+    );
   }
   return result.data;
 }

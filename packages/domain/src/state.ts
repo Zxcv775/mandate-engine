@@ -9,12 +9,7 @@ const NonNegativeIntegerSchema = z.number().int().nonnegative().max(Number.MAX_S
 const PercentageSchema = z.number().int().min(0).max(100);
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
@@ -173,7 +168,10 @@ export const GameStateMetaSchema = z
     sourceIds: SourceIdsSchema,
     sourceCatalogPresent: z.boolean(),
     forkedFromRevision: NonNegativeIntegerSchema.optional(),
-    importedPackageHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    importedPackageHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
   })
   .strict();
 export type GameStateMeta = z.infer<typeof GameStateMetaSchema>;

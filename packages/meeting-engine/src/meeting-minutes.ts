@@ -111,10 +111,7 @@ export function buildMeetingSummaryMemoryCandidate(
     .slice(-3)
     .map((turn) => `${label(turn.speakerId)}言「${excerpt(turn.publicText, 40)}」`);
   const rulings = acceptedOutcomes.map((outcome) => `上准${excerpt(outcome.title, 30)}`);
-  const content = excerpt(
-    [`与闻${session.title}`, ...highlights, ...rulings].join("；"),
-    480,
-  );
+  const content = excerpt([`与闻${session.title}`, ...highlights, ...rulings].join("；"), 480);
   return {
     type: "episodic",
     content,

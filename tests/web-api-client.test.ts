@@ -21,9 +21,7 @@ describe("Web API Client", () => {
     const fetchImpl = vi.fn(async () => Response.json(healthEnvelope));
     const client = createApiClient({ baseUrl: "http://localhost:3000", fetchImpl });
 
-    await expect(client.get("/api/health", HealthResponseSchema)).resolves.toEqual(
-      healthEnvelope,
-    );
+    await expect(client.get("/api/health", HealthResponseSchema)).resolves.toEqual(healthEnvelope);
     expect(fetchImpl).toHaveBeenCalledWith(
       "http://localhost:3000/api/health",
       expect.objectContaining({ method: "GET", headers: { Accept: "application/json" } }),
@@ -75,11 +73,12 @@ describe("Web API Client", () => {
 
   it("将开发代理的非 JSON 5xx 连接失败映射为 offline", async () => {
     const client = createApiClient({
-      fetchImpl: vi.fn(async () =>
-        new Response("", {
-          status: 500,
-          headers: { "content-type": "text/plain" },
-        }),
+      fetchImpl: vi.fn(
+        async () =>
+          new Response("", {
+            status: 500,
+            headers: { "content-type": "text/plain" },
+          }),
       ),
     });
 
@@ -93,7 +92,9 @@ describe("Web API Client", () => {
     const fetchImpl = vi.fn(
       (_input: RequestInfo | URL, init?: RequestInit) =>
         new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          );
         }),
     );
     const client = createApiClient({ timeoutMs: 25, fetchImpl });

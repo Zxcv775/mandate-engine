@@ -173,7 +173,9 @@ export class MeetingRepository {
       this.database
         .prepare(
           `INSERT INTO meeting_sessions (${SESSION_COLUMNS})
-           VALUES (${SESSION_COLUMNS.split(",").map(() => "?").join(", ")})`,
+           VALUES (${SESSION_COLUMNS.split(",")
+             .map(() => "?")
+             .join(", ")})`,
         )
         .run(...sessionToParams(parsed));
       for (const participant of participants) {
@@ -424,9 +426,8 @@ export class MeetingRepository {
 
   hasTurnForAction(actionId: string): boolean {
     return (
-      this.database
-        .prepare("SELECT 1 FROM meeting_turns WHERE action_id = ?")
-        .get(actionId) !== undefined
+      this.database.prepare("SELECT 1 FROM meeting_turns WHERE action_id = ?").get(actionId) !==
+      undefined
     );
   }
 
@@ -506,10 +507,7 @@ export class MeetingRepository {
     expectedVersion: number,
   ): void {
     const current = this.requireSession(turn.meetingId);
-    if (
-      !current.pendingAgentAction ||
-      current.pendingAgentAction.actionId !== turn.actionId
-    ) {
+    if (!current.pendingAgentAction || current.pendingAgentAction.actionId !== turn.actionId) {
       if (turn.actionId && this.hasTurnForAction(turn.actionId)) {
         throw new SaveSystemError(
           "MEETING_AGENT_RESPONSE_DUPLICATE",
@@ -567,10 +565,7 @@ export class MeetingRepository {
       );
   }
 
-  updateOutcomeStatus(
-    outcomeCandidateId: string,
-    status: MeetingOutcomeCandidate["status"],
-  ): void {
+  updateOutcomeStatus(outcomeCandidateId: string, status: MeetingOutcomeCandidate["status"]): void {
     const result = this.database
       .prepare("UPDATE meeting_outcome_candidates SET status = ? WHERE outcome_candidate_id = ?")
       .run(status, outcomeCandidateId);
@@ -653,9 +648,7 @@ export class MeetingRepository {
           title: row.title,
           participantIds: JSON.parse(String(row.participant_ids_json)),
           entries: JSON.parse(String(row.entries_json)),
-          acceptedOutcomeCandidateIds: JSON.parse(
-            String(row.accepted_outcome_candidate_ids_json),
-          ),
+          acceptedOutcomeCandidateIds: JSON.parse(String(row.accepted_outcome_candidate_ids_json)),
           deferredAgendaItemIds: JSON.parse(String(row.deferred_agenda_item_ids_json)),
           stateRevision: Number(row.state_revision),
           createdAt: row.created_at,

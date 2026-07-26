@@ -19,11 +19,7 @@ import {
   hashState,
 } from "@mandate/game-engine";
 import { describe, expect, it } from "vitest";
-import {
-  FIXTURE_NOW,
-  makeCharacterTemplate,
-  makeFixtureState,
-} from "./helpers/character-fixtures";
+import { FIXTURE_NOW, makeCharacterTemplate, makeFixtureState } from "./helpers/character-fixtures";
 
 /** Meeting State Machine 全矩阵 + meeting.* 命令经 StateEngine 的最小投影测试（M1）。 */
 
@@ -169,7 +165,10 @@ describe("Meeting State Machine 转换矩阵", () => {
     expect(resumed.status).toBe("in-progress");
     expect(resumed.pauseReason).toBeUndefined();
 
-    const failed = transitionMeeting(makeSession("waiting-for-agent"), eventFor("meeting.fail")).next;
+    const failed = transitionMeeting(
+      makeSession("waiting-for-agent"),
+      eventFor("meeting.fail"),
+    ).next;
     expect(failed.status).toBe("failed");
     expect(failed.failureCode).toBe("PROVIDER_REQUEST_FAILED");
     const recovered = transitionMeeting(failed, eventFor("meeting.pause")).next;

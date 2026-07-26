@@ -5,7 +5,11 @@ import { successResponse } from "./response";
 
 const ScenarioParamsSchema = z
   .object({
-    scenarioId: z.string().trim().min(1).regex(/^[a-z0-9-]+$/),
+    scenarioId: z
+      .string()
+      .trim()
+      .min(1)
+      .regex(/^[a-z0-9-]+$/),
   })
   .strict();
 

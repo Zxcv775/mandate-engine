@@ -1,8 +1,4 @@
-import {
-  GameStateSchema,
-  type GameState,
-  type SafeShareMode,
-} from "@mandate/domain";
+import { GameStateSchema, type GameState, type SafeShareMode } from "@mandate/domain";
 import { hashState, sha256Hex, stableStringify, type Clock } from "@mandate/game-engine";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -18,10 +14,7 @@ export interface ExportPayloadOptions {
   safeShareMode: SafeShareMode;
 }
 
-function sanitizeState(
-  input: GameState,
-  options: ExportPayloadOptions,
-): GameState {
+function sanitizeState(input: GameState, options: ExportPayloadOptions): GameState {
   const state = structuredClone(input);
   state.meta.sourceCatalogPresent = options.includeSourceMetadata;
   if (options.safeShareMode === "strip_sealed_notes" || options.safeShareMode === "safe_share") {
@@ -58,8 +51,7 @@ function updateExportCopy(
     if (!row) throw new SaveSystemError("SAVE_NOT_FOUND", `存档不存在：${saveId}`);
     const metadata = JSON.parse(row.metadata_json) as Record<string, unknown>;
     if (!options.includeSourceMetadata) delete metadata.sourceCatalog;
-    const shouldFlatten =
-      !options.includeSourceMetadata || options.safeShareMode !== "none";
+    const shouldFlatten = !options.includeSourceMetadata || options.safeShareMode !== "none";
     if (shouldFlatten) {
       database.prepare("DELETE FROM command_transactions WHERE save_id = ?").run(saveId);
       database.prepare("DELETE FROM save_snapshots WHERE save_id = ?").run(saveId);
@@ -97,9 +89,7 @@ function updateExportCopy(
       );
     }
     const title =
-      options.safeShareMode === "safe_share"
-        ? redactSensitiveString(row.title)
-        : row.title;
+      options.safeShareMode === "safe_share" ? redactSensitiveString(row.title) : row.title;
     database
       .prepare(
         "UPDATE saves SET title = ?, source_metadata_mode = ?, metadata_json = ? WHERE save_id = ?",

@@ -1,10 +1,6 @@
 import { createScenarioLoader } from "@mandate/data-loader";
 import { FixedClock, hashState, stableStringify } from "@mandate/game-engine";
-import {
-  createSaveSystem,
-  migrateGameStateDocument,
-  type SaveSystem,
-} from "@mandate/save-system";
+import { createSaveSystem, migrateGameStateDocument, type SaveSystem } from "@mandate/save-system";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -159,7 +155,9 @@ describe("forward-only state migrations", () => {
     ).toEqual({ state_version: 0 });
     expect(
       system.database
-        .prepare("SELECT COUNT(*) AS count FROM save_snapshots WHERE checkpoint_kind = 'pre_migration'")
+        .prepare(
+          "SELECT COUNT(*) AS count FROM save_snapshots WHERE checkpoint_kind = 'pre_migration'",
+        )
         .get(),
     ).toEqual({ count: 0 });
   });
@@ -176,7 +174,9 @@ describe("forward-only state migrations", () => {
     source.database
       .prepare("UPDATE save_snapshots SET state_json = ?, state_hash = ? WHERE save_id = ?")
       .run(stableStringify(legacy), hashState(legacy), "save_demo");
-    source.database.prepare("UPDATE saves SET state_version = ? WHERE save_id = ?").run(0, "save_demo");
+    source.database
+      .prepare("UPDATE saves SET state_version = ? WHERE save_id = ?")
+      .run(0, "save_demo");
     source.database.exec("PRAGMA ignore_check_constraints = OFF");
     await source.service.migrateSave("save_demo");
 
@@ -299,9 +299,9 @@ describe("validation and repair planning", () => {
     );
     expect(system.repository.countRows()).toEqual(before);
     expect(
-      system.database.prepare("SELECT status FROM command_transactions WHERE tx_id = ?").get(
-        "tx_pending",
-      ),
+      system.database
+        .prepare("SELECT status FROM command_transactions WHERE tx_id = ?")
+        .get("tx_pending"),
     ).toEqual({ status: "pending" });
   });
 

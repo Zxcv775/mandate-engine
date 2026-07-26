@@ -101,9 +101,9 @@ describe("人物卡 Schema（ADR-010）", () => {
   });
 
   it("拒绝未知关键字段（strict）", () => {
-    expect(
-      CharacterTemplateSchema.safeParse({ ...valid(), hiddenPower: 9_999 }).success,
-    ).toBe(false);
+    expect(CharacterTemplateSchema.safeParse({ ...valid(), hiddenPower: 9_999 }).success).toBe(
+      false,
+    );
   });
 
   it("语言风格配置校验示例语句与刻度", () => {

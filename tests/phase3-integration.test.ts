@@ -141,12 +141,16 @@ describe("闭环三：场合差异（同一人物同一议题）", () => {
       url: "/api/saves/save_phase3/characters/cui-chengxiu/respond",
       payload: payload("court-assembly"),
     });
-    const privateData = (JSON.parse(privateResponse.body) as {
-      data: { speech: string; stance: { position: string } };
-    }).data;
-    const courtData = (JSON.parse(courtResponse.body) as {
-      data: { speech: string; stance: { position: string } };
-    }).data;
+    const privateData = (
+      JSON.parse(privateResponse.body) as {
+        data: { speech: string; stance: { position: string } };
+      }
+    ).data;
+    const courtData = (
+      JSON.parse(courtResponse.body) as {
+        data: { speech: string; stance: { position: string } };
+      }
+    ).data;
     expect(privateData.speech).not.toBe(courtData.speech);
     expect(privateData.stance.position).toBe(courtData.stance.position);
   });
@@ -195,9 +199,9 @@ describe("闭环四：知识限制（秘密议事只授参与者）", () => {
       memories: [],
       templates,
     });
-    expect(
-      participantView.knownMeetings.some((m) => m.value.meetingId === "meeting-chuqi"),
-    ).toBe(true);
+    expect(participantView.knownMeetings.some((m) => m.value.meetingId === "meeting-chuqi")).toBe(
+      true,
+    );
     expect(JSON.stringify(outsiderView)).not.toContain("meeting-chuqi");
 
     const outsiderPrompt = await composeCharacterPrompt({

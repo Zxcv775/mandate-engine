@@ -11,12 +11,7 @@ import { getRuntimeConfig } from "../api/runtime";
 import { getScenario } from "../api/scenarios";
 import { getVersion } from "../api/version";
 
-export type RuntimeLoadStatus =
-  | "loading"
-  | "success"
-  | "offline"
-  | "api_error"
-  | "data_error";
+export type RuntimeLoadStatus = "loading" | "success" | "offline" | "api_error" | "data_error";
 
 export interface PanelState<T> {
   status: RuntimeLoadStatus;

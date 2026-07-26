@@ -76,3 +76,18 @@ jobs:
 
       - name: Test prompt assets and snapshots
         run: npm run test:prompt-assets
+
+      - name: Test meeting state machine
+        run: npm run test:meeting-state
+
+      - name: Test speaker scheduler and director
+        run: npm run test:meeting-scheduler
+
+      - name: Test meeting recovery and idempotency
+        run: npm run test:meeting-recovery
+
+      - name: Test meeting security and confidentiality
+        run: npm run test:meeting-security
+
+      - name: Test meeting outcomes and phase 4 integration loops
+        run: npm run test:meeting-integration

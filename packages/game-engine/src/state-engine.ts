@@ -203,7 +203,11 @@ export class StateEngine {
     }
     const commandResult = GameCommandSchema.safeParse(inputCommand);
     if (!commandResult.success) {
-      throw new StateEngineError("COMMAND_INVALID", "Command Schema 校验失败", commandResult.error.issues);
+      throw new StateEngineError(
+        "COMMAND_INVALID",
+        "Command Schema 校验失败",
+        commandResult.error.issues,
+      );
     }
     const state = stateResult.data;
     const command = commandResult.data;
@@ -329,7 +333,11 @@ export class StateEngine {
       });
     }
     if (!commandResult.success) {
-      throw new StateEngineError("COMMAND_INVALID", "回滚 Command Schema 校验失败", commandResult.error.issues);
+      throw new StateEngineError(
+        "COMMAND_INVALID",
+        "回滚 Command Schema 校验失败",
+        commandResult.error.issues,
+      );
     }
     const state = stateResult.data;
     const target = targetResult.data;

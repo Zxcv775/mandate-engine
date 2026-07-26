@@ -49,7 +49,9 @@ export function summarizeMemories(
     fragments.push(fragment);
     length += fragment.length + 1;
     if (uncertain) {
-      uncertaintyNotes.push(`「${memory.content.slice(0, 20)}…」为${sourceLabel(memory)}，未经确证`);
+      uncertaintyNotes.push(
+        `「${memory.content.slice(0, 20)}…」为${sourceLabel(memory)}，未经确证`,
+      );
     }
   }
   if (fragments.length === 0) {

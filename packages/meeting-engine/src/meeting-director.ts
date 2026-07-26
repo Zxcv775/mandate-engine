@@ -100,9 +100,7 @@ export function planNextStep(input: MeetingDirectorInput): MeetingDirectorResult
     );
   }
 
-  const currentAgenda = agenda.find(
-    (item) => item.agendaItemId === session.currentAgendaItemId,
-  );
+  const currentAgenda = agenda.find((item) => item.agendaItemId === session.currentAgendaItemId);
 
   // 1. 对话类玩家动作的直接后续
   const action = input.lastPlayerAction;
@@ -262,9 +260,7 @@ export function planNextStep(input: MeetingDirectorInput): MeetingDirectorResult
   };
 }
 
-function nextQueuedAgenda(
-  agenda: readonly MeetingAgendaItem[],
-): MeetingAgendaItem | undefined {
+function nextQueuedAgenda(agenda: readonly MeetingAgendaItem[]): MeetingAgendaItem | undefined {
   return [...agenda]
     .filter((item) => item.status === "queued")
     .sort((a, b) => a.sequence - b.sequence || a.agendaItemId.localeCompare(b.agendaItemId))[0];

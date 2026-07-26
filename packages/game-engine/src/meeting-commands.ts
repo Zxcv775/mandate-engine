@@ -46,8 +46,7 @@ export function planMeetingCreate(
   state: GameState,
   command: MeetingCreateCommand,
 ): ProposedMutation[] {
-  const { meetingId, meetingType, participantIds, chairCharacterId, visibility } =
-    command.payload;
+  const { meetingId, meetingType, participantIds, chairCharacterId, visibility } = command.payload;
   if (state.meetings[meetingId]) {
     throw new StateEngineError("MEETING_INVALID_STATE", `会议已存在：${meetingId}`);
   }
@@ -128,10 +127,7 @@ export function planMeetingConclude(
 ): ProposedMutation[] {
   const record = requireMeeting(state, command.payload.meetingId);
   if (record.status === "concluded") {
-    throw new StateEngineError(
-      "MEETING_ALREADY_CONCLUDED",
-      `会议已结束：${record.meetingId}`,
-    );
+    throw new StateEngineError("MEETING_ALREADY_CONCLUDED", `会议已结束：${record.meetingId}`);
   }
   if (record.status !== "in-progress") {
     throw new StateEngineError(

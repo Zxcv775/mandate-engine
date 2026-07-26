@@ -1,25 +1,25 @@
 # Phase 2 性能基准
 
 - 生成时间：2026-07-26T12:14:46.760Z
-- 环境：win32 10.0.26100 / AMD Ryzen 9 8940HX with Radeon Graphics         / Node v24.18.0
+- 环境：win32 10.0.26100 / AMD Ryzen 9 8940HX with Radeon Graphics / Node v24.18.0
 - Fixture：revision 1000，日志 10000，重复 5 次
 
 ## 耗时（ms）
 
-| 操作 | 次数 | 平均 | 最小 | 最大 |
-| --- | ---: | ---: | ---: | ---: |
-| createSave | 1 | 28.644 | 28.644 | 28.644 |
-| loadRevision0 | 5 | 0.347 | 0.304 | 0.382 |
-| commitSingleMutation | 5 | 4.113 | 3.492 | 5.488 |
-| createCheckpoint | 1 | 5.99 | 5.99 | 5.99 |
-| loadRevision100 | 5 | 0.181 | 0.141 | 0.279 |
-| loadRevision1000 | 5 | 0.198 | 0.161 | 0.286 |
-| replay50 | 5 | 5.47 | 4.932 | 6.722 |
-| replay100 | 5 | 10.463 | 10.231 | 11.04 |
-| commitTenMutations | 5 | 5.088 | 2.879 | 7.264 |
-| exportSave | 5 | 132.115 | 124.513 | 137.372 |
-| importSave | 1 | 116.711 | 116.711 | 116.711 |
-| validateSave | 5 | 375.392 | 370.409 | 383.569 |
+| 操作                 | 次数 |    平均 |    最小 |    最大 |
+| -------------------- | ---: | ------: | ------: | ------: |
+| createSave           |    1 |  28.644 |  28.644 |  28.644 |
+| loadRevision0        |    5 |   0.347 |   0.304 |   0.382 |
+| commitSingleMutation |    5 |   4.113 |   3.492 |   5.488 |
+| createCheckpoint     |    1 |    5.99 |    5.99 |    5.99 |
+| loadRevision100      |    5 |   0.181 |   0.141 |   0.279 |
+| loadRevision1000     |    5 |   0.198 |   0.161 |   0.286 |
+| replay50             |    5 |    5.47 |   4.932 |   6.722 |
+| replay100            |    5 |  10.463 |  10.231 |   11.04 |
+| commitTenMutations   |    5 |   5.088 |   2.879 |   7.264 |
+| exportSave           |    5 | 132.115 | 124.513 | 137.372 |
+| importSave           |    1 | 116.711 | 116.711 | 116.711 |
+| validateSave         |    5 | 375.392 | 370.409 | 383.569 |
 
 ## 体积（bytes）
 

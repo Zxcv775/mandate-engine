@@ -26,10 +26,7 @@ export function extractJson(text: string): string {
 export abstract class BaseLLMProvider implements LLMProvider {
   abstract readonly name: string;
 
-  abstract generate(
-    messages: LLMMessage[],
-    options?: LLMGenerateOptions,
-  ): Promise<LLMResult>;
+  abstract generate(messages: LLMMessage[], options?: LLMGenerateOptions): Promise<LLMResult>;
 
   async generateStructured<T>(
     messages: LLMMessage[],

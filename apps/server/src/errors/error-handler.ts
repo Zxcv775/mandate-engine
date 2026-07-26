@@ -42,9 +42,7 @@ function errorResponse(
 
 export function registerErrorHandlers(app: FastifyInstance): void {
   app.setNotFoundHandler((request, reply) => {
-    return reply
-      .code(404)
-      .send(errorResponse(request, "ROUTE_NOT_FOUND", "请求的 API 路由不存在"));
+    return reply.code(404).send(errorResponse(request, "ROUTE_NOT_FOUND", "请求的 API 路由不存在"));
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -64,12 +62,7 @@ export function registerErrorHandlers(app: FastifyInstance): void {
       return reply
         .code(error.statusCode)
         .send(
-          errorResponse(
-            request,
-            error.code,
-            redactSensitiveString(error.message),
-            error.details,
-          ),
+          errorResponse(request, error.code, redactSensitiveString(error.message), error.details),
         );
     }
 
@@ -91,9 +84,7 @@ export function registerErrorHandlers(app: FastifyInstance): void {
     if (error instanceof MeetingEngineError) {
       request.log.warn({ code: error.code }, "预期会议引擎错误");
       const statusCode =
-        error.code === "MEETING_NOT_FOUND" || error.code === "MEETING_AGENDA_NOT_FOUND"
-          ? 404
-          : 409;
+        error.code === "MEETING_NOT_FOUND" || error.code === "MEETING_AGENDA_NOT_FOUND" ? 404 : 409;
       return reply
         .code(statusCode)
         .send(errorResponse(request, error.code, redactSensitiveString(error.message)));
@@ -144,7 +135,11 @@ export function registerErrorHandlers(app: FastifyInstance): void {
               error.code === "ROLLBACK_TARGET_INVALID" ||
               error.code === "SAVE_VERSION_UNSUPPORTED" ||
               error.code === "MEETING_VERSION_STALE" ||
-              error.code === "MEETING_AGENT_RESPONSE_DUPLICATE"
+              error.code === "MEETING_AGENT_RESPONSE_DUPLICATE" ||
+              error.code === "MEETING_INVALID_STATE" ||
+              error.code === "MEETING_ALREADY_STARTED" ||
+              error.code === "MEETING_ALREADY_CONCLUDED" ||
+              error.code === "MEETING_PARTICIPANT_INVALID"
             ? 409
             : error.code === "DATABASE_ERROR" ||
                 error.code === "MIGRATION_FAILED" ||
@@ -163,8 +158,6 @@ export function registerErrorHandlers(app: FastifyInstance): void {
       { errorName: error instanceof Error ? error.name : "UnknownError" },
       "未处理的 API 异常",
     );
-    return reply
-      .code(500)
-      .send(errorResponse(request, "INTERNAL_ERROR", "服务器内部错误"));
+    return reply.code(500).send(errorResponse(request, "INTERNAL_ERROR", "服务器内部错误"));
   });
 }

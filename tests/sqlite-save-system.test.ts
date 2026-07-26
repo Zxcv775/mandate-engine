@@ -19,7 +19,9 @@ afterEach(async () => {
 });
 
 async function setup(
-  options: { failureStage?: "after_transaction" | "after_logs" | "after_head" | "after_checkpoint" } = {},
+  options: {
+    failureStage?: "after_transaction" | "after_logs" | "after_head" | "after_checkpoint";
+  } = {},
 ) {
   const directory = await mkdtemp(join(tmpdir(), "mandate-save-test-"));
   const system = createSaveSystem({
@@ -155,8 +157,7 @@ describe("Save application service", () => {
       expect(changes[index]?.prevLogHash).toBe(changes[index - 1]?.entryHash);
     }
     expect(system.repository.listCheckpoints("save_demo").map((item) => item.revision)).toEqual([
-      0,
-      2,
+      0, 2,
     ]);
   });
 

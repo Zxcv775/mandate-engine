@@ -96,8 +96,7 @@ export class CharacterContextBuilder {
       throw new CharacterAgentError("CHARACTER_NOT_FOUND", `人物不存在：${request.characterId}`);
     }
 
-    const participantIds =
-      request.participantIds ?? [request.input.speakerId, request.characterId];
+    const participantIds = request.participantIds ?? [request.input.speakerId, request.characterId];
     const topicIds = request.topic === undefined ? [] : [request.topic];
 
     const allMemories = await this.ports.listMemories(request.saveId, request.characterId);

@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  HistoricalDataCompletenessSchema,
-  ScenarioStatusSchema,
-} from "./templates";
+import { HistoricalDataCompletenessSchema, ScenarioStatusSchema } from "./templates";
 
 export const ApiResponseMetaSchema = z
   .object({

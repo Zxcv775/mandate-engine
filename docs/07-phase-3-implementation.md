@@ -19,17 +19,17 @@ Phase 3 建立了可测试闭环：
 
 ## 2. 模块地图
 
-| 层 | 位置 | 内容 |
-|---|---|---|
-| Domain | `packages/domain/src/character-*.ts` | 分层人物卡、知识视图、记忆、Agent 契约、人物 API Schema，12 个新错误码 |
-| 数据 | `data/characters/ming/` | 魏忠贤、王承恩、黄立极、崔呈秀、袁崇焕（袁开局去职不可召对）；司礼监与 6 个官职；东林党；2 个新史料源 |
-| 视图 | `packages/agent-runtime/src/visibility-policy.ts` `character-view-builder.ts` | 六级可见性 + 官职/会议/领域裁决 + 认知标注 |
-| 记忆 | `packages/save-system`（migration 002 + `character-memory-repository.ts`）、`packages/agent-runtime/src/memory/` | SQLite 双表、Policy 审批、确定性 Selector、预算、规则摘要 |
-| Prompt | `packages/prompt-system` | 23 个 v1 资产、manifest、budget、composer（九段固定序 + 注入中和） |
-| Agent | `packages/agent-runtime/src/character-agent.ts` 等 | 编排、受控修复、确定性一致性检查、Mock Fixture |
-| API | `apps/server/src/routes/characters.ts` `debug-characters.ts`、`services/character-service.ts` | 3 个公开 + 3 个 Debug 端点；Debug 生产默认 404 |
-| Web | `apps/web/src/features/character-lab/` | Character Lab 调试台（存档/人物/场合/输出/Debug 折叠区） |
-| 测试 | `tests/character-*.test.ts` `phase3-integration.test.ts` | 7 个新测试文件 + 既有测试更新 |
+| 层     | 位置                                                                                                             | 内容                                                                                                  |
+| ------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Domain | `packages/domain/src/character-*.ts`                                                                             | 分层人物卡、知识视图、记忆、Agent 契约、人物 API Schema，12 个新错误码                                |
+| 数据   | `data/characters/ming/`                                                                                          | 魏忠贤、王承恩、黄立极、崔呈秀、袁崇焕（袁开局去职不可召对）；司礼监与 6 个官职；东林党；2 个新史料源 |
+| 视图   | `packages/agent-runtime/src/visibility-policy.ts` `character-view-builder.ts`                                    | 六级可见性 + 官职/会议/领域裁决 + 认知标注                                                            |
+| 记忆   | `packages/save-system`（migration 002 + `character-memory-repository.ts`）、`packages/agent-runtime/src/memory/` | SQLite 双表、Policy 审批、确定性 Selector、预算、规则摘要                                             |
+| Prompt | `packages/prompt-system`                                                                                         | 23 个 v1 资产、manifest、budget、composer（九段固定序 + 注入中和）                                    |
+| Agent  | `packages/agent-runtime/src/character-agent.ts` 等                                                               | 编排、受控修复、确定性一致性检查、Mock Fixture                                                        |
+| API    | `apps/server/src/routes/characters.ts` `debug-characters.ts`、`services/character-service.ts`                    | 3 个公开 + 3 个 Debug 端点；Debug 生产默认 404                                                        |
+| Web    | `apps/web/src/features/character-lab/`                                                                           | Character Lab 调试台（存档/人物/场合/输出/Debug 折叠区）                                              |
+| 测试   | `tests/character-*.test.ts` `phase3-integration.test.ts`                                                         | 7 个新测试文件 + 既有测试更新                                                                         |
 
 ## 3. Character Agent 调用流程
 
@@ -95,14 +95,14 @@ CHARACTER_VIEW_BUILD_FAILED / CHARACTER_MEMORY_INVALID / CHARACTER_MEMORY_LIMIT_
 CHARACTER_OUTPUT_INVALID / CHARACTER_CONSISTENCY_FAILED / PROMPT_ASSET_NOT_FOUND /
 PROMPT_VARIABLE_MISSING / PROMPT_BUDGET_EXCEEDED / LLM_OUTPUT_REPAIR_FAILED。
 
-| Method | Route | 说明 | Debug |
-|---|---|---|---|
-| GET | `/api/saves/:saveId/characters` | 运行时人物摘要（无私密数值） | 否 |
-| GET | `/api/saves/:saveId/characters/:characterId` | 公开档案 | 否 |
-| POST | `/api/saves/:saveId/characters/:characterId/respond` | 单人物召对（公开投影；不改状态） | 否 |
-| GET | `/api/debug/saves/:saveId/characters/:characterId/context` | 知识视图/记忆选择/约束摘要 | 是 |
-| GET | `/api/debug/saves/:saveId/characters/:characterId/memories` | 记忆查询（sealed 内容不返回） | 是 |
-| POST | `/api/debug/saves/:saveId/characters/:characterId/respond` | 带调试信息的召对 | 是 |
+| Method | Route                                                       | 说明                             | Debug |
+| ------ | ----------------------------------------------------------- | -------------------------------- | ----- |
+| GET    | `/api/saves/:saveId/characters`                             | 运行时人物摘要（无私密数值）     | 否    |
+| GET    | `/api/saves/:saveId/characters/:characterId`                | 公开档案                         | 否    |
+| POST   | `/api/saves/:saveId/characters/:characterId/respond`        | 单人物召对（公开投影；不改状态） | 否    |
+| GET    | `/api/debug/saves/:saveId/characters/:characterId/context`  | 知识视图/记忆选择/约束摘要       | 是    |
+| GET    | `/api/debug/saves/:saveId/characters/:characterId/memories` | 记忆查询（sealed 内容不返回）    | 是    |
+| POST   | `/api/debug/saves/:saveId/characters/:characterId/respond`  | 带调试信息的召对                 | 是    |
 
 ## 7. 质量门
 

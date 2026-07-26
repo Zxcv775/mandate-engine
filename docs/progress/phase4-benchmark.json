@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-07-26T14:06:29.884Z",
+  "node": "v24.18.0",
+  "eligibility5": {
+    "label": "eligibility-5",
+    "avgMs": 0.001
+  },
+  "scheduler5": {
+    "label": "scheduler-5",
+    "avgMs": 0.003
+  },
+  "director5": {
+    "label": "director-5",
+    "avgMs": 0.003
+  },
+  "eligibility10": {
+    "label": "eligibility-10",
+    "avgMs": 0
+  },
+  "scheduler10": {
+    "label": "scheduler-10",
+    "avgMs": 0.003
+  },
+  "director10": {
+    "label": "director-10",
+    "avgMs": 0.014
+  },
+  "eligibility20": {
+    "label": "eligibility-20",
+    "avgMs": 0
+  },
+  "scheduler20": {
+    "label": "scheduler-20",
+    "avgMs": 0.006
+  },
+  "director20": {
+    "label": "director-20",
+    "avgMs": 0.005
+  },
+  "transcriptWrite1000": {
+    "totalMs": 462.9
+  },
+  "transcriptStorage": {
+    "rows": 1000,
+    "bytes": 536576,
+    "bytesPerTurn": 536.6
+  },
+  "transcriptPage100": {
+    "label": "transcript-page",
+    "avgMs": 0.721
+  },
+  "transcriptFilter": {
+    "label": "transcript-filter-speaker",
+    "avgMs": 0.659
+  },
+  "meetingRecoveryLoad": {
+    "label": "meeting-recovery-load",
+    "avgMs": 0.241
+  },
+  "outcomeQuery50": {
+    "label": "outcome-query-50",
+    "avgMs": 0.427
+  },
+  "fullMockMeeting": {
+    "turns": 20,
+    "totalMs": 121.2,
+    "avgMsPerTurn": 6.1
+  }
+}

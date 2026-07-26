@@ -116,15 +116,27 @@ export function buildCharacterView(input: BuildCharacterViewInput): CharacterSta
   const countrySourceIds = state.country.sourceIds;
 
   const knownCountryState: CharacterStateView["knownCountryState"] = {};
-  const treasury = resolveCountryFigure(context, state, "state-finance", state.country.treasuryTaels, {
-    coarseGranularity: 500_000,
-    sourceIds: countrySourceIds,
-  });
+  const treasury = resolveCountryFigure(
+    context,
+    state,
+    "state-finance",
+    state.country.treasuryTaels,
+    {
+      coarseGranularity: 500_000,
+      sourceIds: countrySourceIds,
+    },
+  );
   if (treasury) knownCountryState.treasuryTaels = treasury;
-  const grain = resolveCountryFigure(context, state, "state-finance", state.country.grainReserveShi, {
-    coarseGranularity: 500_000,
-    sourceIds: countrySourceIds,
-  });
+  const grain = resolveCountryFigure(
+    context,
+    state,
+    "state-finance",
+    state.country.grainReserveShi,
+    {
+      coarseGranularity: 500_000,
+      sourceIds: countrySourceIds,
+    },
+  );
   if (grain) knownCountryState.grainReserveShi = grain;
   const readiness = resolveCountryFigure(
     context,

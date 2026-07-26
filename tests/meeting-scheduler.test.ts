@@ -39,9 +39,8 @@ describe("发言资格（§21.2）", () => {
 
   it("非参会者 / 未到场者不具备资格", () => {
     expect(
-      evaluateSpeakerEligibility(
-        makeEligibilityInput("x", session, { participant: undefined }),
-      ).reasons,
+      evaluateSpeakerEligibility(makeEligibilityInput("x", session, { participant: undefined }))
+        .reasons,
     ).toContain("NOT_PARTICIPANT");
     for (const attendance of ["invited", "absent", "dismissed", "removed"] as const) {
       expect(
@@ -66,9 +65,8 @@ describe("发言资格（§21.2）", () => {
 
     const observer = makeParticipant("x", { speakingRights: "observer-only" });
     expect(
-      evaluateSpeakerEligibility(
-        makeEligibilityInput("x", session, { participant: observer }),
-      ).eligible,
+      evaluateSpeakerEligibility(makeEligibilityInput("x", session, { participant: observer }))
+        .eligible,
     ).toBe(false);
     expect(
       evaluateSpeakerEligibility(
@@ -80,9 +78,8 @@ describe("发言资格（§21.2）", () => {
   it("by-permission 需要点名或既有授权", () => {
     const restricted = makeParticipant("x", { speakingRights: "by-permission" });
     expect(
-      evaluateSpeakerEligibility(
-        makeEligibilityInput("x", session, { participant: restricted }),
-      ).reasons,
+      evaluateSpeakerEligibility(makeEligibilityInput("x", session, { participant: restricted }))
+        .reasons,
     ).toContain("PERMISSION_REQUIRED");
     expect(
       evaluateSpeakerEligibility(
@@ -99,9 +96,7 @@ describe("发言资格（§21.2）", () => {
   it("议题官职限制：不任要求官职者不可发言，点名可豁免", () => {
     const agendaItem = makeAgendaItem({ requiredOfficeIds: ["bing-bu-shang-shu"] });
     expect(
-      evaluateSpeakerEligibility(
-        makeEligibilityInput("x", session, { agendaItem }),
-      ).reasons,
+      evaluateSpeakerEligibility(makeEligibilityInput("x", session, { agendaItem })).reasons,
     ).toContain("AGENDA_OFFICE_REQUIRED");
     expect(
       evaluateSpeakerEligibility(
@@ -139,14 +134,13 @@ describe("发言资格（§21.2）", () => {
         reservedAt: "2026-07-26T00:00:00.000Z",
       },
     });
-    expect(
-      evaluateSpeakerEligibility(makeEligibilityInput("x", pendingSession)).reasons,
-    ).toContain("AGENT_REQUEST_PENDING");
+    expect(evaluateSpeakerEligibility(makeEligibilityInput("x", pendingSession)).reasons).toContain(
+      "AGENT_REQUEST_PENDING",
+    );
 
     expect(
-      evaluateSpeakerEligibility(
-        makeEligibilityInput("x", session, { topicAccess: "none" }),
-      ).reasons,
+      evaluateSpeakerEligibility(makeEligibilityInput("x", session, { topicAccess: "none" }))
+        .reasons,
     ).toContain("NO_TOPIC_ACCESS");
   });
 });
@@ -181,9 +175,7 @@ describe("Speaker Scheduler（§21.3）", () => {
       }),
       makeCandidate("selected", session, { eligibility: { emperorSelected: true } }),
     ]);
-    expect(
-      office.rankings.find((r) => r.characterId === "holder")?.officeResponsibility,
-    ).toBe(25);
+    expect(office.rankings.find((r) => r.characterId === "holder")?.officeResponsibility).toBe(25);
 
     const requested = scheduleNextSpeaker(session, agendaItem, [
       makeCandidate("asker", session, {
@@ -204,9 +196,7 @@ describe("Speaker Scheduler（§21.3）", () => {
         },
       }),
     ]);
-    expect(
-      challenged.rankings.find((r) => r.characterId === "target")?.challenged,
-    ).toBe(15);
+    expect(challenged.rankings.find((r) => r.characterId === "target")?.challenged).toBe(15);
   });
 
   it("刚发言者与发言次数多者受罚；谨慎人物有沉默倾向；立场多样性生效", () => {

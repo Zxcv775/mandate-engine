@@ -31,7 +31,11 @@ export function MeetingLab() {
     void meetingLabStore.getState().refreshSaves();
   }, []);
 
-  const canRun = state.session && ["in-progress", "waiting-for-player", "waiting-for-agent", "resolving"].includes(state.session.status);
+  const canRun =
+    state.session &&
+    ["in-progress", "waiting-for-player", "waiting-for-agent", "resolving"].includes(
+      state.session.status,
+    );
 
   return (
     <main className="mlab-shell">
@@ -41,14 +45,21 @@ export function MeetingLab() {
           <h1>Meeting Lab · 会议调试台</h1>
           <p>多人物议政编排的开发者测试界面；sealed 内容不在普通视图显示。</p>
         </div>
-        <button type="button" onClick={() => void state.refreshSaves()}>刷新存档</button>
+        <button type="button" onClick={() => void state.refreshSaves()}>
+          刷新存档
+        </button>
       </header>
 
       <section className="mlab-row">
         <label>
           存档
-          <select value={state.selectedSaveId ?? ""} onChange={(e) => void state.selectSave(e.target.value)}>
-            <option value="" disabled>选择存档</option>
+          <select
+            value={state.selectedSaveId ?? ""}
+            onChange={(e) => void state.selectSave(e.target.value)}
+          >
+            <option value="" disabled>
+              选择存档
+            </option>
             {state.saves.map((save) => (
               <option key={save.saveId} value={save.saveId}>
                 {save.title}（rev {save.headRevision}）
@@ -63,7 +74,9 @@ export function MeetingLab() {
             onChange={(e) => void state.refreshMeeting(e.target.value)}
             disabled={state.meetings.length === 0}
           >
-            <option value="" disabled>选择会议</option>
+            <option value="" disabled>
+              选择会议
+            </option>
             {state.meetings.map((meeting) => (
               <option key={meeting.meetingId} value={meeting.meetingId}>
                 {meeting.title}（{meeting.status}）
@@ -84,24 +97,38 @@ export function MeetingLab() {
         <div className="mlab-row">
           <label>
             类型
-            <select value={state.newType} onChange={(e) => state.setField("newType", e.target.value)}>
+            <select
+              value={state.newType}
+              onChange={(e) => state.setField("newType", e.target.value)}
+            >
               {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
             </select>
           </label>
           <label>
             标题
-            <input value={state.newTitle} onChange={(e) => state.setField("newTitle", e.target.value)} />
+            <input
+              value={state.newTitle}
+              onChange={(e) => state.setField("newTitle", e.target.value)}
+            />
           </label>
           <label>
             首个议程
-            <input value={state.newAgendaTitle} onChange={(e) => state.setField("newAgendaTitle", e.target.value)} />
+            <input
+              value={state.newAgendaTitle}
+              onChange={(e) => state.setField("newAgendaTitle", e.target.value)}
+            />
           </label>
         </div>
         <div className="mlab-participants">
           {state.characters.map((character) => (
-            <label key={character.characterId} className={character.availableForAudience ? "" : "disabled"}>
+            <label
+              key={character.characterId}
+              className={character.availableForAudience ? "" : "disabled"}
+            >
               <input
                 type="checkbox"
                 disabled={!character.availableForAudience}
@@ -112,7 +139,11 @@ export function MeetingLab() {
             </label>
           ))}
         </div>
-        <button type="button" disabled={state.busy || !state.selectedSaveId} onClick={() => void state.create()}>
+        <button
+          type="button"
+          disabled={state.busy || !state.selectedSaveId}
+          onClick={() => void state.create()}
+        >
           创建会议 + 议程
         </button>
       </section>
@@ -121,24 +152,58 @@ export function MeetingLab() {
         <section className="mlab-run">
           <h2>
             {state.session.title}
-            <span className="mlab-meta"> {TYPE_LABELS[state.session.type] ?? state.session.type}</span>
+            <span className="mlab-meta">
+              {" "}
+              {TYPE_LABELS[state.session.type] ?? state.session.type}
+            </span>
           </h2>
           {state.session.pendingPlayerAction ? (
-            <p className="mlab-pending">等待圣裁：{state.session.pendingPlayerAction.reason}（可用：{state.session.pendingPlayerAction.allowedActions.join("、")}）</p>
+            <p className="mlab-pending">
+              等待圣裁：{state.session.pendingPlayerAction.reason}（可用：
+              {state.session.pendingPlayerAction.allowedActions.join("、")}）
+            </p>
           ) : null}
           {state.lastDecision ? <p className="mlab-decision">{state.lastDecision}</p> : null}
 
           <div className="mlab-controls">
-            <button type="button" disabled={state.busy || state.session.status !== "scheduled"} onClick={() => void state.start()}>
+            <button
+              type="button"
+              disabled={state.busy || state.session.status !== "scheduled"}
+              onClick={() => void state.start()}
+            >
               开始会议
             </button>
-            <button type="button" disabled={state.busy || !canRun} onClick={() => void state.step()}>
+            <button
+              type="button"
+              disabled={state.busy || !canRun}
+              onClick={() => void state.step()}
+            >
               推进一步
             </button>
-            <button type="button" disabled={state.busy || !canRun} onClick={() => void state.pause()}>暂停</button>
-            <button type="button" disabled={state.busy || state.session.status !== "paused"} onClick={() => void state.resume()}>恢复</button>
-            <button type="button" disabled={state.busy || !canRun} onClick={() => void state.conclude()}>结束会议</button>
-            <button type="button" disabled={state.busy} onClick={() => void state.loadLeak()}>泄密评估(Debug)</button>
+            <button
+              type="button"
+              disabled={state.busy || !canRun}
+              onClick={() => void state.pause()}
+            >
+              暂停
+            </button>
+            <button
+              type="button"
+              disabled={state.busy || state.session.status !== "paused"}
+              onClick={() => void state.resume()}
+            >
+              恢复
+            </button>
+            <button
+              type="button"
+              disabled={state.busy || !canRun}
+              onClick={() => void state.conclude()}
+            >
+              结束会议
+            </button>
+            <button type="button" disabled={state.busy} onClick={() => void state.loadLeak()}>
+              泄密评估(Debug)
+            </button>
           </div>
 
           <div className="mlab-actions">
@@ -147,13 +212,18 @@ export function MeetingLab() {
               value={state.actionText}
               onChange={(e) => state.setField("actionText", e.target.value)}
             />
-            <select value={state.targetCharacterId ?? ""} onChange={(e) => state.setTarget(e.target.value || undefined)}>
+            <select
+              value={state.targetCharacterId ?? ""}
+              onChange={(e) => state.setTarget(e.target.value || undefined)}
+            >
               <option value="">（不指定人物）</option>
-              {state.session.participantIds.filter((id) => id !== "emperor").map((id) => (
-                <option key={id} value={id}>
-                  {state.characters.find((c) => c.characterId === id)?.name ?? id}
-                </option>
-              ))}
+              {state.session.participantIds
+                .filter((id) => id !== "emperor")
+                .map((id) => (
+                  <option key={id} value={id}>
+                    {state.characters.find((c) => c.characterId === id)?.name ?? id}
+                  </option>
+                ))}
             </select>
             <button
               type="button"
@@ -165,14 +235,26 @@ export function MeetingLab() {
             <button
               type="button"
               disabled={state.busy || !canRun || !state.targetCharacterId}
-              onClick={() => void state.act({ type: "ask-character", characterId: state.targetCharacterId, text: state.actionText })}
+              onClick={() =>
+                void state.act({
+                  type: "ask-character",
+                  characterId: state.targetCharacterId,
+                  text: state.actionText,
+                })
+              }
             >
               点名垂询
             </button>
             <button
               type="button"
               disabled={state.busy || !canRun || !state.targetCharacterId}
-              onClick={() => void state.act({ type: "interrupt-character", characterId: state.targetCharacterId, text: state.actionText })}
+              onClick={() =>
+                void state.act({
+                  type: "interrupt-character",
+                  characterId: state.targetCharacterId,
+                  text: state.actionText,
+                })
+              }
             >
               打断
             </button>
@@ -187,10 +269,16 @@ export function MeetingLab() {
                     <span className="mlab-turn-tag">
                       #{turn.turnNumber} {TURN_TYPE_LABELS[turn.type] ?? turn.type}
                     </span>
-                    <strong>{state.characters.find((c) => c.characterId === turn.speakerId)?.name ?? (turn.speakerId === "emperor" ? "皇帝" : turn.speakerId)}</strong>
+                    <strong>
+                      {state.characters.find((c) => c.characterId === turn.speakerId)?.name ??
+                        (turn.speakerId === "emperor" ? "皇帝" : turn.speakerId)}
+                    </strong>
                     ：{turn.publicText}
                     {turn.providerTrace ? (
-                      <span className="mlab-trace">（{turn.providerTrace.provider}，{turn.providerTrace.durationMs}ms{turn.providerTrace.repaired ? "，已修复" : ""}）</span>
+                      <span className="mlab-trace">
+                        （{turn.providerTrace.provider}，{turn.providerTrace.durationMs}ms
+                        {turn.providerTrace.repaired ? "，已修复" : ""}）
+                      </span>
                     ) : null}
                   </li>
                 ))}
@@ -201,14 +289,16 @@ export function MeetingLab() {
               <ul className="mlab-outcomes">
                 {state.outcomes.map((outcome) => (
                   <li key={outcome.outcomeCandidateId}>
-                    <span className={`mlab-status mlab-${outcome.status}`}>{outcome.status}</span>
-                    [{outcome.type}] {outcome.title}
+                    <span className={`mlab-status mlab-${outcome.status}`}>{outcome.status}</span>[
+                    {outcome.type}] {outcome.title}
                     {outcome.unsupportedCommand ? "（仅建议）" : "（可执行）"}
                     {outcome.status === "presented" || outcome.status === "draft" ? (
                       <button
                         type="button"
                         disabled={state.busy}
-                        onClick={() => void state.rule(outcome.agendaItemId, [outcome.outcomeCandidateId])}
+                        onClick={() =>
+                          void state.rule(outcome.agendaItemId, [outcome.outcomeCandidateId])
+                        }
                       >
                         准行
                       </button>
@@ -219,7 +309,9 @@ export function MeetingLab() {
               <h3>议程</h3>
               <ul>
                 {state.agenda.map((item) => (
-                  <li key={item.agendaItemId}>{item.title}（{item.status}）</li>
+                  <li key={item.agendaItemId}>
+                    {item.title}（{item.status}）
+                  </li>
                 ))}
               </ul>
               {state.leak !== undefined ? (
@@ -234,7 +326,9 @@ export function MeetingLab() {
       ) : null}
 
       {state.error ? <p className="mlab-error">{state.error}</p> : null}
-      <footer>会议发言不是世界事实；只有圣裁准行的白名单候选才会经 StateEngine 变更 GameState。</footer>
+      <footer>
+        会议发言不是世界事实；只有圣裁准行的白名单候选才会经 StateEngine 变更 GameState。
+      </footer>
     </main>
   );
 }

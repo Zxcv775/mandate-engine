@@ -5,23 +5,23 @@
 
 ## 总表
 
-| 方面 | 选择 | 替代方案 |
-|---|---|---|
-| 编程语言 | TypeScript 5（strict，ESM） | JavaScript、Python |
-| 前端框架 | React 19 + Vite 7 | Vue、Svelte |
-| 前端状态管理 | Zustand | Redux Toolkit、Jotai |
-| 后端框架 | Fastify 5 | Hono、Express、NestJS |
-| 数据库 | SQLite（node:sqlite 内置） | better-sqlite3、PostgreSQL、纯 JSON 文件 |
-| ORM/数据访问 | 薄仓储层（无 ORM） | Drizzle、Prisma |
-| Schema 校验 | Zod | TypeBox、Valibot |
-| 测试框架 | Vitest | Jest、node:test |
-| LLM SDK | 自研薄接口 + 内置 fetch（OpenAI 兼容） | openai SDK、Vercel AI SDK |
-| 日志 | pino | winston、console |
-| 配置管理 | dotenv + Zod 校验 | convict、手写 process.env |
-| Monorepo | npm 11 workspaces | pnpm、Turborepo、Nx |
-| 代码质量 | ESLint 9（flat）+ Prettier | Biome、oxlint |
-| TS 运行器（开发期服务端） | tsx | ts-node、--experimental-strip-types |
-| 形态 | 网页版优先（预留 Tauri） | Electron、纯 CLI |
+| 方面                      | 选择                                   | 替代方案                                 |
+| ------------------------- | -------------------------------------- | ---------------------------------------- |
+| 编程语言                  | TypeScript 5（strict，ESM）            | JavaScript、Python                       |
+| 前端框架                  | React 19 + Vite 7                      | Vue、Svelte                              |
+| 前端状态管理              | Zustand                                | Redux Toolkit、Jotai                     |
+| 后端框架                  | Fastify 5                              | Hono、Express、NestJS                    |
+| 数据库                    | SQLite（node:sqlite 内置）             | better-sqlite3、PostgreSQL、纯 JSON 文件 |
+| ORM/数据访问              | 薄仓储层（无 ORM）                     | Drizzle、Prisma                          |
+| Schema 校验               | Zod                                    | TypeBox、Valibot                         |
+| 测试框架                  | Vitest                                 | Jest、node:test                          |
+| LLM SDK                   | 自研薄接口 + 内置 fetch（OpenAI 兼容） | openai SDK、Vercel AI SDK                |
+| 日志                      | pino                                   | winston、console                         |
+| 配置管理                  | dotenv + Zod 校验                      | convict、手写 process.env                |
+| Monorepo                  | npm 11 workspaces                      | pnpm、Turborepo、Nx                      |
+| 代码质量                  | ESLint 9（flat）+ Prettier             | Biome、oxlint                            |
+| TS 运行器（开发期服务端） | tsx                                    | ts-node、--experimental-strip-types      |
+| 形态                      | 网页版优先（预留 Tauri）               | Electron、纯 CLI                         |
 
 ## 逐项说明
 
@@ -129,26 +129,26 @@
 
 ## 版本基线（Phase 2 固定）
 
-| 依赖 | 版本范围 |
-|---|---|
-| node | 24.18.0（`.nvmrc`；Phase 2 的 node:sqlite 基线） |
-| npm | 11.16.0（`packageManager`） |
-| typescript | ^5.5 |
-| react / react-dom | ^19 |
-| vite | ^7（与 vitest 的 vite 主版本对齐，避免双主版本类型冲突） |
-| @vitejs/plugin-react | ^5 |
-| zustand | ^5 |
-| fastify | ^5 |
-| zod | ^4 |
-| tsx | ^4 |
-| vitest | ^3 |
-| eslint / @eslint/js | ^9 |
-| typescript-eslint | ^8 |
-| eslint-config-prettier | ^9.1 |
-| prettier | ^3 |
-| dotenv | ^16.4 |
-| @types/node | ^24 |
-| fflate | ^0.8（`.mesave` ZIP 容器；无原生依赖） |
+| 依赖                   | 版本范围                                                 |
+| ---------------------- | -------------------------------------------------------- |
+| node                   | 24.18.0（`.nvmrc`；Phase 2 的 node:sqlite 基线）         |
+| npm                    | 11.16.0（`packageManager`）                              |
+| typescript             | ^5.5                                                     |
+| react / react-dom      | ^19                                                      |
+| vite                   | ^7（与 vitest 的 vite 主版本对齐，避免双主版本类型冲突） |
+| @vitejs/plugin-react   | ^5                                                       |
+| zustand                | ^5                                                       |
+| fastify                | ^5                                                       |
+| zod                    | ^4                                                       |
+| tsx                    | ^4                                                       |
+| vitest                 | ^3                                                       |
+| eslint / @eslint/js    | ^9                                                       |
+| typescript-eslint      | ^8                                                       |
+| eslint-config-prettier | ^9.1                                                     |
+| prettier               | ^3                                                       |
+| dotenv                 | ^16.4                                                    |
+| @types/node            | ^24                                                      |
+| fflate                 | ^0.8（`.mesave` ZIP 容器；无原生依赖）                   |
 
 ## Phase 1 的最小工具选择
 

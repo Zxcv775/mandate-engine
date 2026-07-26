@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { EngineMeetingTypeSchema, MeetingPlayerActionSchema, MeetingVisibilitySchema } from "./meeting-runtime";
+import {
+  EngineMeetingTypeSchema,
+  MeetingPlayerActionSchema,
+  MeetingVisibilitySchema,
+} from "./meeting-runtime";
 
 /**
  * 会议 API 契约（Phase 4，§18）。
@@ -7,11 +11,13 @@ import { EngineMeetingTypeSchema, MeetingPlayerActionSchema, MeetingVisibilitySc
  * 普通 API 的 Transcript 投影不含 sealed/private 回合。
  */
 
-const IdSchema = z.string().trim().min(1).regex(/^[A-Za-z0-9_.:-]+$/);
+const IdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z0-9_.:-]+$/);
 
-export const MeetingIdParamsSchema = z
-  .object({ saveId: IdSchema, meetingId: IdSchema })
-  .strict();
+export const MeetingIdParamsSchema = z.object({ saveId: IdSchema, meetingId: IdSchema }).strict();
 
 export const CreateMeetingRequestSchema = z
   .object({
