@@ -58,6 +58,8 @@ export interface MeetingPromptContext {
     readonly speakerLabel: string;
     readonly text: string;
   }[];
+  /** Phase 5：议程关联的政策模板（供人物荐策引用；渲染入议程段） */
+  readonly relatedPolicyTemplateIds?: readonly string[];
   readonly budget?: MeetingContextBudget;
 }
 

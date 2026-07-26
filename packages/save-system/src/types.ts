@@ -33,6 +33,8 @@ export interface CommitResult {
 export interface CommitTransitionOptions {
   preCommitCheckpoint?: CheckpointInput;
   validateBeforeCommit?: () => void;
+  /** Phase 5：与状态变更同事务的附加写入（政策明细/奏报等 append-only 表） */
+  extraWrites?: () => void;
 }
 
 export interface CheckpointInput {

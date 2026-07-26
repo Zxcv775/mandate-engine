@@ -635,6 +635,8 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
           "UPDATE command_transactions SET status = 'committed', summary_json = ?, committed_at = ? WHERE tx_id = ?",
         )
         .run(stableStringify(result), now, txId);
+      // Phase 5：同事务附加写入（政策结算明细/奏报/偏差留痕，与状态变更原子）
+      options.extraWrites?.();
       options.validateBeforeCommit?.();
       this.database.exec("RELEASE finalize");
       this.database.exec("COMMIT");

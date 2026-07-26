@@ -210,6 +210,48 @@ const MEETING_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ig
   { table: "meeting_leak_assessments", strategy: "replace" },
 ];
 
+/** Phase 5：政策明细表随存档导入导出（append-only → 主键去重合并） */
+const POLICY_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ignore" }[] = [
+  { table: "policy_stage_results", strategy: "ignore" },
+  { table: "policy_reports", strategy: "ignore" },
+  { table: "policy_deviation_log", strategy: "ignore" },
+];
+
+function copyPolicyRows(
+  source: DatabaseSync,
+  target: DatabaseSync,
+  saveId: string,
+  remap?: { forkSaveId: string },
+): void {
+  const prefix = remap ? `fork_${remap.forkSaveId.slice(-12)}_` : "";
+  for (const { table, strategy } of POLICY_IMPORT_TABLES) {
+    if (!tableExists(source, table)) continue;
+    const rows = source
+      .prepare(`SELECT * FROM ${table} WHERE save_id = ?`)
+      .all(saveId) as unknown as Array<Record<string, SQLInputValue>>;
+    if (rows.length === 0) continue;
+    const columns = Object.keys(rows[0]!);
+    const primaryKey =
+      table === "policy_stage_results"
+        ? "result_id"
+        : table === "policy_reports"
+          ? "report_id"
+          : "deviation_id";
+    const insert = target.prepare(
+      `INSERT OR ${strategy === "replace" ? "REPLACE" : "IGNORE"} INTO ${table}
+       (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+    );
+    for (const row of rows) {
+      const mapped = { ...row };
+      if (remap) {
+        mapped.save_id = remap.forkSaveId;
+        mapped[primaryKey] = `${prefix}${String(row[primaryKey])}`;
+      }
+      insert.run(...columns.map((column) => mapped[column] ?? null));
+    }
+  }
+}
+
 function copyMeetingRows(source: DatabaseSync, target: DatabaseSync, saveId: string): void {
   for (const { table, strategy } of MEETING_IMPORT_TABLES) {
     if (!tableExists(source, table)) continue;
@@ -422,6 +464,7 @@ export async function importVerifiedPackage(
         }
         copyMemoryRows(importedDatabase, local.database, parsed.manifest.saveId);
         copyMeetingRows(importedDatabase, local.database, parsed.manifest.saveId);
+        copyPolicyRows(importedDatabase, local.database, parsed.manifest.saveId);
         recordImport(
           local.database,
           parsed.manifest.saveId,
@@ -504,6 +547,7 @@ export async function importVerifiedPackage(
         // 记忆行按主键去重合并（同世界线快进：本地已有行保持不变）
         copyMemoryRows(importedDatabase, local.database, importedRow.save_id);
         copyMeetingRows(importedDatabase, local.database, importedRow.save_id);
+        copyPolicyRows(importedDatabase, local.database, importedRow.save_id);
         local.database
           .prepare(
             `UPDATE saves SET title = ?, status = ?, head_revision = ?, schema_version = ?,
@@ -584,6 +628,10 @@ export async function importVerifiedPackage(
       copyMemoryRows(importedDatabase, local.database, importedRow.save_id, {
         targetSaveId: forkSaveId,
         rewritePrimaryKeyPrefix: `fork_${forkSaveId.slice(-12)}_`,
+      });
+      // fork：政策明细同样随世界线复制（主键前缀重写）
+      copyPolicyRows(importedDatabase, local.database, importedRow.save_id, {
+        forkSaveId,
       });
       recordImport(
         local.database,

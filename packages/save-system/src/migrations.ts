@@ -382,6 +382,65 @@ CREATE INDEX idx_meeting_outcomes_meeting ON meeting_outcome_candidates(meeting_
 PRAGMA user_version = 3;
 `;
 
+/**
+ * Phase 5 政策明细存储（ADR-025）：append-only 明细与文书。
+ * 政策运行态本体在 GameState（随快照/回放/回滚走）——这些表只存
+ * 阶段结算 breakdown、奏报文书与执行偏差记录，带 saveId/policyId/tick/revision 锚点。
+ */
+const POLICY_SCHEMA = `
+CREATE TABLE policy_stage_results (
+  result_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  policy_id TEXT NOT NULL,
+  tick INTEGER NOT NULL CHECK (tick >= 0),
+  revision INTEGER NOT NULL CHECK (revision >= 0),
+  stage_index INTEGER NOT NULL CHECK (stage_index >= 0),
+  funding_ratio REAL NOT NULL CHECK (funding_ratio BETWEEN 0 AND 1),
+  breakdown_json TEXT NOT NULL CHECK (json_valid(breakdown_json)),
+  real_delta REAL NOT NULL,
+  reported_delta REAL NOT NULL,
+  rule_trace_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(rule_trace_json)),
+  notes_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(notes_json)),
+  created_at TEXT NOT NULL,
+  UNIQUE (save_id, policy_id, tick)
+) STRICT;
+
+CREATE TABLE policy_reports (
+  report_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  policy_id TEXT NOT NULL,
+  tick INTEGER NOT NULL CHECK (tick >= 0),
+  revision INTEGER NOT NULL CHECK (revision >= 0),
+  stage_index INTEGER NOT NULL CHECK (stage_index >= 0),
+  reported_stage_progress INTEGER NOT NULL CHECK (reported_stage_progress BETWEEN 0 AND 100),
+  reported_overall_progress INTEGER NOT NULL CHECK (reported_overall_progress BETWEEN 0 AND 100),
+  audience TEXT NOT NULL CHECK (audience IN ('public', 'hidden')),
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE policy_deviation_log (
+  deviation_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  policy_id TEXT NOT NULL,
+  tick INTEGER NOT NULL CHECK (tick >= 0),
+  revision INTEGER NOT NULL CHECK (revision >= 0),
+  deviation_type TEXT NOT NULL CHECK (deviation_type IN (
+    'delay', 'surface-compliance', 'falsified-figures',
+    'overzealous-execution', 'selective-execution', 'corruption-loss')),
+  magnitude INTEGER NOT NULL CHECK (magnitude BETWEEN 0 AND 100),
+  real_deviation TEXT NOT NULL,
+  discovered INTEGER NOT NULL DEFAULT 0 CHECK (discovered IN (0, 1)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX idx_policy_stage_results ON policy_stage_results(save_id, policy_id, tick);
+CREATE INDEX idx_policy_reports ON policy_reports(save_id, policy_id, audience, tick);
+CREATE INDEX idx_policy_deviation_log ON policy_deviation_log(save_id, policy_id, tick);
+
+PRAGMA user_version = 4;
+`;
+
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
     id: "001-initial-save-schema",
@@ -403,6 +462,13 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
     fromVersion: 2,
     toVersion: 3,
     sql: MEETING_SCHEMA,
+  },
+  {
+    id: "004-policy-details",
+    appVersion: "0.5.0",
+    fromVersion: 3,
+    toVersion: 4,
+    sql: POLICY_SCHEMA,
   },
 ];
 

@@ -244,3 +244,97 @@ export const PolicyTruthSchema = z
   })
   .strict();
 export type PolicyTruth = z.infer<typeof PolicyTruthSchema>;
+
+/**
+ * 执行偏差配置（ADR-025）：触发概率与幅度全部数据驱动可注入；
+ * 概率 = base + moralFlexibility×moralWeight − loyalty×loyaltyWeight（0..1 clamp）。
+ * 默认值为设计占位（gameplay-adjusted），Phase 12 平衡。
+ */
+export interface PolicyDeviationTypeConfig {
+  readonly baseProbability: number;
+  readonly moralWeight: number;
+  readonly loyaltyWeight: number;
+  readonly magnitudeRange: readonly [number, number];
+}
+
+export type PolicyDeviationConfig = Readonly<
+  Record<PolicyDeviationType, PolicyDeviationTypeConfig>
+>;
+
+export const DEFAULT_POLICY_DEVIATION_CONFIG: PolicyDeviationConfig = {
+  delay: {
+    baseProbability: 0.06,
+    moralWeight: 0.001,
+    loyaltyWeight: 0.0005,
+    magnitudeRange: [3, 12],
+  },
+  "surface-compliance": {
+    baseProbability: 0.04,
+    moralWeight: 0.0012,
+    loyaltyWeight: 0.0006,
+    magnitudeRange: [20, 50],
+  },
+  "falsified-figures": {
+    baseProbability: 0.03,
+    moralWeight: 0.0015,
+    loyaltyWeight: 0.0008,
+    magnitudeRange: [10, 35],
+  },
+  "overzealous-execution": {
+    baseProbability: 0.03,
+    moralWeight: 0.0004,
+    loyaltyWeight: -0.0004,
+    magnitudeRange: [10, 30],
+  },
+  "selective-execution": {
+    baseProbability: 0.04,
+    moralWeight: 0.0008,
+    loyaltyWeight: 0.0004,
+    magnitudeRange: [20, 40],
+  },
+  "corruption-loss": {
+    baseProbability: 0.05,
+    moralWeight: 0.002,
+    loyaltyWeight: 0.001,
+    magnitudeRange: [5, 20],
+  },
+};
+
+/** 单 tick 结算的系数分解（明细表与 Debug API 契约） */
+export const PolicyResolutionBreakdownSchema = z
+  .object({
+    adminFactor: z.number(),
+    competenceFactor: z.number(),
+    loyaltyFactor: z.number(),
+    stressFactor: z.number(),
+    difficultyFactor: z.number(),
+    legitimacyFactor: z.number(),
+    fundingFactor: z.number(),
+    resistancePenalty: z.number(),
+    efficiencyMultiplier: z.number(),
+    disturbance: z.number(),
+    coefficient: z.number(),
+  })
+  .strict();
+export type PolicyResolutionBreakdown = z.infer<typeof PolicyResolutionBreakdownSchema>;
+
+/** 公开奏报（玩家可读；准确度受偏差影响） */
+export const PolicyReportSchema = z
+  .object({
+    reportId: IdSchema,
+    policyId: IdSchema,
+    saveId: IdSchema,
+    tick: NonNegativeInt,
+    revision: NonNegativeInt,
+    /** 奏报口径进度（可能失真） */
+    reportedStageProgress: PercentSchema,
+    reportedOverallProgress: PercentSchema,
+    stageIndex: NonNegativeInt,
+    /** 结构化模板文言（Phase 5 不做 LLM 叙事化） */
+    text: TextSchema,
+    /** hidden 真实记录（仅 Debug；safe_share 剥离该字段所在行） */
+    audience: z.enum(["public", "hidden"]),
+    createdAt: z.iso.datetime(),
+  })
+  .strict();
+export type PolicyReport = z.infer<typeof PolicyReportSchema>;

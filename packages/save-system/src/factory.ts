@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 import { openSaveDatabase } from "./database";
 import { CharacterMemoryRepository } from "./character-memory-repository";
 import { MeetingRepository } from "./meeting-repository";
+import { PolicyDetailRepository } from "./policy-repository";
 import { SqliteSaveRepository } from "./repository";
 import { GameStateService } from "./service";
 import type { CommitFailureStage } from "./types";
@@ -28,6 +29,7 @@ export interface SaveSystem {
   service: GameStateService;
   characterMemories: CharacterMemoryRepository;
   meetings: MeetingRepository;
+  policyDetails: PolicyDetailRepository;
   close(): void;
 }
 
@@ -45,11 +47,13 @@ export function createSaveSystem(options: CreateSaveSystemOptions): SaveSystem {
     checkpointInterval,
     ...(options.failureInjector ? { failureInjector: options.failureInjector } : {}),
   });
+  const policyDetails = new PolicyDetailRepository(database, clock);
   const service = new GameStateService({
     repository,
     scenarioLoader: options.scenarioLoader ?? createScenarioLoader(),
     clock,
     stateEngine: options.stateEngine ?? new StateEngine({ clock }),
+    policyDetails,
   });
   const characterMemories = options.memoryIdFactory
     ? new CharacterMemoryRepository(database, clock, options.memoryIdFactory)
@@ -61,6 +65,7 @@ export function createSaveSystem(options: CreateSaveSystemOptions): SaveSystem {
     service,
     characterMemories,
     meetings,
+    policyDetails,
     close: () => database.close(),
   };
 }

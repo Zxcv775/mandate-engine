@@ -30,6 +30,7 @@ import {
   planPolicySuspend,
   type PolicyCommandAssets,
 } from "./policy-commands";
+import { planPolicyResolution, type PolicyResolutionArtifacts } from "./policy-resolution";
 import { applyMutations, invertMutation, validateMutatedState } from "./mutation";
 import { createDeterministicRandomSource, type RandomSource } from "./rng";
 import { hashState } from "./stable-json";
@@ -64,6 +65,8 @@ export interface StateTransition {
   afterHash: string;
   rngCursorBefore: number;
   rngCursorAfter: number;
+  /** Phase 5：政策结算明细（time.advance / policy.resolve-tick 时产生，供同事务落明细表） */
+  policyResolution?: PolicyResolutionArtifacts;
 }
 
 function mutation(
@@ -243,14 +246,15 @@ export class StateEngine {
 
     const random = createDeterministicRandomSource(state.rng.seed, state.rng.cursor);
     const mutations: ProposedMutation[] = [];
+    let policyResolution: PolicyResolutionArtifacts | undefined;
     if (command.commandType === "country.adjust-resource") {
       mutations.push(...planResourceAdjustment(state, command));
     } else if (command.commandType === "character.assign-office") {
       mutations.push(...planOfficeAssignment(state, command));
     } else if (command.commandType === "time.advance") {
-      const context: TimeAdvanceContext = { state, command, random, clock: this.clock };
+      const hookContext: TimeAdvanceContext = { state, command, random, clock: this.clock };
       for (const hook of this.timeAdvanceHooks) {
-        mutations.push(...(hook.onBeforeAdvance?.(context) ?? []));
+        mutations.push(...(hook.onBeforeAdvance?.(hookContext) ?? []));
       }
       mutations.push(
         mutation({
@@ -273,8 +277,37 @@ export class StateEngine {
         }),
       );
       for (const hook of this.timeAdvanceHooks) {
-        mutations.push(...(hook.onAfterAdvance?.(context) ?? []));
+        mutations.push(...(hook.onAfterAdvance?.(hookContext) ?? []));
       }
+      // Phase 5：政策结算与时间推进同一事务原子提交（ADR-025）
+      if (context.policyAssets) {
+        const afterTime = applyMutations(state, mutations);
+        const newTick = state.tick + command.payload.days;
+        const resolution = planPolicyResolution(afterTime, newTick, context.policyAssets, {
+          saveId: state.saveId,
+          commitRevision: state.revision + 1,
+          nowIso: this.clock.now().toISOString(),
+          elapsedTicks: command.payload.days,
+        });
+        mutations.push(...resolution.mutations);
+        policyResolution = resolution.artifacts;
+      }
+    } else if (command.commandType === "policy.resolve-tick") {
+      // 仅 Debug/测试：不推进时间，按当前 tick 结算一次
+      const assets = context.policyAssets;
+      if (!assets) {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          "policy.resolve-tick 需要装配政策资产（templates/rules）",
+        );
+      }
+      const resolution = planPolicyResolution(state, state.tick, assets, {
+        saveId: state.saveId,
+        commitRevision: state.revision + 1,
+        nowIso: this.clock.now().toISOString(),
+      });
+      mutations.push(...resolution.mutations);
+      policyResolution = resolution.artifacts;
     } else if (command.commandType === "meeting.create") {
       mutations.push(...planMeetingCreate(state, command));
     } else if (command.commandType === "meeting.start") {
@@ -310,7 +343,7 @@ export class StateEngine {
       } else {
         throw new StateEngineError(
           "COMMAND_NOT_SUPPORTED",
-          `政策命令 ${command.commandType} 尚未接入（policy.resolve-tick 于 M3 结算引擎实现）`,
+          `政策命令 ${command.commandType} 未接入白名单`,
         );
       }
     } else {
@@ -365,6 +398,7 @@ export class StateEngine {
       afterHash: hashState(nextState),
       rngCursorBefore: state.rng.cursor,
       rngCursorAfter: nextState.rng.cursor,
+      ...(policyResolution === undefined ? {} : { policyResolution }),
     };
   }
 

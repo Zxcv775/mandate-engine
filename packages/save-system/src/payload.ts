@@ -88,6 +88,11 @@ function updateExportCopy(
       dropIfExists(
         "DELETE FROM meeting_sessions WHERE visibility = 'sealed' OR type = 'secret-council'",
       );
+      // Phase 5：真实执行明细（偏差/系数分解/内档奏报）绝不出境（ADR-025）；
+      // hidden.policyTruth 已随 state.hidden 清空
+      dropIfExists("DELETE FROM policy_deviation_log");
+      dropIfExists("DELETE FROM policy_stage_results");
+      dropIfExists("DELETE FROM policy_reports WHERE audience = 'hidden'");
     }
     const title =
       options.safeShareMode === "safe_share" ? redactSensitiveString(row.title) : row.title;

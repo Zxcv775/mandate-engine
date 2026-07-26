@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mandate/domain": "*",
-    "@mandate/rule-engine": "*"
+    "@mandate/rule-engine": "*",
+    "@mandate/shared": "*"
   }
 }

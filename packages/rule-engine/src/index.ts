@@ -15,3 +15,4 @@ export * from "./interpreter";
 export * from "./effects";
 export * from "./registry";
 export * from "./legality";
+export * from "./resolution";

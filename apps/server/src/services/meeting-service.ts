@@ -120,6 +120,8 @@ interface ScenarioTemplates {
   characters: CharacterTemplate[];
   offices: Office[];
   institutions: Institution[];
+  /** Phase 5：政策模板 ID（recommend-policy 候选映射用） */
+  policyTemplateIds: string[];
 }
 
 const RESPONSE_MODE_LABELS: Record<CharacterResponseMode, string> = {
@@ -176,6 +178,7 @@ export class MeetingService {
         characters: structuredClone(bundle.characters) as CharacterTemplate[],
         offices: structuredClone(bundle.offices) as Office[],
         institutions: structuredClone(bundle.institutions) as Institution[],
+        policyTemplateIds: bundle.policyTemplates.map((template) => template.id),
       }));
       this.templatesByScenario.set(scenarioId, cached);
     }
@@ -692,6 +695,9 @@ export class MeetingService {
           currentTurnNumber: session.turnNumber,
           responseModeLabel: RESPONSE_MODE_LABELS[request.responseMode],
           ...(request.responseMode === "answer" ? { addressedByLabel: "皇帝" } : {}),
+          relatedPolicyTemplateIds: (agendaItem?.relatedEntityIds ?? []).filter((id) =>
+            templates.policyTemplateIds.includes(id),
+          ),
           transcript: visibleTurns.map((turn) => ({
             turnId: turn.turnId,
             speakerLabel: labels[turn.speakerId] ?? turn.speakerId,
@@ -781,7 +787,14 @@ export class MeetingService {
         status: agendaItem.status === "open" ? "discussing" : agendaItem.status,
       });
     }
-    this.recordOutcomeCandidates(next, state, turn, output);
+    this.recordOutcomeCandidates(
+      next,
+      state,
+      turn,
+      output,
+      templates.policyTemplateIds,
+      agendaItem,
+    );
     this.persistAgentMemories(saveId, request.characterId, state.revision, output);
     this.options.logger.info({
       event: "meeting_agent_turn",
@@ -816,7 +829,9 @@ export class MeetingService {
     if (session.meetingVersion !== input.expectedMeetingVersion) {
       throw new ApiError(409, "MEETING_VERSION_STALE", "meetingVersion 过期");
     }
-    let { state } = await this.loadSaveContext(saveId);
+    const context = await this.loadSaveContext(saveId);
+    let state = context.state;
+    const policyTemplateIds = context.templates.policyTemplateIds;
     this.assertRevision(state, input.expectedRevision);
 
     const agendaItem = this.requireAgenda(meetingId, input.agendaItemId);
@@ -839,7 +854,7 @@ export class MeetingService {
     let baseRevision = state.revision;
     let acceptedCommands = 0;
     for (const candidate of selected) {
-      const mapping = mapOutcomeToCommand(candidate, state);
+      const mapping = mapOutcomeToCommand(candidate, state, { policyTemplateIds });
       if (!mapping.ok) {
         if (candidate.type === "no-action" || candidate.type === "agenda-deferral") {
           continue; // 无命令语义的候选：接受即记录
@@ -1234,6 +1249,8 @@ export class MeetingService {
     state: GameState,
     turn: MeetingTurnRecord,
     output: MeetingCharacterOutput,
+    policyTemplateIds: readonly string[] = [],
+    agendaItem?: MeetingAgendaItem,
   ): void {
     if (!session.currentAgendaItemId && !turn.agendaItemId) return;
     const agendaItemId = turn.agendaItemId ?? session.currentAgendaItemId!;
@@ -1242,6 +1259,12 @@ export class MeetingService {
       const targetCharacter = action.targetEntityIds.find((id) => state.characters[id]);
       const isAppointment = action.type === "recommend-appointment" && targetCharacter;
       const targetOffice = action.targetEntityIds.find((id) => state.offices[id]);
+      // Phase 5：荐策命中已装载政策模板（发言引用或议程关联实体）→ 生成 policy.propose 预览
+      const policyTemplateId =
+        action.type === "recommend-policy"
+          ? (action.targetEntityIds.find((id) => policyTemplateIds.includes(id)) ??
+            agendaItem?.relatedEntityIds.find((id) => policyTemplateIds.includes(id)))
+          : undefined;
       const candidateType =
         action.type === "recommend-appointment"
           ? targetOffice
@@ -1263,7 +1286,12 @@ export class MeetingService {
               reason: action.summary,
             },
           }
-        : undefined;
+        : policyTemplateId
+          ? {
+              commandType: "policy.propose",
+              payload: { templateId: policyTemplateId, reason: action.summary },
+            }
+          : undefined;
       const candidate: MeetingOutcomeCandidate = {
         outcomeCandidateId: `outcome_${this.idFactory()}`,
         meetingId: session.meetingId,

@@ -2,6 +2,7 @@ export * from "./character-memory-repository";
 export * from "./database";
 export * from "./errors";
 export * from "./meeting-repository";
+export * from "./policy-repository";
 export * from "./factory";
 export * from "./importer";
 export * from "./migrations";

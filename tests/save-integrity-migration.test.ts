@@ -79,10 +79,11 @@ describe("forward-only state migrations", () => {
     const rows = system.database
       .prepare("SELECT migration_id, checksum FROM schema_migrations ORDER BY migration_id")
       .all() as Array<{ migration_id: string; checksum: string }>;
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
     expect(rows[0]).toMatchObject({ migration_id: "001-initial-save-schema" });
     expect(rows[1]).toMatchObject({ migration_id: "002-character-memories" });
     expect(rows[2]).toMatchObject({ migration_id: "003-meeting-orchestration" });
+    expect(rows[3]).toMatchObject({ migration_id: "004-policy-details" });
     for (const row of rows) {
       expect(row.checksum).toMatch(/^[a-f0-9]{64}$/);
     }

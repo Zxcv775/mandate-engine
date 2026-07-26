@@ -33,10 +33,12 @@ function defaultMockHandler(messages: LLMMessage[]): string {
       回应他人: "rebuttal",
       警示: "warning",
     };
+    const policyTemplateId = /议程关联政策模板：([A-Za-z0-9_-]+)/.exec(text)?.[1];
     return JSON.stringify(
       buildMockMeetingOutput("support", {
         mode,
         responseType: (modeLabel ? labelMap[modeLabel] : undefined) ?? "speech",
+        ...(policyTemplateId === undefined ? {} : { policyTemplateId }),
       }),
     );
   }

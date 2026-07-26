@@ -43,6 +43,7 @@ import { importVerifiedPackage } from "./importer";
 import { buildSavePackage, parseSavePackage } from "./package-format";
 import { createExportPayload } from "./payload";
 import type { SqliteSaveRepository } from "./repository";
+import type { PolicyDetailRepository } from "./policy-repository";
 import { redactSensitiveString, redactSensitiveValue } from "./security";
 import {
   STATE_DOCUMENT_MIGRATIONS,
@@ -64,6 +65,8 @@ export interface GameStateServiceOptions {
   scenarioLoader: ScenarioLoader;
   clock?: Clock;
   stateEngine?: StateEngine;
+  /** Phase 5：政策明细仓储（结算产物与状态变更同事务落库） */
+  policyDetails?: PolicyDetailRepository;
 }
 
 export interface RollbackInput {
@@ -221,7 +224,15 @@ export class GameStateService {
         ? { policyAssets: await this.loadPolicyAssets(save.scenarioId) }
         : {};
       const transition = this.stateEngine.applyCommand(state, command, context);
-      return this.options.repository.commitTransition(command, transition);
+      const artifacts = transition.policyResolution;
+      const policyDetails = this.options.policyDetails;
+      return this.options.repository.commitTransition(
+        command,
+        transition,
+        artifacts && policyDetails
+          ? { extraWrites: () => policyDetails.insertResolutionArtifacts(artifacts) }
+          : {},
+      );
     } catch (error) {
       if (error instanceof StateEngineError) {
         if (error.code === "STATE_REVISION_CONFLICT") {
