@@ -139,6 +139,10 @@ export const MeetingRuntimeStateSchema = z
     participantIds: z.array(IdSchema),
     startedAtRevision: NonNegativeIntegerSchema.optional(),
     concludedAtRevision: NonNegativeIntegerSchema.optional(),
+    /** Phase 4：会议主持（最小投影可选字段，旧存档缺省兼容） */
+    chairCharacterId: IdSchema.optional(),
+    /** Phase 4：会议保密级别（影响角色视图过滤；缺省按会议类型推断） */
+    visibility: z.enum(["court", "meeting", "private", "sealed"]).optional(),
     sourceIds: SourceIdsSchema,
   })
   .strict();

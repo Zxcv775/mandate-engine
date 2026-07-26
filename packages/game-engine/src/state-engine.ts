@@ -13,6 +13,12 @@ import {
 import type { Clock } from "./clock";
 import { SystemClock } from "./clock";
 import { StateEngineError } from "./errors";
+import {
+  planMeetingCancel,
+  planMeetingConclude,
+  planMeetingCreate,
+  planMeetingStart,
+} from "./meeting-commands";
 import { applyMutations, invertMutation, validateMutatedState } from "./mutation";
 import { createDeterministicRandomSource, type RandomSource } from "./rng";
 import { hashState } from "./stable-json";
@@ -245,6 +251,14 @@ export class StateEngine {
       for (const hook of this.timeAdvanceHooks) {
         mutations.push(...(hook.onAfterAdvance?.(context) ?? []));
       }
+    } else if (command.commandType === "meeting.create") {
+      mutations.push(...planMeetingCreate(state, command));
+    } else if (command.commandType === "meeting.start") {
+      mutations.push(...planMeetingStart(state, command));
+    } else if (command.commandType === "meeting.conclude") {
+      mutations.push(...planMeetingConclude(state, command));
+    } else if (command.commandType === "meeting.cancel") {
+      mutations.push(...planMeetingCancel(state, command));
     } else {
       throw new StateEngineError(
         "COMMAND_NOT_SUPPORTED",
