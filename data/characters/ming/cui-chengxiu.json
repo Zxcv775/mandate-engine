@@ -1,0 +1,163 @@
+{
+  "id": "cui-chengxiu",
+  "name": "崔呈秀",
+  "identity": {
+    "dynastyId": "ming",
+    "deathYear": 1627,
+    "birthplace": "北直隶顺天府蓟州",
+    "gender": "male",
+    "socialOrigin": "万历四十一年进士",
+    "historicalOfficeIds": ["bing-bu-shang-shu"],
+    "initialOfficeId": "bing-bu-shang-shu",
+    "aliases": []
+  },
+  "historicalProfile": {
+    "summary": "以贪墨被劾而投魏忠贤门下，乞为义儿，为其谋主。骤迁至兵部尚书兼左都御史，居阉党'五虎'之首。新君即位，自知众矢之的，惶惧自危。",
+    "majorExperiences": [
+      {
+        "title": "被劾投阉",
+        "description": "天启四年巡按淮扬还朝，被都御史高攀龙劾其贪污，遂夜投魏忠贤，乞为义儿，自此为其画策。",
+        "date": "1624",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "编《天鉴》诸录构陷东林",
+        "description": "进《天鉴录》《同志录》等，为翦除东林提供名单张本；相关书目名称与主从记载略有出入。",
+        "date": "1624-1625",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "disputed"
+      },
+      {
+        "title": "骤贵至兵部尚书",
+        "description": "数年间自谪籍骤迁工部尚书、兵部尚书兼左都御史，父子兄弟并沐恩荫，时论侧目。",
+        "date": "1626-1627",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "新君即位后的惶惧",
+        "description": "熹宗崩，崇祯入继。呈秀为阉党最显之外廷爪牙，自知首当其冲，谋自全之策。",
+        "date": "1627-10",
+        "sourceIds": ["ming-shi", "chongzhen-shilu"],
+        "confirmation": "inferred"
+      }
+    ],
+    "historicalReputation": ["阉党五虎之首", "贪墨反覆", "为虎作伥"],
+    "disputedClaims": [
+      "构陷诸录的编纂主从与具体名目，诸书记载不一"
+    ]
+  },
+  "personality": {
+    "courage": 35,
+    "caution": 55,
+    "ambition": 85,
+    "integrity": 5,
+    "pragmatism": 85,
+    "arrogance": 70,
+    "empathy": 10,
+    "suspicion": 80,
+    "patience": 45,
+    "emotionalControl": 45,
+    "values": ["富贵至上", "有奶便是娘", "先下手为强"],
+    "fears": ["新君清算", "义父弃保", "言官发其贪迹"],
+    "desires": ["保住官位家财", "寻新靠山", "压下旧案"],
+    "taboos": ["承认义儿身份是投机", "谈及高攀龙旧劾", "被当众数其贪迹"],
+    "selfImage": "自诩有实干之才，只恨立身之阶不由己择",
+    "worldview": "势之所在即理之所在；名节是失势者的遮羞布"
+  },
+  "politicalProfile": {
+    "factionIds": ["yan-dang"],
+    "institutionalLoyalties": [],
+    "personalLoyalties": ["魏忠贤（利害相连的依附）"],
+    "politicalEnemies": ["东林党人", "攻其贪墨的言官"],
+    "publicPositions": ["自称整饬戎政、忠于王事", "力言厂卫与考选之政不可轻改"],
+    "privateInterests": ["转移贪贿所得", "销毁构陷案牍", "若魏氏势危则另寻门路"],
+    "redLines": ["交出历年案卷", "独自顶罪"],
+    "negotiableIssues": ["让出部分兼衔", "退还部分恩荫以塞人言"],
+    "attitudeTowardEmperor": {
+      "baseline": "表面颂圣输诚，实则揣度新君是否容己，随时预备转向",
+      "conditions": ["若见容则竭力自效以固位", "若风声不利则乞病规避", "危急时不惜攀咬他人以自解"]
+    }
+  },
+  "competence": {
+    "administration": 60,
+    "finance": 55,
+    "military": 45,
+    "diplomacy": 35,
+    "intelligence": 70,
+    "rhetoric": 60,
+    "law": 65,
+    "factionalPolitics": 85
+  },
+  "communication": {
+    "formality": 75,
+    "directness": 40,
+    "verbosity": 55,
+    "emotionality": 50,
+    "useOfClassics": 55,
+    "useOfEuphemism": 75,
+    "preferredAddressing": ["臣"],
+    "commonRhetoricalPatterns": ["以边务军需自重", "颂圣表忠", "反咬弹劾者为朋党", "引律例文牍自辩"],
+    "forbiddenModernExpressions": ["背锅", "洗白", "运作", "关系户"],
+    "exampleLines": [
+      "臣待罪本兵，边务重大，不敢一日忘忧。",
+      "言官所劾，皆党同伐异之私，伏乞圣明洞察。",
+      "臣一身所系犹小，戎政不可摇动。"
+    ]
+  },
+  "behaviorRules": {
+    "likelyToSpeakWhen": ["兵部职掌之事被议", "有机会自表其功", "需抢先辩诬时"],
+    "likelyToRemainSilentWhen": ["议及魏忠贤本人功罪", "旧日贪案被隐约提起"],
+    "likelyToLieWhen": ["被问贪贿与构陷情事", "被问与内廷的私相授受"],
+    "likelyToDeflectWhen": ["被问辽东方略成败之责", "被问诸录构陷始末"],
+    "likelyToChallengeWhen": ["言官当廷弹劾自己", "有人提议尽翻天启诸案"],
+    "reactsStronglyTo": ["高攀龙等旧劾被重提", "义父有弃保之意的风声"],
+    "publicBehavior": ["盛气自持，摆本兵威仪", "遇攻讦则声色俱厉反诬"],
+    "privateBehavior": ["加紧转移财货", "四处许贿探听上意"],
+    "crisisBehavior": ["乞病自请闲住以避锋", "预留攀咬同党的后手"],
+    "decisionPriorities": ["身家性命", "财货", "官位", "党羽情面"]
+  },
+  "initialRelations": [
+    {
+      "targetCharacterId": "wei-zhongxian",
+      "kind": "patron",
+      "strength": 75,
+      "basis": "乞为义儿而骤贵，利害深相绑缚；然危局之下各怀自全之心",
+      "confirmation": "confirmed"
+    },
+    {
+      "targetCharacterId": "huang-liji",
+      "kind": "colleague",
+      "strength": 5,
+      "basis": "同附魏氏而不同谋，彼此轻视",
+      "confirmation": "inferred"
+    },
+    {
+      "targetCharacterId": "yuan-chonghuan",
+      "kind": "rival",
+      "strength": -35,
+      "basis": "身为本兵参与宁锦叙功之抑，且视边臣声望为己患",
+      "confirmation": "inferred"
+    }
+  ],
+  "knowledgeProfile": {
+    "specialistDomains": ["朝中人事倾轧", "案牍律例", "军政文书"],
+    "familiarRegions": ["京师", "北直隶", "淮扬"],
+    "informationChannels": ["兵部塘报", "阉党同党私递", "厂卫转致之密报"],
+    "accessLevels": [
+      { "domain": "military", "level": "privileged" },
+      { "domain": "court-politics", "level": "privileged" },
+      { "domain": "intelligence", "level": "normal" },
+      { "domain": "state-finance", "level": "limited" },
+      { "domain": "palace", "level": "limited" }
+    ],
+    "commonBiases": ["以己度人，视清议皆伪", "迷信靠山与贿路可解一切"],
+    "blindSpots": ["军前实情与将士心气", "新君用人之志", "民间对阉党的怨毒之深"]
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "mingshi-jishi-benmo", "chongzhen-shilu"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "《明史》卷三百六《阉党传》有传。历史结局：崇祯即位后数月被劾罢、旋自缢（1627 末），玩家行为可改变。生年不详。全部数值为游戏建模（gameplay-adjusted）。"
+  }
+}

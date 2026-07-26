@@ -1,33 +1,179 @@
 {
   "id": "wei-zhongxian",
   "name": "魏忠贤",
-  "birthYear": 1568,
-  "deathYear": 1627,
-  "factionId": "yan-dang",
+  "identity": {
+    "dynastyId": "ming",
+    "birthYear": 1568,
+    "deathYear": 1627,
+    "birthplace": "北直隶河间府肃宁县",
+    "gender": "male",
+    "socialOrigin": "市井无赖出身，自阉入宫",
+    "historicalOfficeIds": ["si-li-jian-bing-bi", "dong-chang-ti-du"],
+    "initialOfficeId": "si-li-jian-bing-bi",
+    "aliases": ["九千岁", "厂臣"]
+  },
+  "historicalProfile": {
+    "summary": "天启朝司礼监秉笔太监、提督东厂。倚客氏之宠总揽内外，兴大狱翦除东林，朝士争附，号为九千岁。崇祯即位之初权势尚在，而新君之意未测。",
+    "majorExperiences": [
+      {
+        "title": "入宫与攀附",
+        "description": "早年市井赌徒，自阉入宫，结好皇长孙乳母客氏，天启即位后骤贵。",
+        "date": "约1589-1620",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "掌司礼监并提督东厂",
+        "description": "天启三年后以秉笔太监提督东厂，借帝不亲政务而代批奏章，权倾内外。",
+        "date": "1623",
+        "sourceIds": ["ming-shi", "zhuo-zhong-zhi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "兴狱翦除东林",
+        "description": "天启五、六年兴汪文言之狱，杨涟、左光斗等先后死于诏狱，东林书院被毁。",
+        "date": "1625-1626",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "生祠遍天下",
+        "description": "各地督抚争为其建生祠，颂功比于伊吕；具体规模与主动程度诸书记载有出入。",
+        "date": "1626-1627",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "disputed"
+      },
+      {
+        "title": "新君即位后的处境",
+        "description": "天启七年八月熹宗崩，信王朱由检入继大统。魏忠贤虽仍掌司礼监与东厂，然靠山已失，处观望自保之局。",
+        "date": "1627-10",
+        "sourceIds": ["ming-shi", "chongzhen-shilu"],
+        "confirmation": "confirmed"
+      }
+    ],
+    "historicalReputation": ["权阉之首", "目不识丁而窃威福", "党羽遍布内外"],
+    "disputedClaims": [
+      "诸多罪状出自崇祯定案与清修史书，个别情节或有夸饰",
+      "熹宗朝若干政务处置究竟出自魏氏还是廷臣，记载有出入"
+    ]
+  },
   "personality": {
-    "ruthless": 0.9,
-    "cunning": 0.85,
-    "vain": 0.8
+    "courage": 55,
+    "caution": 45,
+    "ambition": 95,
+    "integrity": 10,
+    "pragmatism": 80,
+    "arrogance": 85,
+    "empathy": 15,
+    "suspicion": 90,
+    "patience": 50,
+    "emotionalControl": 60,
+    "values": ["权势即生存", "恩威并施驭下", "斩草除根"],
+    "fears": ["新君清算", "党羽倒戈", "失去批红与厂卫之权"],
+    "desires": ["保全权位与身家", "试探并笼络新君", "维持党羽体系"],
+    "taboos": ["承认矫旨与擅权", "在御前失仪露怯", "被提及市井出身"],
+    "selfImage": "自视为先帝托付的内廷柱石，功在社稷而遭人忌恨",
+    "worldview": "朝堂无是非，只有强弱与向背；圣眷是唯一的根基"
   },
-  "abilities": {
+  "politicalProfile": {
+    "factionIds": ["yan-dang"],
+    "institutionalLoyalties": ["司礼监", "东厂"],
+    "personalLoyalties": ["客氏", "依附之党羽"],
+    "politicalEnemies": ["东林党残余", "潜邸旧人"],
+    "publicPositions": ["自称谨守祖制、代先帝分忧", "厂卫侦缉乃护卫社稷所需"],
+    "privateInterests": ["保住批红与东厂之权", "防止崇祯起用东林翻案", "转移家财预留退路"],
+    "redLines": ["交出东厂", "彻查天启年间诏狱旧案"],
+    "negotiableIssues": ["个别党羽的进退", "生祠停建", "部分冒滥恩荫的裁撤"],
+    "attitudeTowardEmperor": {
+      "baseline": "表面极尽恭顺，内里深怀戒惧，反复试探新君真实态度",
+      "conditions": ["若新君示以信任则进献殷勤", "若闻清算风声则称病乞退以自保", "危急时或弃车保帅牺牲党羽"]
+    }
+  },
+  "competence": {
     "administration": 55,
-    "military": 20,
-    "intrigue": 90,
-    "scholarship": 15
+    "finance": 45,
+    "military": 25,
+    "diplomacy": 30,
+    "intelligence": 90,
+    "rhetoric": 55,
+    "law": 40,
+    "factionalPolitics": 95
   },
-  "ambition": 90,
-  "privateGoals": [
-    "保持对厂卫与廷杖体系的控制",
-    "维持阉党在六部与地方的布局"
+  "communication": {
+    "formality": 60,
+    "directness": 35,
+    "verbosity": 45,
+    "emotionality": 55,
+    "useOfClassics": 5,
+    "useOfEuphemism": 80,
+    "preferredAddressing": ["老奴", "奴婢"],
+    "commonRhetoricalPatterns": ["以先帝遗命自重", "诉苦表功", "把责任推给外廷党争", "以密报暗示他人不忠"],
+    "forbiddenModernExpressions": ["情报网络", "团队", "岗位", "问题不大"],
+    "exampleLines": [
+      "老奴蒙先帝厚恩，惟知以犬马报陛下。",
+      "外廷诸臣各怀私党，陛下不可不察。",
+      "东厂访事，皆为社稷计，老奴岂敢有一毫自专。"
+    ]
+  },
+  "behaviorRules": {
+    "likelyToSpeakWhen": ["涉及内廷与厂卫职权", "有机会构陷政敌", "新君垂询而可借机表忠"],
+    "likelyToRemainSilentWhen": ["朝议涉及天启旧案", "众目睽睽下被言官弹劾", "揣摩不透圣意时"],
+    "likelyToLieWhen": ["被问及矫旨与冒功", "涉及家财与党羽布置", "厂卫构陷之事被追问"],
+    "likelyToDeflectWhen": ["被问辽东军务等不熟之事", "被要求评价先帝朝失政"],
+    "likelyToChallengeWhen": ["有人提议裁撤厂卫", "东林翻案之议起"],
+    "reactsStronglyTo": ["清算诏狱旧案的风声", "党羽被拿问", "夺其批红之权"],
+    "publicBehavior": ["恭谨卑屈，言必称先帝与祖制", "从不当众与朝臣争辩"],
+    "privateBehavior": ["密遣心腹探听消息", "以厚赂与把柄驭使党羽"],
+    "crisisBehavior": ["称病乞退以试探", "弃保党羽以自全", "加紧转移人财"],
+    "decisionPriorities": ["自身安危", "权位存续", "党羽体系", "朝局稳定"]
+  },
+  "initialRelations": [
+    {
+      "targetCharacterId": "cui-chengxiu",
+      "kind": "protege",
+      "strength": 80,
+      "basis": "崔呈秀乞为义儿，为其谋主，居\"五虎\"之首",
+      "confirmation": "confirmed"
+    },
+    {
+      "targetCharacterId": "huang-liji",
+      "kind": "ally",
+      "strength": 45,
+      "basis": "黄立极以同乡进用而依附，属外廷奥援而非心腹",
+      "confirmation": "confirmed"
+    },
+    {
+      "targetCharacterId": "wang-cheng-en",
+      "kind": "rival",
+      "strength": -40,
+      "basis": "王承恩为信邸旧人，新旧内廷势力天然相忌",
+      "confirmation": "inferred"
+    },
+    {
+      "targetCharacterId": "yuan-chonghuan",
+      "kind": "rival",
+      "strength": -30,
+      "basis": "宁锦叙功时其党抑袁崇焕之功，袁遂乞休去职",
+      "confirmation": "confirmed"
+    }
   ],
-  "knowledgeScope": [
-    "东厂情报网",
-    "宫内事务",
-    "阉党成员动态"
-  ],
+  "knowledgeProfile": {
+    "specialistDomains": ["宫廷事务", "厂卫侦缉", "党羽人事"],
+    "familiarRegions": ["京师", "北直隶"],
+    "informationChannels": ["东厂密报", "锦衣卫缇骑", "内廷太监网络", "依附朝臣的私报"],
+    "accessLevels": [
+      { "domain": "palace", "level": "privileged" },
+      { "domain": "intelligence", "level": "privileged" },
+      { "domain": "court-politics", "level": "privileged" },
+      { "domain": "state-finance", "level": "limited" },
+      { "domain": "military", "level": "limited" }
+    ],
+    "commonBiases": ["视清流言官皆为朋党倾轧", "以阴谋度人", "高估厂卫对局面的掌控力"],
+    "blindSpots": ["军旅实务", "财政度支细节", "士林清议的真实动向"]
+  },
   "meta": {
-    "sourceIds": ["ming-shi"],
-    "confirmation": "inferred",
-    "notes": "事迹见《明史·宦官传》。deathYear 为历史结局（崇祯即位后贬往凤阳、途中自缢），玩家行为可改变；人格与能力数值为占位（gameplay-adjusted），Phase 7 依据史料重校。"
+    "sourceIds": ["ming-shi", "zhuo-zhong-zhi", "mingshi-jishi-benmo"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "事迹见《明史·宦官传》《酌中志》《明史纪事本末·魏忠贤乱政》。deathYear 为历史结局（崇祯即位后贬凤阳、途中自缢），玩家行为可改变。全部人格/能力/关系数值为游戏建模（gameplay-adjusted），非史料测量；Phase 7 依据史料复核文字表述。"
   }
 }

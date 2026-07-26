@@ -1,0 +1,21 @@
+[
+  {
+    "id": "yan-dang",
+    "name": "阉党",
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "inferred",
+      "notes": "仅用于解析现有人物引用；成员边界、意识形态与运行时数值留待 Phase 7。"
+    }
+  },
+  {
+    "id": "dong-lin",
+    "name": "东林党",
+    "ideology": "以清议、纲常与整肃吏治为号召的士大夫政治群体",
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "inferred",
+      "notes": "\"党\"的边界系后世归纳而非正式组织，故标 inferred；成员名单与运行时数值留待 Phase 7。"
+    }
+  }
+]

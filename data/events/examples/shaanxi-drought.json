@@ -25,7 +25,7 @@
   ],
   "meta": {
     "sourceIds": ["chongzhen-shilu"],
-    "confirmation": "inferred",
+    "confirmation": "gameplay-adjusted",
     "notes": "崇祯初年陕西连年旱灾为史实（崇祯元年起陕西北境大旱）；具体触发条件与数值为设计草案（gameplay-adjusted），Phase 7 校准。本文件为 DSL 与 Modifier 格式示范。"
   }
 }

@@ -1,4 +1,7 @@
-[
+{
+  "id": "ming-standard",
+  "dynastyId": "ming",
+  "institutions": [
   {
     "id": "nei-ge",
     "name": "内阁",
@@ -8,6 +11,17 @@
       "sourceIds": ["ming-shi"],
       "confirmation": "confirmed",
       "notes": "见《明史·职官志》。具体权责边界在制度包完善时细化。"
+    }
+  },
+  {
+    "id": "si-li-jian",
+    "name": "司礼监",
+    "type": "palace",
+    "functions": ["批红", "传奉谕旨", "提督内廷诸监"],
+    "meta": {
+      "sourceIds": ["ming-shi", "zhuo-zhong-zhi"],
+      "confirmation": "confirmed",
+      "notes": "内廷二十四衙门之首。批红权与外廷票拟相对，见《明史·职官志》与《酌中志》。"
     }
   },
   {
@@ -58,12 +72,99 @@
     "id": "dong-chang",
     "name": "东厂",
     "type": "intelligence",
-    "parentId": "nei-ge",
+    "parentId": "si-li-jian",
     "functions": ["侦缉", "监视百官", "密报"],
     "meta": {
-      "sourceIds": ["ming-shi"],
+      "sourceIds": ["ming-shi", "zhuo-zhong-zhi"],
       "confirmation": "disputed",
-      "notes": "崇祯即位初期由魏忠贤控制。组织隶属关系的细节存在不同记载，标注 disputed，Phase 7 据史料复核。"
+      "notes": "例由司礼监太监提督，故 parentId 记为司礼监；组织隶属关系的细节在不同记载中有出入，维持 disputed，Phase 7 据史料复核。"
     }
   }
-]
+  ],
+  "offices": [
+    {
+      "id": "nei-ge-shou-fu",
+      "name": "内阁首辅",
+      "grade": 1,
+      "institutionId": "nei-ge",
+      "powers": ["领衔票拟", "主持阁议"],
+      "quota": 1,
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "gameplay-adjusted",
+        "notes": "首辅非法定官名而是阁臣班次之首；grade 为游戏内权力等级映射，非品级原文。"
+      }
+    },
+    {
+      "id": "hu-bu-shang-shu",
+      "name": "户部尚书",
+      "grade": 2,
+      "institutionId": "hu-bu",
+      "powers": ["掌天下户口赋税", "核国库收支"],
+      "quota": 1,
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed",
+        "notes": "正二品，见《明史·职官志》。"
+      }
+    },
+    {
+      "id": "bing-bu-shang-shu",
+      "name": "兵部尚书",
+      "grade": 2,
+      "institutionId": "bing-bu",
+      "powers": ["掌武官选授", "掌军政边防"],
+      "quota": 1,
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed",
+        "notes": "正二品，见《明史·职官志》。"
+      }
+    },
+    {
+      "id": "si-li-jian-bing-bi",
+      "name": "司礼监秉笔太监",
+      "grade": 3,
+      "institutionId": "si-li-jian",
+      "powers": ["代批奏章", "传奉谕旨"],
+      "quota": 4,
+      "meta": {
+        "sourceIds": ["ming-shi", "zhuo-zhong-zhi"],
+        "confirmation": "gameplay-adjusted",
+        "notes": "宦官职衔不入文官九品序列，grade 与 quota 为游戏内权力等级映射（秉笔太监历来数员，额员不定）。"
+      }
+    },
+    {
+      "id": "dong-chang-ti-du",
+      "name": "提督东厂太监",
+      "grade": 3,
+      "institutionId": "dong-chang",
+      "powers": ["提督侦缉", "掌东厂刑名密报"],
+      "quota": 1,
+      "meta": {
+        "sourceIds": ["ming-shi", "zhuo-zhong-zhi"],
+        "confirmation": "gameplay-adjusted",
+        "notes": "例由司礼监太监兼领。运行时单官职限制下，兼领者以主职入档、兼职入 historicalOfficeIds（gameplay-adjusted）。"
+      }
+    },
+    {
+      "id": "liao-dong-xun-fu",
+      "name": "辽东巡抚",
+      "grade": 3,
+      "institutionId": "du-cha-yuan",
+      "powers": ["抚治辽东军民", "节制边镇防务"],
+      "quota": 1,
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "gameplay-adjusted",
+        "notes": "巡抚例带都察院御史衔出任，故挂靠都察院；隶属关系为游戏简化处理。"
+      }
+    }
+  ],
+  "decisionStructure": "皇帝裁决，内阁票拟，司礼监批红；本文件提供 Phase 3 人物系统所需的最小机构与官职骨架。",
+  "meta": {
+    "sourceIds": ["ming-shi"],
+    "confirmation": "confirmed",
+    "notes": "机构包结构来自《明史·职官志》；官职为本阶段人物所需最小集合，全量官职留待 Phase 7 补充。"
+  }
+}

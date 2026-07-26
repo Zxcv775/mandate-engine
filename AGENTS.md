@@ -10,22 +10,36 @@
 
 ## 2. 当前状态（2026-07-26 更新）
 
-- **Phase 0（项目立项与架构基线）已完成并验收**：文档全套、目录骨架、最小可运行代码、19 个测试全绿。
-- **Phase 1（基础项目骨架）尚未开始**，等待评审确认后启动（任务见 `docs/05-roadmap.md`）。
+- **Phase 0（项目立项与架构基线）已完成并验收**。
+- **Phase 1（基础工程与前后端联调闭环）已完成并验收**：配置/Provider、统一 API、
+  深度数据校验与只读 Loader、Runtime Dashboard、Prompt 最小资产、CI。
+- **Phase 2（GameState、事务状态引擎与 SQLite 存档）已完成并验收**：确定性引擎、
+  StateChangeLog、checkpoint/replay、逻辑回滚、迁移、校验、导入导出、Save API/CLI/Browser。
+- **Phase 3（人物卡、知识视图、Prompt 资产与单人物 Character Agent）已完成并验收**：
+  分层人物卡与首批 5 名人物、六级可见性知识视图、SQLite 人物记忆基础设施、
+  23 个版本化 Prompt 资产 + Composer、结构化输出 + 受控修复 + 确定性一致性检查、
+  人物 API 与 Character Lab；`check:phase3` 全绿（33 个测试文件）。见 ADR-010~014 与
+  `docs/07-phase-3-implementation.md`。
+- **Phase 4 尚未开始**；入口见 `docs/05-roadmap.md`，不得自动进入。
 - 仓库：<https://github.com/Zxcv775/mandate-engine>（PRIVATE，默认分支 main）。
 - 会话记录：`docs/progress/`（按日期归档，重开会话先读最新一份）。
 
 ## 3. 快速上手
 
 ```bash
-npm install          # Node ≥ 22.5（开发用 25.x），无需任何 API Key
+npm ci               # Node 24.18.0 / npm 11.16.0，无需任何 API Key
+npm run dev          # 并发启动前后端
 npm run dev:server   # 后端 Fastify @127.0.0.1:3000
 npm run dev:web      # 前端 Vite（/api 代理到后端）
 npm run lint         # ESLint
 npm run typecheck    # 全 workspace tsc --noEmit
 npm test             # Vitest（禁止触网，用 MockLLMProvider）
 npm run build        # web 产物 + 其余包编译验证
-npm run check:data   # data/ JSON 校验
+npm run check:data   # JSON + Domain Schema + 引用校验
+npm run check        # 串行执行全部质量门
+npm run check:saves  # 创建临时 SQLite 并验证完整存档闭环
+npm run check:phase2 # Phase 2 全量阻断式质量门
+npm run check:phase3 # Phase 2 门禁 + 人物/记忆/Prompt/安全测试（当前全量门）
 ```
 
 提交前以上命令必须全部通过。
@@ -37,10 +51,15 @@ apps/web · apps/server          # 前端 / 后端
 packages/domain                 # 领域模型代码（docs/03 的实现，26 实体 + Zod Schema + 会议规则参数）
 packages/shared                 # Result / SeededRng / newId
 packages/llm-adapters           # LLMProvider 接口 + Mock + OpenAI 兼容（fetch）
-packages/game-engine|rule-engine|event-engine|agent-runtime|prompt-system|ui
-                                # 占位包（按 docs/05 阶段逐步实现，勿提前写业务代码）
+packages/data-loader            # 历史模板深度校验 + 只读场景 Bundle + 缓存
+packages/prompt-system          # 注册式版本化资产 + manifest + composer + budget（Phase 3）
+packages/game-engine            # Phase 2 纯状态引擎、RNG/Clock、Mutation/hash
+packages/save-system            # SQLite Repository、事务、迁移、回滚、导入导出、人物记忆仓储
+packages/agent-runtime          # Phase 3 知识视图、记忆策略、Character Agent（无状态写入口）
+packages/rule-engine|event-engine|ui
+                                # 按 docs/05 后续阶段实现，勿提前写业务代码
 data/                           # 历史模板（只读！带 meta.sourceIds + confirmation 标注）
-docs/                           # 00-05 核心文档 + adr/ + progress/
+docs/                           # 00-06 核心文档 + adr/ + progress/
 tests/                          # Vitest 跨包测试
 ```
 
@@ -50,7 +69,7 @@ tests/                          # Vitest 跨包测试
 2. `docs/01-requirements.md` —— 需求与 **MVP 冻结范围**、冲突记录；
 3. `docs/02-system-architecture.md` —— 架构图、回合调用链、责任边界；
 4. `docs/03-domain-model.md` —— 实体定义与 LLM 可写白名单；
-5. `docs/adr/ADR-001~005` —— 五个不可推翻的架构决策；
+5. `docs/adr/ADR-001~014` —— 十四个不可推翻的架构决策；
 6. `docs/05-roadmap.md` —— 当前阶段的任务、验收标准与排除项。
 
 ## 6. 红线（违反 = 返工）
@@ -72,6 +91,15 @@ tests/                          # Vitest 跨包测试
 | 规则表达 | Modifier + 条件 DSL（数据驱动） | ADR-003 |
 | 数据分层 | 模板=data/ 只读；状态=SQLite(node:sqlite) | ADR-004 |
 | LLM 供应商 | LLMProvider 接口；Mock + OpenAI 兼容 fetch | ADR-005 |
+| 存档格式 | node:sqlite STRICT + WAL；Backup API 导出 | ADR-006 |
+| 状态日志 | snapshot + append-only hash chain；逻辑回滚 | ADR-007 |
+| 迁移/分叉 | 前向迁移；分叉默认 fork | ADR-008 |
+| 确定性 | seed/cursor + Clock + stable SHA-256 | ADR-009 |
+| 人物卡 | 分层模板；模板/运行态/记忆三层分离；整卡 gameplay-adjusted | ADR-010 |
+| 知识边界 | 六级可见性 + 认知标注；纯函数视图层；hidden 绝不进 Prompt | ADR-011 |
+| 人物记忆 | SQLite + 审批链 + 确定性规则评分；无向量库 | ADR-012 |
+| Prompt 管线 | 白名单注册表 + manifest + 固定九段 composer + 注入中和 | ADR-013 |
+| Agent 契约 | 结构化建议输出；零写权限；受控修复；确定性一致性检查 | ADR-014 |
 | 技术栈 | TypeScript 全栈、React+Vite、Fastify、Zod、Vitest | docs/04 |
 | 项目位置 | `@work/mandate-engine/` 独立目录（用户决策 1） | progress |
 | 存储 | node:sqlite（用户决策 3，薄仓储隔离可替换） | docs/04 |

@@ -8,6 +8,7 @@
 - `apps/server`：单一 Node 服务端进程，承载应用服务、Agent 编排、规则/事件/状态引擎、数据访问；
 - `packages/*`：按职责拆分的内部库，通过 npm workspaces 组织；
 - `data/`：历史模板数据（只读、版本控制）；
+- `packages/data-loader`：模板 Schema、引用完整性、只读 Bundle 与进程缓存；
 - SQLite（node:sqlite）：存档与状态变更日志（运行时数据）。
 
 ## 2. 系统上下文图
@@ -69,16 +70,19 @@ flowchart LR
         ar["agent-runtime<br/>逻辑角色编排"]
         pr["prompt-system<br/>提示词资产"]
         la["llm-adapters<br/>Mock / OpenAI 兼容"]
+        dl["data-loader<br/>Schema / 引用校验 / 只读 Bundle"]
         ui["ui<br/>共享组件（Phase 8）"]
     end
 
     web --> srv
     srv --> ge & ar
+    srv --> dl
     ge --> ru & ev & dom & shd
     ar --> pr & la & dom
     ru --> dom & shd
     ev --> dom & shd
     la --> shd
+    dl --> dom
     ui --> dom
 ```
 
@@ -154,8 +158,11 @@ sequenceDiagram
 
 ## 6. 前端与后端边界
 
-- 通信：HTTP JSON（`POST /api/commands`、`GET /api/state` 等）+ SSE（Phase 4 起用于流式发言/叙事）；
+- Phase 1 通信：HTTP JSON，已提供 health、version、runtime config 与 scenario metadata；
+  `POST /api/commands`、`GET /api/state` 和 SSE 留待后续阶段；
 - 契约：请求/响应 DTO 的 Zod Schema 放在 `packages/domain`，前后端共享，避免双写漂移；
+- Envelope：成功 `{ok:true,data,meta:{requestId}}`，错误 `{ok:false,error,meta:{requestId}}`；
+- Web 只经统一 API Client 发请求，集中处理超时、取消、非 2xx、Envelope 与响应 Schema；
 - 前端只做呈现与输入，不保存游戏逻辑真相；刷新页面后从后端恢复全部状态；
 - 开发环境通过 Vite proxy 将 `/api` 转发至 `127.0.0.1:3000`，无需 CORS。
 
@@ -219,6 +226,7 @@ flowchart TD
 | 状态变更校验失败 | 中止写入、记录错误日志、状态回滚（变更整体原子） |
 | 存档损坏/版本不符 | 迁移失败时保留原文件、提示用户选择其他存档位 |
 | 服务端未捕获异常 | pino 错误日志 + 500，进程不静默崩溃 |
+| API 路由/参数/数据错误 | 统一错误码与 requestId；响应不含堆栈、凭据或内部异常文本 |
 
 原则：**LLM 故障永远不阻塞规则结算**；规则结算失败必须显式报错，禁止静默吞错。
 
@@ -227,28 +235,28 @@ flowchart TD
 - 技术日志：pino（结构化 JSON），字段含 `level`、`time`、`module`、`sessionId`、`requestId`；
   级别由 `LOG_LEVEL` 控制；测试环境静默；
 - 游戏日志：StateChangeLog（见领域模型），按 sessionId + turn 查询，供调试面板与回放使用；
-- LLM 调用日志：provider、model、token 用量、耗时、重试次数（不含 API Key）；
+- LLM 调用日志：provider、model、耗时与成功状态（不含 API Key、Authorization 或输入正文）；
 - 日志文件位置：`logs/`（已 gitignore）；Phase 0 仅控制台输出。
 
 ## 12. 存档机制
 
 - 存储：SQLite（node:sqlite 内置模块，见 ADR-004 与技术选型）；
-- 表设计（Phase 2 实现，此处冻结契约）：
-  - `saves(slot, session_id, scenario_id, schema_version, game_date, turn, snapshot_json, created_at, updated_at)`；
-  - `state_change_log(id, session_id, turn, game_date, actor, summary, changes_json, created_at)`；
-- 快照为 Zod 校验过的 GameState JSON；加载时按 `schema_version` 走迁移链；
-- 自动存档：每回合结算后覆盖 autosave 槽位；手动存档占用独立槽位；
-- `saves/` 目录已 gitignore。
+- Phase 2 实际表：`saves`、`command_transactions`、`save_snapshots`、`state_change_log`、
+  `schema_migrations`、`save_state_migrations`、`import_history`；详见 ADR-006。
+- 快照为 Zod 校验过的 GameState JSON；加载时按 stateVersion 走前向迁移链并以 StateChangeLog replay；
+- 默认每 50 revision 自动 checkpoint；手动 checkpoint 不改变世界 revision；
+- 回滚采用新事务的逻辑回滚；导入分叉默认 fork，不覆盖原世界线；
+- `saves/` 目录已 gitignore，测试只使用 `:memory:` 或临时目录。
 
 ## 13. 模型供应商适配
 
 - 业务代码只依赖 `LLMProvider` 接口（`packages/llm-adapters`）：
   `generate`（文本）、`generateStructured`（Zod 校验 JSON，含重试）、
   `generateStream`（可选，Phase 4）；
-- Phase 0 实现：`MockLLMProvider`（测试/离线）、`OpenAiCompatibleProvider`
+- Phase 1 实现：`MockLLMProvider`（测试/离线）、`OpenAiCompatibleProvider`
   （基于内置 fetch，无 SDK 依赖，可对接 OpenAI 兼容端点与本地模型如 LM Studio/Ollama）；
 - 配置驱动：`LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` 等环境变量，
-  经 Zod 校验后装配（见 `.env.example` 与 `config/llm-providers.example.json`）；
+  只在配置模块读取并经 Zod 校验；Server 的 Provider Factory 统一装配，路由不直接构造；
 - 新增供应商 = 新增一个适配器类，业务代码零修改（ADR-005）。
 
 ## 14. 安全约束（重申）
@@ -257,4 +265,161 @@ flowchart TD
 2. LLM 不得执行任意代码、直接写库、修改游戏状态、访问未授权文件；
 3. 条件 DSL 使用白名单求值器，禁止 eval / new Function；
 4. API Key 只存在服务端环境变量，不下发前端；
-5. Prompt 中的用户输入做转义隔离，防止把玩家输入当系统指令。
+5. Prompt 只经注册资产与显式变量渲染；其输出始终视为数据，不执行其中的代码或指令。
+
+## 15. Phase 1 应用装配与可观测闭环
+
+```mermaid
+flowchart LR
+    env[".env / process.env"] --> cfg["Runtime Config Zod"]
+    cfg --> factory["Provider Factory"]
+    factory --> service["LlmService"]
+    data["data/ JSON"] --> loader["@mandate/data-loader"]
+    loader --> scenario["ScenarioService"]
+    cfg & service & scenario --> app["buildApp"]
+    app --> api["统一 API Envelope"]
+    api --> client["Web API Client"]
+    client --> store["Zustand 分区状态"]
+    store --> dashboard["Runtime Dashboard"]
+```
+
+- 配置错误与默认场景错误均在监听端口前失败；
+- `buildApp` 与 `listen` 分离，测试可注入 Provider、Loader、数据根目录和日志流；
+- Loader 为独立包，CLI 与 Server 使用同一 Domain Schema 和引用校验；
+- 历史 Bundle 深冻结，API 只投影摘要，不返回 GameState 或完整模板；
+- Prompt 资产采用固定 ID 注册表和版本化 Markdown，路由中不散落 Prompt；
+- CI 与本地 `npm run check` 使用 Mock Provider，默认不访问外部网络。
+
+## 16. Phase 2 状态与存档闭环
+
+### 16.1 状态提交时序
+
+```mermaid
+sequenceDiagram
+    participant UI as UI
+    participant API as Server API
+    participant APP as Application Service
+    participant ENGINE as State Engine
+    participant TX as SQLite Transaction
+    participant LOG as StateChangeLog
+
+    UI->>API: 提交结构化命令
+    API->>APP: Zod 校验请求
+    APP->>TX: BEGIN IMMEDIATE
+    APP->>ENGINE: 校验 Command 并生成 Mutation Plan
+    ENGINE-->>APP: Next State + Mutations + Inverse
+    APP->>TX: 写入 command transaction
+    APP->>LOG: 追加 StateChangeLog 与 hash chain
+    APP->>TX: 更新 Save Head
+    APP->>TX: 可选写入 Snapshot
+    APP->>TX: COMMIT
+    APP-->>API: 返回新 Revision
+    API-->>UI: 统一成功 Envelope
+```
+
+只有 `GameStateService → StateEngine → SqliteSaveRepository` 可以写运行时事实。Route、React、LLM、Prompt、
+Rule/Event Engine 只能提交 Schema 化候选命令或 mutation，不得直接写 GameState/SQLite。
+
+### 16.2 状态加载流程
+
+```mermaid
+flowchart TD
+    A[读取 Save Head] --> B[查找最近 Snapshot]
+    B --> C[校验 Snapshot Hash]
+    C --> D[加载 Snapshot]
+    D --> E[读取后续 StateChangeLog]
+    E --> F[按 revision 与 sequence 顺序 Replay]
+    F --> G[校验最终 State Hash 与 GameState Schema]
+    G --> H[返回 GameState 或过滤后的只读 View]
+```
+
+`pre_migration` 仅作为回退备份，不参与正常 snapshot 选择。普通 API 构建 PlayerStateView，自动剥离 hidden；
+CharacterStateView 只包含角色自身与基础公开事实；DebugStateView 仅供内部测试/工具。
+
+### 16.3 Phase 2 模块依赖
+
+```mermaid
+flowchart BT
+    DOMAIN["@mandate/domain<br/>Schema / DTO"]
+    ENGINE["@mandate/game-engine<br/>纯 State Engine / RNG / Clock"]
+    SAVE["@mandate/save-system<br/>Application Service / SQLite Adapter"]
+    SERVER["apps/server<br/>Fastify Routes / Envelope"]
+    CLIENT["apps/web API client"]
+    WEB["Runtime Dashboard / Save Browser"]
+
+    ENGINE --> DOMAIN
+    SAVE --> ENGINE
+    SAVE --> DOMAIN
+    SERVER --> SAVE
+    CLIENT --> SERVER
+    WEB --> CLIENT
+```
+
+`@mandate/game-engine` 不依赖 Fastify、SQLite、LLM 或 Agent；`@mandate/save-system` 是唯一 SQLite 适配层。
+Web 的 Zustand 数据只是 API 派生视图，刷新后从 Server 的 GameState 恢复。
+
+### 16.4 持久化与交换格式
+
+- 连接：`foreign_keys=ON`、WAL、`busy_timeout=5000`、defensive mode；STRICT tables 与 prepared statements。
+- 每个世界命令一个 `BEGIN IMMEDIATE` 原子事务，内部以 validate/apply/finalize SAVEPOINT 分段。
+- checkpoint 不递增世界 revision；默认每 50 revision 自动创建，手动与迁移/导入备份类型独立。
+- `.mesave` 使用 Backup API 生成一致 SQLite payload，ZIP 内固定 manifest/payload/checksums；可选加密与 safe-share。
+- 逻辑回滚是新的 append-only 事务，不删除原 revision；分叉导入默认创建独立 save。
+
+详细约束见 ADR-006~009 与 `docs/06-phase-2-implementation.md`。
+
+## 17. Phase 3 人物系统与 Character Agent
+
+### 17.1 调用链
+
+```mermaid
+sequenceDiagram
+    participant UI as Character Lab
+    participant API as Character API
+    participant CTX as Context Builder
+    participant VIEW as Character View Builder
+    participant MEM as Memory Selector
+    participant PROMPT as Prompt Composer
+    participant LLM as LLM Provider
+    participant CHECK as Consistency Evaluator
+    UI->>API: 提交人物对话请求
+    API->>CTX: 构建角色上下文
+    CTX->>VIEW: 构建有限知识视图
+    VIEW-->>CTX: CharacterStateView
+    CTX->>MEM: 选择相关记忆
+    MEM-->>CTX: Relevant Memories
+    CTX->>PROMPT: 组合版本化 Prompt
+    PROMPT-->>CTX: ComposedPrompt
+    CTX-->>API: CharacterAgentContext
+    API->>LLM: 请求结构化响应
+    LLM-->>API: CharacterAgentResult
+    API->>CHECK: 一致性与泄露检查
+    CHECK-->>API: Consistency Report
+    API-->>UI: 返回公开人物响应
+```
+
+### 17.2 信息边界
+
+```mermaid
+flowchart LR
+    GS[完整 GameState] --> FILTER[Knowledge Filter]
+    MEM[角色记忆] --> SELECT[Memory Selector]
+    FILTER --> VIEW[Character State View]
+    SELECT --> VIEW
+    VIEW --> CONTEXT[Character Context]
+    CONTEXT --> AGENT[Character Agent]
+    GS -.禁止直接读取.-> AGENT
+    HIDDEN[Hidden / Sealed] -.默认隔离.-> FILTER
+```
+
+- Character Agent 无状态写权限：输出只是发言、态度、候选行动与记忆候选；
+  经 State Engine 批准的行动才可能改变世界（Phase 4+）。
+- 视图六级可见性（public/court/office/meeting/private/sealed）+ 认知标注
+  （known/reported/suspected/inferred/outdated/contradicted）；
+  hidden、他人私密数值与未参与会议绝不进入视图与 Prompt。
+- 记忆经 `Agent 候选 → Schema → Memory Policy → Application Service → Repository`
+  审批链落库（SQLite `character_memories`），不进 StateChangeLog。
+- Agent 调用审计走结构化日志（无 Prompt 正文/密钥）；对话记录存
+  `character_conversation_turns`，是交互存证而非世界事实。
+
+详细约束见 ADR-010~014 与 `docs/07-phase-3-implementation.md`。

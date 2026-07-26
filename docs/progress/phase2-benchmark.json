@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-07-26T07:55:28.771Z",
+  "environment": {
+    "platform": "win32",
+    "release": "10.0.26100",
+    "architecture": "x64",
+    "cpu": "AMD Ryzen 9 8940HX with Radeon Graphics        ",
+    "logicalCpuCount": 32,
+    "memoryGiB": 15.797,
+    "node": "v24.18.0"
+  },
+  "fixture": {
+    "scenarioId": "chongzhen-early",
+    "maxRevision": 1000,
+    "logTarget": 10000,
+    "actualLogCount": 10000,
+    "repeats": 5,
+    "checkpointIntervals": [
+      50,
+      100
+    ]
+  },
+  "transactionMutationCounts": {
+    "singleDomainMutation": 2,
+    "tenMutationTransaction": 10
+  },
+  "timingsMs": {
+    "createSave": {
+      "average": 23.902,
+      "minimum": 23.902,
+      "maximum": 23.902,
+      "runs": 1
+    },
+    "loadRevision0": {
+      "average": 0.321,
+      "minimum": 0.269,
+      "maximum": 0.421,
+      "runs": 5
+    },
+    "commitSingleMutation": {
+      "average": 3.935,
+      "minimum": 3.194,
+      "maximum": 5.81,
+      "runs": 5
+    },
+    "createCheckpoint": {
+      "average": 6.23,
+      "minimum": 6.23,
+      "maximum": 6.23,
+      "runs": 1
+    },
+    "loadRevision100": {
+      "average": 0.211,
+      "minimum": 0.175,
+      "maximum": 0.309,
+      "runs": 5
+    },
+    "loadRevision1000": {
+      "average": 0.221,
+      "minimum": 0.191,
+      "maximum": 0.242,
+      "runs": 5
+    },
+    "replay50": {
+      "average": 4.597,
+      "minimum": 3.783,
+      "maximum": 5.83,
+      "runs": 5
+    },
+    "replay100": {
+      "average": 6.896,
+      "minimum": 6.116,
+      "maximum": 8.011,
+      "runs": 5
+    },
+    "commitTenMutations": {
+      "average": 4.546,
+      "minimum": 3.166,
+      "maximum": 5.537,
+      "runs": 5
+    },
+    "exportSave": {
+      "average": 157.214,
+      "minimum": 125.368,
+      "maximum": 173.066,
+      "runs": 5
+    },
+    "importSave": {
+      "average": 154.233,
+      "minimum": 154.233,
+      "maximum": 154.233,
+      "runs": 1
+    },
+    "validateSave": {
+      "average": 73.872,
+      "minimum": 70.886,
+      "maximum": 84.01,
+      "runs": 5
+    }
+  },
+  "sizes": {
+    "averageLogPayloadBytes": 248.946,
+    "tenThousandLogDatabaseBytes": 11554816,
+    "snapshotInterval50Bytes": 2973696,
+    "snapshotInterval100Bytes": 3076096,
+    "exportWithSourcesBytes": 681899,
+    "exportWithoutSourcesBytes": 5013,
+    "observedWalBytes": 4185952
+  },
+  "anomalies": [
+    "本次 snapshot/100 文件未小于 snapshot/50；SQLite 页分配与工作负载差异使文件大小不具单调性"
+  ],
+  "assumptions": [
+    "loadRevision1000 使用本次 fixture 的最大 revision 1000",
+    "replay50/replay100 分别代表从初始 snapshot 重放至最多 50/100 个 revision",
+    "tenThousandLogDatabaseBytes 对应本次实际 10000 条日志；正式基准目标为 10000",
+    "平均日志大小是固定列与 JSON/BLOB 负载之和，不含 SQLite B-tree 页开销",
+    "WAL 数值是工作负载结束时观测值，不是持续采样的绝对峰值"
+  ]
+}
