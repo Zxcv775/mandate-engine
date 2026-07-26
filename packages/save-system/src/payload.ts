@@ -27,6 +27,7 @@ function sanitizeState(input: GameState, options: ExportPayloadOptions): GameSta
       secretFlags: {},
       internalNotes: [],
       undiscoveredInformation: {},
+      policyTruth: {},
     };
     state.flags = {};
     state.rng.seed = `safe-share-${sha256Hex(state.rng.seed).slice(0, 16)}`;

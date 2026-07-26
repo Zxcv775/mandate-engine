@@ -323,12 +323,17 @@ describe(".mesave package", () => {
     const imported = await target.service.importSave({ bytes });
 
     expect(imported).toMatchObject({ result: "fast_forward", saveId: "save_legacy" });
-    expect((await target.service.loadState("save_legacy")).stateVersion).toBe(1);
+    expect((await target.service.loadState("save_legacy")).stateVersion).toBe(2);
     expect(
       target.database
-        .prepare("SELECT migration_id FROM save_state_migrations WHERE save_id = ?")
+        .prepare(
+          "SELECT migration_id FROM save_state_migrations WHERE save_id = ? ORDER BY migration_id",
+        )
         .all("save_legacy"),
-    ).toEqual([{ migration_id: "state-001-treasury-taels" }]);
+    ).toEqual([
+      { migration_id: "state-001-treasury-taels" },
+      { migration_id: "state-002-policy-lifecycle" },
+    ]);
     expect(await target.service.validateSave("save_legacy")).toMatchObject({ valid: true });
   });
 

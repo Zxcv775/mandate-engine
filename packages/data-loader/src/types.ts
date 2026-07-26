@@ -7,6 +7,7 @@ import type {
   Institution,
   InstitutionPack,
   Office,
+  PolicyTemplate,
   RulePack,
   Scenario,
   Worldbook,
@@ -22,6 +23,7 @@ export interface DataCatalog {
   events: GameEvent[];
   rulePacks: RulePack[];
   worldbooks: Worldbook[];
+  policyTemplates: PolicyTemplate[];
 }
 
 export type DeepReadonly<T> = T extends (...args: never[]) => unknown
@@ -40,6 +42,9 @@ export interface ScenarioBundle {
   institutions: Institution[];
   offices: Office[];
   historicalSources: HistoricalSource[];
+  /** Phase 5：本朝政策模板与规则包（只读，运行时深冻结） */
+  policyTemplates: PolicyTemplate[];
+  rulePacks: RulePack[];
 }
 
 export interface ScenarioLoader {

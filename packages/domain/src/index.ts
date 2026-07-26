@@ -30,3 +30,7 @@ export * from "./character-api";
 export * from "./meeting-runtime";
 export * from "./meeting-agent";
 export * from "./meeting-api";
+export * from "./modifier";
+export * from "./rule-dsl";
+export * from "./policy";
+export * from "./policy-api";

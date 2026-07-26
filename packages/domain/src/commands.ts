@@ -148,6 +148,157 @@ export const MeetingCancelCommandSchema = z
   })
   .strict();
 
+/**
+ * Phase 5 政策生命周期命令（ADR-023）：
+ * 全部经 StateEngine 白名单提交（Zod + 引擎双重校验，恰好 revision+1 + StateChangeLog）。
+ * LLM 不得发起——actor 为 player（直诏/御批）或 system:meeting-director（会议裁决映射）。
+ */
+const PolicyResourceBundleSchema = z
+  .object({
+    treasuryTaels: z.number().int().nonnegative().optional(),
+    grainReserveShi: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
+export const PolicyProposeCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.propose"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        templateId: IdSchema,
+        /** 会议来源（裁决映射）或直诏 */
+        origin: z.discriminatedUnion("kind", [
+          z
+            .object({
+              kind: z.literal("meeting"),
+              meetingId: IdSchema,
+              outcomeCandidateId: IdSchema,
+            })
+            .strict(),
+          z.object({ kind: z.literal("direct-decree") }).strict(),
+        ]),
+        reason: z.string().trim().min(1).optional(),
+        sourceIds: z.array(IdSchema).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyApproveCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.approve"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        /** 直诏合法性检查结果（引擎侧再算一遍并核对，防伪造） */
+        reason: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyRejectCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.reject"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        reason: z.string().trim().min(1),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyIssueCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.issue"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        responsibleInstitutionId: IdSchema,
+        responsibleCharacterIds: z.array(IdSchema).min(1).max(5),
+        /** 追加预算（在模板启动成本之外；可为空对象） */
+        additionalBudget: PolicyResourceBundleSchema.optional(),
+        reason: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyAdjustCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.adjust"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        /** 追加预算 / 更换负责人，至少提供一项 */
+        additionalBudget: PolicyResourceBundleSchema.optional(),
+        responsibleCharacterIds: z.array(IdSchema).min(1).max(5).optional(),
+        reason: z.string().trim().min(1),
+      })
+      .strict()
+      .refine(
+        (payload) =>
+          payload.additionalBudget !== undefined || payload.responsibleCharacterIds !== undefined,
+        "调整命令至少提供追加预算或负责人之一",
+      ),
+  })
+  .strict();
+
+export const PolicySuspendCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.suspend"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        reason: z.string().trim().min(1),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyResumeCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.resume"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        reason: z.string().trim().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const PolicyCancelCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.cancel"),
+    payload: z
+      .object({
+        policyId: IdSchema,
+        reason: z.string().trim().min(1),
+      })
+      .strict(),
+  })
+  .strict();
+
+/** 仅 Debug/测试：单独结算一个 tick（生产路径经 time.advance 钩子） */
+export const PolicyResolveTickCommandSchema = z
+  .object({
+    ...CommandBaseShape,
+    commandType: z.literal("policy.resolve-tick"),
+    payload: z.object({ reason: z.string().trim().min(1).optional() }).strict(),
+  })
+  .strict();
+
 export const CheckpointKindSchema = z.enum([
   "initial",
   "periodic",
@@ -195,6 +346,15 @@ export const GameCommandSchema = z.discriminatedUnion("commandType", [
   MeetingStartCommandSchema,
   MeetingConcludeCommandSchema,
   MeetingCancelCommandSchema,
+  PolicyProposeCommandSchema,
+  PolicyApproveCommandSchema,
+  PolicyRejectCommandSchema,
+  PolicyIssueCommandSchema,
+  PolicyAdjustCommandSchema,
+  PolicySuspendCommandSchema,
+  PolicyResumeCommandSchema,
+  PolicyCancelCommandSchema,
+  PolicyResolveTickCommandSchema,
 ]);
 export type GameCommand = z.infer<typeof GameCommandSchema>;
 export type GameCreateCommand = z.infer<typeof GameCreateCommandSchema>;
@@ -207,3 +367,12 @@ export type MeetingCreateCommand = z.infer<typeof MeetingCreateCommandSchema>;
 export type MeetingStartCommand = z.infer<typeof MeetingStartCommandSchema>;
 export type MeetingConcludeCommand = z.infer<typeof MeetingConcludeCommandSchema>;
 export type MeetingCancelCommand = z.infer<typeof MeetingCancelCommandSchema>;
+export type PolicyProposeCommand = z.infer<typeof PolicyProposeCommandSchema>;
+export type PolicyApproveCommand = z.infer<typeof PolicyApproveCommandSchema>;
+export type PolicyRejectCommand = z.infer<typeof PolicyRejectCommandSchema>;
+export type PolicyIssueCommand = z.infer<typeof PolicyIssueCommandSchema>;
+export type PolicyAdjustCommand = z.infer<typeof PolicyAdjustCommandSchema>;
+export type PolicySuspendCommand = z.infer<typeof PolicySuspendCommandSchema>;
+export type PolicyResumeCommand = z.infer<typeof PolicyResumeCommandSchema>;
+export type PolicyCancelCommand = z.infer<typeof PolicyCancelCommandSchema>;
+export type PolicyResolveTickCommand = z.infer<typeof PolicyResolveTickCommandSchema>;

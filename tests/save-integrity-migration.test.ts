@@ -56,8 +56,11 @@ describe("forward-only state migrations", () => {
     delete country.treasuryTaels;
 
     const migrated = migrateGameStateDocument(legacy);
-    expect(migrated.appliedMigrationIds).toEqual(["state-001-treasury-taels"]);
-    expect(migrated.state.stateVersion).toBe(1);
+    expect(migrated.appliedMigrationIds).toEqual([
+      "state-001-treasury-taels",
+      "state-002-policy-lifecycle",
+    ]);
+    expect(migrated.state.stateVersion).toBe(2);
     expect(migrated.state.country.treasuryTaels).toBe(current.country.treasuryTaels);
     expect(migrated.state.country).not.toHaveProperty("treasury");
   });
@@ -107,9 +110,9 @@ describe("forward-only state migrations", () => {
     expect(result).toMatchObject({
       saveId: "save_demo",
       fromVersion: 0,
-      toVersion: 1,
+      toVersion: 2,
       changed: true,
-      appliedMigrationIds: ["state-001-treasury-taels"],
+      appliedMigrationIds: ["state-001-treasury-taels", "state-002-policy-lifecycle"],
     });
     expect((await system.service.loadState("save_demo")).country).toMatchObject({
       treasuryTaels: current.country.treasuryTaels,
@@ -124,9 +127,14 @@ describe("forward-only state migrations", () => {
     ).toEqual({ checkpoint_kind: "pre_migration" });
     expect(
       system.database
-        .prepare("SELECT migration_id FROM save_state_migrations WHERE save_id = ?")
+        .prepare(
+          "SELECT migration_id FROM save_state_migrations WHERE save_id = ? ORDER BY migration_id",
+        )
         .all("save_demo"),
-    ).toEqual([{ migration_id: "state-001-treasury-taels" }]);
+    ).toEqual([
+      { migration_id: "state-001-treasury-taels" },
+      { migration_id: "state-002-policy-lifecycle" },
+    ]);
     expect(await system.service.migrateSave("save_demo")).toMatchObject({ changed: false });
   });
 
@@ -189,11 +197,17 @@ describe("forward-only state migrations", () => {
     await target.service.importSave({ bytes: exported.bytes });
     expect(
       target.database
-        .prepare("SELECT migration_id, checksum FROM save_state_migrations WHERE save_id = ?")
+        .prepare(
+          "SELECT migration_id, checksum FROM save_state_migrations WHERE save_id = ? ORDER BY migration_id",
+        )
         .all("save_demo"),
     ).toEqual([
       expect.objectContaining({
         migration_id: "state-001-treasury-taels",
+        checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+      expect.objectContaining({
+        migration_id: "state-002-policy-lifecycle",
         checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     ]);

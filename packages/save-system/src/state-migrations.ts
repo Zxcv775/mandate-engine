@@ -19,6 +19,24 @@ const treasuryMigrationDescriptor = {
   to: "/country/treasuryTaels",
 } as const;
 
+const policyLifecycleMigrationDescriptor = {
+  id: "state-002-policy-lifecycle",
+  fromVersion: 1,
+  toVersion: 2,
+  operation: "reshape",
+  summary: "policies 六态占位 → Phase 5 十一态生命周期全字段；新增 modifiers 与 hidden.policyTruth",
+} as const;
+
+/** Phase 0 六态 → Phase 5 十一态（executing→implementing，ended→completed） */
+const LEGACY_POLICY_STATUS_MAP: Readonly<Record<string, string>> = {
+  draft: "draft",
+  approved: "approved",
+  executing: "implementing",
+  suspended: "suspended",
+  ended: "completed",
+  failed: "failed",
+};
+
 export const STATE_DOCUMENT_MIGRATIONS: readonly StateDocumentMigration[] = [
   {
     id: treasuryMigrationDescriptor.id,
@@ -38,6 +56,67 @@ export const STATE_DOCUMENT_MIGRATIONS: readonly StateDocumentMigration[] = [
       record.treasuryTaels = record.treasury;
       delete record.treasury;
       next.stateVersion = 1;
+      return next;
+    },
+  },
+  {
+    id: policyLifecycleMigrationDescriptor.id,
+    fromVersion: policyLifecycleMigrationDescriptor.fromVersion,
+    toVersion: policyLifecycleMigrationDescriptor.toVersion,
+    checksum: sha256Hex(stableStringify(policyLifecycleMigrationDescriptor)),
+    migrate(document) {
+      const next = structuredClone(document);
+      const policies = next.policies;
+      if (!policies || typeof policies !== "object") {
+        throw new SaveSystemError("STATE_INVALID", "旧状态缺少 policies");
+      }
+      for (const [policyId, value] of Object.entries(policies as Record<string, unknown>)) {
+        const legacy = value as Record<string, unknown>;
+        const mappedStatus = LEGACY_POLICY_STATUS_MAP[String(legacy.status)];
+        if (!mappedStatus) {
+          throw new SaveSystemError(
+            "STATE_INVALID",
+            `旧政策状态无法迁移：${String(legacy.status)}`,
+          );
+        }
+        (policies as Record<string, unknown>)[policyId] = {
+          policyId: legacy.policyId,
+          // 旧占位形态无模板概念：templateId 记作自身 ID，供人工核对（初始场景从未生成政策）
+          templateId: legacy.policyId,
+          status: mappedStatus,
+          createdTick: 0,
+          createdAtRevision: 0,
+          ...(legacy.approvedAtRevision === undefined
+            ? {}
+            : { approvedAtRevision: legacy.approvedAtRevision }),
+          ...(legacy.startedAtRevision === undefined
+            ? {}
+            : { issuedAtRevision: legacy.startedAtRevision }),
+          ...(legacy.endedAtRevision === undefined
+            ? {}
+            : { endedAtRevision: legacy.endedAtRevision }),
+          responsibleCharacterIds: [],
+          currentStageIndex: 0,
+          stageProgress: 0,
+          overallProgress: 0,
+          investedResources: { treasuryTaels: 0, grainReserveShi: 0 },
+          remainingBudget: { treasuryTaels: 0, grainReserveShi: 0 },
+          origin: { kind: "direct-decree" },
+          legitimacyCostAccrued: 0,
+          sourceIds: Array.isArray(legacy.sourceIds) ? legacy.sourceIds : [],
+        };
+      }
+      if (next.modifiers === undefined) {
+        next.modifiers = {};
+      }
+      const hidden = next.hidden;
+      if (!hidden || typeof hidden !== "object") {
+        throw new SaveSystemError("STATE_INVALID", "旧状态缺少 hidden");
+      }
+      if ((hidden as Record<string, unknown>).policyTruth === undefined) {
+        (hidden as Record<string, unknown>).policyTruth = {};
+      }
+      next.stateVersion = 2;
       return next;
     },
   },

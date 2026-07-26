@@ -115,6 +115,7 @@ export function createInitialGameState(
     policies: {},
     regions: {},
     meetings: {},
+    modifiers: {},
     eventQueue: { pendingEventIds: [], processedEventIds: [] },
     flags: {},
     hidden: {
@@ -122,6 +123,7 @@ export function createInitialGameState(
       secretFlags: {},
       internalNotes: [],
       undiscoveredInformation: {},
+      policyTruth: {},
     },
     meta: {
       createdAt: timestamp,

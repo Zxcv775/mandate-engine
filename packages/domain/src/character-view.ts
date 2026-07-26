@@ -116,7 +116,9 @@ export const KnownPolicyViewSchema = characterKnowledgeItemSchema(
     .object({
       policyId: IdSchema,
       status: z.string().trim().min(1),
-      responsibleOfficeIds: z.array(IdSchema),
+      /** Phase 5：负责语义由官职改为具体人物；进度为玩家可见奏报口径 */
+      responsibleCharacterIds: z.array(IdSchema),
+      overallProgress: z.number().int().min(0).max(100),
     })
     .strict(),
 );

@@ -45,6 +45,7 @@ function validState(): GameState {
     policies: {},
     regions: {},
     meetings: {},
+    modifiers: {},
     eventQueue: { pendingEventIds: [], processedEventIds: [] },
     flags: {},
     hidden: {
@@ -52,6 +53,7 @@ function validState(): GameState {
       secretFlags: { conspiracy: 1 },
       internalNotes: ["sealed note"],
       undiscoveredInformation: {},
+      policyTruth: {},
     },
     meta: {
       createdAt: "2026-07-26T00:00:00.000Z",

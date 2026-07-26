@@ -1,21 +1,64 @@
 {
   "packId": "ming-baseline-rules",
-  "description": "明朝基线规则示例：欠饷对士气的影响。Phase 5 规则引擎实现后扩充。",
-  "modifiers": [
+  "description": "明朝基线规则（Phase 5 DSL v2）：直诏合法性代价与低稳定度执行阻力。",
+  "dslVersion": 2,
+  "rules": [
     {
-      "id": "rule-unpaid-morale",
-      "sourceId": "ming-baseline-rules",
-      "targetPath": "army:*.morale",
-      "operation": "add",
-      "value": -2,
-      "durationTurns": 1,
-      "condition": "army.payArrearsMonths >= 3",
-      "reason": "欠饷三个月以上，士气每回合下降"
+      "id": "rule-direct-decree-legitimacy",
+      "version": 1,
+      "scope": "policy-legality",
+      "description": "跳过朝议直诏立策：合法性受损（未经廷议，物议沸腾）",
+      "priority": 100,
+      "condition": { "op": "eq", "path": "policy.source", "value": "direct-decree" },
+      "effects": [
+        {
+          "type": "adjust-country-metric",
+          "metric": "legitimacy",
+          "amount": -2,
+          "reason": "未经廷议，中旨直下，清议非之"
+        },
+        {
+          "type": "add-modifier",
+          "modifier": {
+            "target": { "kind": "context-policy" },
+            "metric": "resistance",
+            "operation": "add",
+            "value": 10,
+            "durationTicks": null,
+            "stacking": "unique-by-source",
+            "reason": "中旨直下，臣工观望，执行阻力上升"
+          }
+        }
+      ],
+      "sourceIds": ["ming-shi"]
+    },
+    {
+      "id": "rule-low-stability-resistance",
+      "version": 1,
+      "scope": "policy-resolution",
+      "description": "天下不靖（稳定度低于四成）：政令推行迟滞",
+      "priority": 50,
+      "condition": { "op": "lt", "path": "country.stability", "value": 40 },
+      "effects": [
+        {
+          "type": "add-modifier",
+          "modifier": {
+            "target": { "kind": "context-policy" },
+            "metric": "executionEfficiency",
+            "operation": "mul",
+            "value": 0.85,
+            "durationTicks": 1,
+            "stacking": "replace",
+            "reason": "地方多故，政令难行"
+          }
+        }
+      ],
+      "sourceIds": ["ming-shi"]
     }
   ],
   "meta": {
     "sourceIds": ["ming-shi"],
     "confirmation": "gameplay-adjusted",
-    "notes": "明末欠饷与兵变的关联为史实；数值为设计占位（gameplay-adjusted），Phase 9 平衡。"
+    "notes": "Phase 0 的欠饷士气示例（army.* 路径）因军队实体未实现而移除，Phase 9 军事系统恢复。数值为设计占位（gameplay-adjusted）。"
   }
 }

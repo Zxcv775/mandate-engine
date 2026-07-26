@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { ModifierStateSchema } from "./modifier";
+import { PolicyRuntimeStateSchema, PolicyTruthSchema, type PolicyRuntimeState } from "./policy";
 
 export const GAME_STATE_SCHEMA_VERSION = 1;
-export const GAME_STATE_VERSION = 1;
+/** Phase 5：政策生命周期 + Modifier + hidden.policyTruth（state-002 前向迁移） */
+export const GAME_STATE_VERSION = 2;
 
 const IdSchema = z.string().trim().min(1);
 const SourceIdsSchema = z.array(IdSchema);
@@ -76,28 +79,10 @@ export const OfficeRuntimeStateSchema = z
   .strict();
 export type OfficeRuntimeState = z.infer<typeof OfficeRuntimeStateSchema>;
 
-export const PolicyRuntimeStatusSchema = z.enum([
-  "draft",
-  "approved",
-  "executing",
-  "suspended",
-  "ended",
-  "failed",
-]);
-export type PolicyRuntimeStatus = z.infer<typeof PolicyRuntimeStatusSchema>;
-
-export const PolicyRuntimeStateSchema = z
-  .object({
-    policyId: IdSchema,
-    status: PolicyRuntimeStatusSchema,
-    approvedAtRevision: NonNegativeIntegerSchema.optional(),
-    startedAtRevision: NonNegativeIntegerSchema.optional(),
-    endedAtRevision: NonNegativeIntegerSchema.optional(),
-    responsibleOfficeIds: z.array(IdSchema),
-    sourceIds: SourceIdsSchema,
-  })
-  .strict();
-export type PolicyRuntimeState = z.infer<typeof PolicyRuntimeStateSchema>;
+// Phase 5：政策运行态迁移至 ./policy.ts（11 态生命周期 + 进度/预算/来源全字段）；
+// 旧 6 态形态经 state-002 前向迁移映射（save-system/state-migrations.ts）。
+export { PolicyRuntimeStateSchema } from "./policy";
+export type { PolicyRuntimeState } from "./policy";
 
 export const RegionRuntimeStateSchema = z
   .object({
@@ -157,6 +142,8 @@ export const HiddenGameStateSchema = z
     secretFlags: z.record(z.string(), JsonValueSchema),
     internalNotes: z.array(z.string()),
     undiscoveredInformation: z.record(z.string(), JsonValueSchema),
+    /** Phase 5：政策真实执行态（玩家 API 只见奏报；仅 Debug 可读；safe_share 剥离） */
+    policyTruth: z.record(IdSchema, PolicyTruthSchema),
   })
   .strict();
 export type HiddenGameState = z.infer<typeof HiddenGameStateSchema>;
@@ -200,6 +187,8 @@ export const GameStateSchema = z
     policies: z.record(IdSchema, PolicyRuntimeStateSchema),
     regions: z.record(IdSchema, RegionRuntimeStateSchema),
     meetings: z.record(IdSchema, MeetingRuntimeStateSchema),
+    /** Phase 5：统一 Modifier 运行态（ADR-024） */
+    modifiers: z.record(IdSchema, ModifierStateSchema),
     eventQueue: EventQueueStateSchema,
     flags: z.record(z.string(), JsonValueSchema),
     hidden: HiddenGameStateSchema,
@@ -213,6 +202,7 @@ export const GameStateSchema = z
       ["policies", state.policies, "policyId"],
       ["regions", state.regions, "regionId"],
       ["meetings", state.meetings, "meetingId"],
+      ["modifiers", state.modifiers, "modifierId"],
     ] as const;
     for (const [path, record, idKey] of records) {
       if (!recordKeysMatchIds(record, idKey)) {
@@ -237,6 +227,7 @@ export const PlayerStateViewSchema = z.custom<PlayerStateView>((value) => {
       secretFlags: {},
       internalNotes: [],
       undiscoveredInformation: {},
+      policyTruth: {},
     },
   }).success;
 }, "玩家状态视图无效");
