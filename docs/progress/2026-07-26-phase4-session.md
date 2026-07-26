@@ -39,6 +39,25 @@
 
 见 Phase 4 最终报告（会话输出）；check:phase4 全链在 Node 24.18.0 下真实退出码 0。
 
+## 验收实测（浏览器 Meeting Lab）
+
+- 闭环一（御前会议 5 人）在 Meeting Lab 全程实测：创建（袁崇焕资格排除）→ 议程 →
+  开场 → 魏忠贤/崔呈秀轮替陈奏 → 点名垂询王承恩（player-question → character-answer）→
+  5 个结果候选 → 仅建议候选"准行"被 422 MEETING_OUTCOME_UNSUPPORTED 拒绝（revision 不变）→
+  结束 → 正式纪要（逐条 sourceTurnIds）→ 分化记忆（发言者含本人发言记忆，
+  沉默者黄立极仅纪要记忆）→ revision 恰为 create/start/conclude 三次。
+- 恢复实测（真实进程重启）：dev Mock 缺会议分支导致回合 failed + pendingAgentAction
+  存留 → tsx 重启服务器进程 → failed→paused→resume → 同 actionId 恢复步进恰
+  产生一条回合。乐观锁并发双击返回 MEETING_VERSION_STALE 409，UI 呈现错误不错乱。
+- 闭环二（秘密议事）实测：仅王承恩与会 → 普通 Transcript API 零可见（0 条），
+  Debug API 3 条（全 private）→ 泄密评估确定性 roll（score 7 / threshold 0.07 /
+  roll 0.100087 未触发）→ 未参会者魏忠贤上下文零泄露（无标题/无 ID/无议程标记）。
+- 实测发现并修复两缺陷（commit 5fbe526）：dev 默认 Mock 兜底不识别会议契约
+  （必然 LLM_OUTPUT_REPAIR_FAILED）；Meeting Lab 暂停按钮未开放 failed 状态
+  （恢复路径在 UI 不可达）。附 provider-factory 双模式回归测试。
+- 已知缺口：meeting.cancel 命令未暴露 REST 端点（引擎/命令层已实现并有测试）；
+  Meeting Lab 创建表单的复选框在程序化 form_input 下不更新 React 状态（真实点击正常）。
+
 ## 下一步边界
 
 Phase 5 尚未开始。只能在人工评审后进入规则引擎、政策草案、政策执行阶段、资源消耗、
