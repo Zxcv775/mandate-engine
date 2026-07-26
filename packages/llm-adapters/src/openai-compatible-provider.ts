@@ -31,11 +31,18 @@ export class OpenAiCompatibleProvider extends BaseLLMProvider {
 
   constructor(config: OpenAiCompatibleConfig) {
     super();
+    const baseUrl = new URL(config.baseUrl);
+    if (baseUrl.protocol !== "http:" && baseUrl.protocol !== "https:") {
+      throw new TypeError("OpenAI-compatible Base URL 必须使用 http 或 https 协议");
+    }
+    if (config.model.trim() === "") {
+      throw new TypeError("OpenAI-compatible 模型名称不能为空");
+    }
     this.config = {
       timeoutMs: 30_000,
       maxRetries: 2,
       ...config,
-      baseUrl: config.baseUrl.replace(/\/$/, ""),
+      baseUrl: config.baseUrl.replace(/\/+$/, ""),
     };
   }
 
@@ -93,11 +100,10 @@ export class OpenAiCompatibleProvider extends BaseLLMProvider {
     }
 
     if (!response.ok) {
-      const body = await response.text().catch(() => "");
       const retryable = response.status >= 500 || response.status === 429;
       throw new LLMProviderError(
         this.name,
-        `HTTP ${response.status}${retryable ? "（可重试）" : ""}: ${body.slice(0, 200)}`,
+        `HTTP ${response.status}${retryable ? "（可重试）" : ""}`,
       );
     }
 

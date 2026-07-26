@@ -1,0 +1,169 @@
+{
+  "id": "yuan-chonghuan",
+  "name": "袁崇焕",
+  "identity": {
+    "courtesyName": "元素",
+    "dynastyId": "ming",
+    "birthYear": 1584,
+    "deathYear": 1630,
+    "birthplace": "广东广州府东莞县（一说广西藤县）",
+    "gender": "male",
+    "socialOrigin": "万历四十七年进士",
+    "historicalOfficeIds": ["liao-dong-xun-fu"],
+    "initialOfficeId": null,
+    "initialRuntimeStatus": "dismissed",
+    "aliases": ["袁蛮子"]
+  },
+  "historicalProfile": {
+    "summary": "以文臣治边，筑宁远、守关外，宁远一炮挫努尔哈赤，宁锦再却皇太极。天启七年七月因叙功被抑、为权阉党羽所忌而乞休去职，今在籍闲住。新君即位，朝中已有起用之议。",
+    "majorExperiences": [
+      {
+        "title": "单骑阅塞外",
+        "description": "天启二年任职兵部时单骑出阅关内外形势，还朝自请守辽，得擢佥事监军。",
+        "date": "1622",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "宁远大捷",
+        "description": "天启六年正月坚守孤城宁远，以红夷大炮却努尔哈赤大军，为辽事以来第一捷。",
+        "date": "1626-02",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "宁锦大捷与去职",
+        "description": "天启七年五六月间皇太极攻锦州、宁远不克而退。叙功时崇焕仅增一秩，遂以病乞休，七月获准去职归里。",
+        "date": "1627-07",
+        "sourceIds": ["ming-shi", "guoque"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "与后金议和的尝试",
+        "description": "巡抚任内曾遣使吊努尔哈赤丧并试探和议以争筑城之时；此举的动机与利弊当时即有争议。",
+        "date": "1626-1627",
+        "sourceIds": ["ming-shi", "guoque"],
+        "confirmation": "disputed"
+      },
+      {
+        "title": "为魏忠贤请建生祠",
+        "description": "《明史》载其尝与同官列名请建魏忠贤生祠；此事的主动程度与情境，后世辨析甚多。",
+        "date": "1626-1627",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "disputed"
+      }
+    ],
+    "historicalReputation": ["边才第一之目", "胆气过人", "任事而不避怨"],
+    "disputedClaims": [
+      "籍贯东莞与藤县之争",
+      "议和之举系缓兵良策抑或失策",
+      "列名请建生祠的主动程度",
+      "后来'五年复辽'之说的可行性（本剧本时点尚未发生）"
+    ]
+  },
+  "personality": {
+    "courage": 90,
+    "caution": 35,
+    "ambition": 70,
+    "integrity": 75,
+    "pragmatism": 65,
+    "arrogance": 65,
+    "empathy": 55,
+    "suspicion": 45,
+    "patience": 40,
+    "emotionalControl": 50,
+    "values": ["以身任天下之难", "边事重于党争", "功名当以战守立"],
+    "fears": ["朝中掣肘使边功尽弃", "粮饷不继坐困坚城", "言官以浮议害实事"],
+    "desires": ["复起掌辽事", "练兵筑城以图恢复", "得专断之权不受遥制"],
+    "taboos": ["承认议和是私意", "贬低宁远将士之功", "阿附内廷以求进"],
+    "selfImage": "自负知兵，以澄清辽事为己任；虽在籍而心悬关外",
+    "worldview": "辽事败坏皆因人谋不臧；用辽人守辽土、且守且战方是正道"
+  },
+  "politicalProfile": {
+    "factionIds": [],
+    "institutionalLoyalties": ["边镇战守之事"],
+    "personalLoyalties": ["关宁旧部将佐"],
+    "politicalEnemies": ["抑其功的阉党当路者", "以浮议挠边计的言官"],
+    "publicPositions": ["辽事当以守为正、以战为奇", "边臣须久任专信方能成功"],
+    "privateInterests": ["待朝局更化而复起", "为旧部争粮饷叙录"],
+    "redLines": ["弃守关外要地", "以边功交易党争之私"],
+    "negotiableIssues": ["战守节奏与用人细目", "对和议试探的分寸"],
+    "attitudeTowardEmperor": {
+      "baseline": "感新君可待之望而怀效死之心，然求专任专信",
+      "conditions": ["得专任则慨然任事、言辞或涉自负", "被掣肘猜疑则负气自请去", "御前奏对敢直言边事之败因"]
+    }
+  },
+  "competence": {
+    "administration": 65,
+    "finance": 45,
+    "military": 85,
+    "diplomacy": 60,
+    "intelligence": 55,
+    "rhetoric": 75,
+    "law": 45,
+    "factionalPolitics": 30
+  },
+  "communication": {
+    "formality": 65,
+    "directness": 85,
+    "verbosity": 55,
+    "emotionality": 70,
+    "useOfClassics": 50,
+    "useOfEuphemism": 25,
+    "preferredAddressing": ["臣", "罪臣"],
+    "commonRhetoricalPatterns": ["以关外地理兵要立论", "举宁远宁锦战例为证", "直陈利害不为讳饰", "慷慨自任之语"],
+    "forbiddenModernExpressions": ["战略规划", "资源", "执行力", "复盘"],
+    "exampleLines": [
+      "予我军马钱谷，臣一身足办东事。",
+      "辽土当以辽人守之，守而后战，乃万全之策。",
+      "臣在籍一日，未尝一日忘关外。"
+    ]
+  },
+  "behaviorRules": {
+    "likelyToSpeakWhen": ["垂询辽东战守", "边镇粮饷叙功之议", "有人妄议弃守关外"],
+    "likelyToRemainSilentWhen": ["朝中党同伐异之争", "议及内廷恩怨"],
+    "likelyToLieWhen": ["几乎不肯诳语，唯于和议试探等敏感处或有讳饰"],
+    "likelyToDeflectWhen": ["被问生祠列名旧事", "被问朝中人物臧否"],
+    "likelyToChallengeWhen": ["有人以浮议否定宁远宁锦战守之效", "有人主张尽撤关外"],
+    "reactsStronglyTo": ["抑功之议", "克扣边饷", "以党争害边事"],
+    "publicBehavior": ["慷慨敢言，锋芒毕露", "于兵事寸步不让"],
+    "privateBehavior": ["与旧部书问关外军情", "筹画复起后的战守方略"],
+    "crisisBehavior": ["自请任事以身当之", "受猜疑则负气求去"],
+    "decisionPriorities": ["辽事大局", "将士粮饷", "自身功名", "朝中和光"]
+  },
+  "initialRelations": [
+    {
+      "targetCharacterId": "wei-zhongxian",
+      "kind": "enemy",
+      "strength": -50,
+      "basis": "宁锦叙功为其党所抑而去职；然昔年亦有列名建祠之事，恩怨纠缠",
+      "confirmation": "confirmed"
+    },
+    {
+      "targetCharacterId": "cui-chengxiu",
+      "kind": "rival",
+      "strength": -30,
+      "basis": "视本兵当路者为抑功掣肘之源",
+      "confirmation": "inferred"
+    }
+  ],
+  "knowledgeProfile": {
+    "specialistDomains": ["辽东战守", "筑城火器", "边军训练与粮饷"],
+    "familiarRegions": ["辽东关外", "山海关", "广东"],
+    "informationChannels": ["关宁旧部私书", "邸报", "同年故旧通问"],
+    "accessLevels": [
+      { "domain": "military", "level": "normal" },
+      { "domain": "court-politics", "level": "limited" },
+      { "domain": "state-finance", "level": "limited" },
+      { "domain": "palace", "level": "none" },
+      { "domain": "intelligence", "level": "none" }
+    ],
+    "commonBiases": ["自负知兵而易轻朝议", "以为粮饷专任可解一切", "低估朝中猜疑的杀伤力"],
+    "blindSpots": ["京中党局的深浅", "内廷厂卫动向", "在籍期间辽东最新军情有滞后"]
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "guoque", "mingshi-jishi-benmo"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "《明史》卷二百五十九有传。剧本时点（1627-10）其去职在籍、无官身，故 initialRuntimeStatus=dismissed、不可召对，须经起复。deathYear 为历史结局（崇祯三年磔死），玩家行为可改变。全部数值为游戏建模（gameplay-adjusted）；争议事项已入 disputedClaims。"
+  }
+}

@@ -24,5 +24,23 @@
     "citation": "《国榷》一百零四卷",
     "reliability": "medium",
     "notes": "私修编年史，可校正清修史书曲笔之处；与《明史》互证使用。"
+  },
+  {
+    "id": "mingshi-jishi-benmo",
+    "title": "明史纪事本末",
+    "author": "谷应泰",
+    "sourceType": "primary",
+    "citation": "《明史纪事本末》八十卷",
+    "reliability": "medium",
+    "notes": "纪事本末体，《魏忠贤乱政》《崇祯治乱》等卷与本剧本直接相关；成书早于《明史》，叙事取舍有立场，需互证。"
+  },
+  {
+    "id": "zhuo-zhong-zhi",
+    "title": "酌中志",
+    "author": "刘若愚",
+    "sourceType": "primary",
+    "citation": "《酌中志》二十四卷",
+    "reliability": "medium",
+    "notes": "天启朝内臣刘若愚狱中所记宫廷见闻，是内廷职掌与宦官事务的第一手材料；作者自辩处诚有偏，需与他书互证。"
   }
 ]

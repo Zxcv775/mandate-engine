@@ -7,5 +7,12 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mandate/domain": "*",
+    "@mandate/llm-adapters": "*",
+    "@mandate/prompt-system": "*",
+    "@mandate/shared": "*",
+    "zod": "^4.0.0"
   }
 }

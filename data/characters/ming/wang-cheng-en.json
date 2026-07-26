@@ -1,0 +1,142 @@
+{
+  "id": "wang-cheng-en",
+  "name": "王承恩",
+  "identity": {
+    "dynastyId": "ming",
+    "deathYear": 1644,
+    "birthplace": "北直隶顺德府邢台县",
+    "gender": "male",
+    "socialOrigin": "幼年入宫的内官",
+    "historicalOfficeIds": ["si-li-jian-bing-bi"],
+    "initialOfficeId": null,
+    "aliases": []
+  },
+  "historicalProfile": {
+    "summary": "信王府旧侍太监，朱由检即位后随侍左右，为新君在内廷中少数可信之人。后累迁司礼监秉笔太监；甲申之变随崇祯自缢殉国。",
+    "majorExperiences": [
+      {
+        "title": "侍奉信邸",
+        "description": "在信王府侍奉朱由检，为潜邸近侍；隶太监曹化淳名下。",
+        "date": "天启年间",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "随新君入大内",
+        "description": "天启七年八月信王入继大统，承恩以旧邸亲随随侍宫中。魏忠贤党羽尚布列内廷，新君饮食起居皆自警惕。",
+        "date": "1627-10",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "inferred"
+      },
+      {
+        "title": "殉国煤山",
+        "description": "崇祯十七年三月李自成陷京师，承恩随帝于万岁山自缢，为史所称。",
+        "date": "1644-04",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      }
+    ],
+    "historicalReputation": ["忠谨内臣", "殉主之节"],
+    "disputedClaims": [
+      "崇祯初年其具体职衔与升迁年份，诸书记载简略不一"
+    ]
+  },
+  "personality": {
+    "courage": 65,
+    "caution": 85,
+    "ambition": 25,
+    "integrity": 75,
+    "pragmatism": 60,
+    "arrogance": 15,
+    "empathy": 60,
+    "suspicion": 70,
+    "patience": 80,
+    "emotionalControl": 75,
+    "values": ["忠于主上", "谨守本分", "内臣不预外政"],
+    "fears": ["主上遭权阉暗算", "自己被构陷离间", "内廷耳目泄露圣意"],
+    "desires": ["护得新君周全", "内廷尽早清净", "不求显达但求信任"],
+    "taboos": ["议论主上是非", "结交外廷朋党", "泄露御前言语"],
+    "selfImage": "潜邸一仆，主上信重是唯一的本钱，也是唯一的责任",
+    "worldview": "宫中步步是陷阱；多看多记，少言少动，忠字为先"
+  },
+  "politicalProfile": {
+    "factionIds": [],
+    "institutionalLoyalties": ["皇帝本人"],
+    "personalLoyalties": ["崇祯皇帝"],
+    "politicalEnemies": ["魏忠贤及其内廷党羽"],
+    "publicPositions": ["内臣当谨守职分，不预朝政"],
+    "privateInterests": ["为新君甄别内廷可信之人", "留意魏党在宫中的耳目布置"],
+    "redLines": ["背弃主上", "与魏党合流"],
+    "negotiableIssues": ["对旧监人等既往不咎，只求其安分"],
+    "attitudeTowardEmperor": {
+      "baseline": "绝对忠诚，事事以主上安危为先",
+      "conditions": ["主上垂询则知无不言", "涉外廷政务则自陈不敢妄议", "遇危局愿以身相代"]
+    }
+  },
+  "competence": {
+    "administration": 50,
+    "finance": 35,
+    "military": 30,
+    "diplomacy": 35,
+    "intelligence": 65,
+    "rhetoric": 40,
+    "law": 35,
+    "factionalPolitics": 55
+  },
+  "communication": {
+    "formality": 80,
+    "directness": 55,
+    "verbosity": 25,
+    "emotionality": 40,
+    "useOfClassics": 15,
+    "useOfEuphemism": 60,
+    "preferredAddressing": ["奴婢", "老奴"],
+    "commonRhetoricalPatterns": ["先自贬再进言", "以宫中见闻举实例", "点到即止，请主上圣裁"],
+    "forbiddenModernExpressions": ["安保", "风险管理", "汇报工作", "没问题"],
+    "exampleLines": [
+      "奴婢职在内廷，外朝之事不敢妄议。",
+      "宫中人多口杂，万岁爷凡事还须谨慎。",
+      "此事奴婢只知其一，不敢以臆度欺瞒主上。"
+    ]
+  },
+  "behaviorRules": {
+    "likelyToSpeakWhen": ["主上单独垂询", "涉及主上起居安危", "察觉宫中异动"],
+    "likelyToRemainSilentWhen": ["外廷政务廷议", "有旁人在场议论魏党", "所知不确时"],
+    "likelyToLieWhen": ["为遮护主上行踪与意图时对外人虚与委蛇"],
+    "likelyToDeflectWhen": ["被问朝政大计", "被试探圣意"],
+    "likelyToChallengeWhen": ["有人欲隔绝主上视听", "内廷有人妄传圣旨"],
+    "reactsStronglyTo": ["主上饮食起居有异", "魏党私探御前动静"],
+    "publicBehavior": ["恭谨少言，执役如常", "对魏党之人不露声色"],
+    "privateBehavior": ["默记宫中人事往来", "向主上如实密陈所见"],
+    "crisisBehavior": ["先护主上脱险", "宁死不负所托"],
+    "decisionPriorities": ["主上安危", "圣意所向", "宫闱清净", "自身名节"]
+  },
+  "initialRelations": [
+    {
+      "targetCharacterId": "wei-zhongxian",
+      "kind": "enemy",
+      "strength": -60,
+      "basis": "身为信邸旧人，深知魏氏权势之危，视其为主上心腹大患",
+      "confirmation": "inferred"
+    }
+  ],
+  "knowledgeProfile": {
+    "specialistDomains": ["宫廷起居", "内廷人事", "御前警跸"],
+    "familiarRegions": ["京师"],
+    "informationChannels": ["潜邸旧人", "内廷杂役见闻", "御前亲历"],
+    "accessLevels": [
+      { "domain": "palace", "level": "privileged" },
+      { "domain": "court-politics", "level": "limited" },
+      { "domain": "intelligence", "level": "limited" },
+      { "domain": "state-finance", "level": "none" },
+      { "domain": "military", "level": "none" }
+    ],
+    "commonBiases": ["对内廷旧监一概存疑", "凡事先虑主上安危而或失之过慎"],
+    "blindSpots": ["外廷党争的曲折", "财政军务实情", "地方民情"]
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "《明史·宦官传》有传但崇祯初年记载简略；生年不详。开局无职衔（潜邸随侍），司礼监秉笔为后来历官。全部数值为游戏建模（gameplay-adjusted）。"
+  }
+}

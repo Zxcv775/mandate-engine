@@ -1,23 +1,26 @@
 {
-  "providers": [
+  "runtimeSource": ".env",
+  "comment": "本文档仅给出环境变量配方，服务端不会读取本 JSON。",
+  "examples": [
     {
       "name": "mock",
-      "type": "mock",
-      "comment": "离线 Mock，测试与默认开发使用，零网络"
+      "environment": {
+        "LLM_PROVIDER": "mock",
+        "LLM_MODEL": "mock-model",
+        "LLM_TIMEOUT_MS": "30000",
+        "LLM_MAX_RETRIES": "2"
+      }
     },
     {
-      "name": "local-llm",
-      "type": "openai-compatible",
-      "baseUrl": "http://127.0.0.1:1234/v1",
-      "model": "local-model",
-      "comment": "本地模型示例（LM Studio / Ollama 的 OpenAI 兼容端点）"
-    },
-    {
-      "name": "cloud-example",
-      "type": "openai-compatible",
-      "baseUrl": "https://api.example.com/v1",
-      "model": "example-model",
-      "comment": "云端 OpenAI 兼容端点示例；API Key 经环境变量 LLM_API_KEY 注入，禁止写入本文件"
+      "name": "openai-compatible-local",
+      "environment": {
+        "LLM_PROVIDER": "openai-compatible",
+        "LLM_BASE_URL": "http://127.0.0.1:1234/v1",
+        "LLM_API_KEY": "",
+        "LLM_MODEL": "local-model",
+        "LLM_TIMEOUT_MS": "30000",
+        "LLM_MAX_RETRIES": "2"
+      }
     }
   ]
 }

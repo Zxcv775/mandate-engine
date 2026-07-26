@@ -5,10 +5,18 @@
   "startGameDate": "1627-10-02",
   "synopsis": "玩家扮演刚刚即位的崇祯皇帝朱由检。魏忠贤与阉党仍控制厂卫与朝政，东林党人等待平反，辽东战事吃紧，国库空虚，各地灾异频发。",
   "initialDataRef": "data/scenarios/chongzhen-early/",
-  "coreCharacterIds": ["wei-zhongxian"],
+  "coreCharacterIds": [
+    "wei-zhongxian",
+    "wang-cheng-en",
+    "huang-liji",
+    "cui-chengxiu",
+    "yuan-chonghuan"
+  ],
+  "status": "prototype",
+  "historicalDataCompleteness": "partial",
   "meta": {
     "sourceIds": ["ming-shi", "chongzhen-shilu"],
     "confirmation": "confirmed",
-    "notes": "朱由检于天启七年八月（公历 1627-10-02）即皇帝位，改元崇祯；农历→公历换算在 Phase 7 须复核。本目录数据为 Phase 0 占位，人物与初始状态在 Phase 7 填充。"
+    "notes": "朱由检于天启七年八月（公历 1627-10-02）即皇帝位，改元崇祯；农历→公历换算在 Phase 7 须复核。Phase 3 填充首批 5 名核心人物卡（袁崇焕开局去职在籍、不可召对）；全量 8-12 人物与事件链在 Phase 7 补齐。"
   }
 }

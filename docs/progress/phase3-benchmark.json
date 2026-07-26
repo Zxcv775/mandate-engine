@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-07-26T10:46:58.526Z",
+  "node": "v25.2.1",
+  "iterations": 50,
+  "characterViewBuild": {
+    "label": "character-view-build",
+    "avgMs": 0.083
+  },
+  "memorySelector100": {
+    "label": "memory-selector-100",
+    "avgMs": 0.034
+  },
+  "memorySelector1000": {
+    "label": "memory-selector-1000",
+    "avgMs": 0.363
+  },
+  "promptComposition": {
+    "label": "prompt-composition",
+    "avgMs": 0.367
+  },
+  "promptSize": {
+    "characters": 5727,
+    "estimatedTokens": 2866,
+    "segments": 11
+  },
+  "mockAgentRespond": {
+    "label": "mock-agent-respond",
+    "avgMs": 0.69
+  },
+  "memoryDatabase": {
+    "insertedRows": 1000,
+    "insertTotalMs": 446.3,
+    "bytesBefore": 4096,
+    "bytesAfter": 540672,
+    "bytesPerMemory": 536.6
+  }
+}

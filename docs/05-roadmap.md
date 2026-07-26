@@ -3,7 +3,7 @@
 每个阶段包含：阶段目标 / 前置条件 / 主要任务 / 交付物 / 验收标准 / 已知风险 / 明确不在该阶段完成的内容。
 阶段原则上串行推进；每阶段完成后须人工评审再进入下一阶段。
 
-## Phase 0 · 项目立项与架构基线（本阶段）
+## Phase 0 · 项目立项与架构基线（已完成）
 
 - 目标：冻结愿景、需求、架构、领域模型、技术选型与项目骨架。
 - 前置：无。
@@ -14,40 +14,51 @@
 - 风险：node:sqlite 为 experimental（CONFLICT-002）。
 - 不做：任何业务逻辑、真实 LLM 调用、存档实现。
 
-## Phase 1 · 基础项目骨架
+## Phase 1 · 基础项目骨架（已完成）
 
 - 目标：前后端可启动并联调；配置装配；CI 式检查脚本就绪。
 - 前置：Phase 0 验收通过。
-- 主要任务：服务端配置模块（dotenv+Zod）；健康检查与版本端点；前端首页显示服务端状态；
-  LLMProvider 工厂（按 env 装配 Mock/OpenAI 兼容）；统一错误格式；npm scripts 完善。
-- 交付物：可运行的 `dev:server` / `dev:web`；`config` 模块；Provider 工厂 + 单测。
-- 验收标准：一条命令启动前后端，浏览器可见服务端在线状态；新增单测全绿。
+- 主要任务：启动期配置与 Provider Factory；统一 API Envelope；Domain 深度 Schema 与引用校验；
+  独立 Scenario Loader；场景元数据 API；类型化 Web Client 与 Runtime Dashboard；Prompt 最小资产；CI。
+- 交付物：可运行的 `dev` / `dev:server` / `dev:web`；Config、Provider、Data Loader、Prompt、
+  Dashboard 与离线测试闭环。
+- 验收标准：固定 Node 环境下 `npm run check` 全绿；浏览器完成在线、刷新和离线验证；
+  lint 与数据负向探针能阻断；默认 Mock 无需 Secrets 或外部网络。
 - 风险：OpenAI 兼容端点差异（用 Mock 兜底）。
 - 不做：游戏状态、存档、任何会议/政策逻辑。
 
-## Phase 2 · 核心状态与存档系统
+## Phase 2 · 核心状态与存档系统（已完成）
 
 - 目标：GameState 落地 + SQLite 存档 + StateChangeLog + 时间推进。
 - 前置：Phase 1。
-- 主要任务：数据访问层（node:sqlite 薄仓储）；GameState 全量 Zod Schema；
-  状态引擎唯一写入口；回合推进骨架；自动/手动存档；schema 版本迁移框架；
-  模板只读加载器（data/ → 内存，写操作抛错）。
-- 交付物：`game-engine` 状态引擎；`server` 存档 API；迁移测试；只读模板测试。
-- 验收标准：FR-STATE-001/002/003/004、FR-SAVE-001/002/003、FR-HIST-002 全部测试通过。
-- 风险：快照体积与性能（MVP 规模无虞）；迁移链设计过早（仅做框架）。
-- 不做：LLM 集成、规则结算、UI。
+- 主要任务：GameState/Command/Mutation/StateChangeLog strict Schema；确定性 RNG/Clock；唯一状态写入口；
+  SQLite 原子事务、checkpoint/replay、逻辑回滚、validate/repair dry-run、前向迁移；`.mesave` 加密导入导出与
+  noop/fast-forward/forked/rejected 分类；Save API/CLI 与最小 Save Browser。
+- 交付物：`@mandate/game-engine`、`@mandate/save-system`、15 个 Save API、6 个 CLI 命令、Phase 2 CI 门、
+  ADR-006~009、真实性能基准与安全回归测试。
+- 验收标准：固定 Node 24.18.0 下 `npm run check:phase2` 全绿；存档可创建、提交、重放、回滚、迁移、
+  校验、导入导出；默认 View/API 不含 hidden/sealed；1000 revision 与 10000 日志基准有实测报告。
+- 实际证据：`docs/06-phase-2-implementation.md`、`docs/progress/phase2-benchmark.json` 与 Phase 2 会话记录。
+- 风险：`node:sqlite` 仍有 experimental 提示；同步 validate/export 在更大存档下可能需要 worker/异步化评审。
+- 不做：Character Agent、完整会议/政策/规则/事件、云存档、自动 merge 或正式游戏 UI。
 
-## Phase 3 · 人物卡与 Prompt 系统
+## Phase 3 · 人物卡与 Prompt 系统（已完成）
 
 - 目标：Prompt 资产化管理 + Character Agent 单角色对话。
 - 前置：Phase 2。
-- 主要任务：`prompt-system`（系统/人物/朝代/剧本/会议/叙事/记忆压缩/历史校验提示词模板，
-  版本化、可单测渲染）；人物视图过滤（知识范围 + hidden 剥离）；
-  Character Agent 单轮/多轮对话；Mock 人物回答测试；农历日期显示方案评审（CONFLICT-001）。
-- 交付物：prompt 模板库 + 渲染测试；视图过滤器 + 测试；`/api/characters/:id/chat` 原型。
-- 验收标准：FR-CHAR-001/002；Prompt 不含越权信息（测试）。
-- 风险：Prompt 长度失控（先定义预算与裁剪策略）。
-- 不做：会议编排、政策解析。
+- 主要任务：分层人物卡 Schema 与首批 5 名人物数据；角色有限知识视图（六级可见性 +
+  认知标注 + hidden/sealed 隔离）；人物记忆基础设施（SQLite 双表、Policy 审批、
+  确定性 Selector、预算、规则摘要）；`prompt-system` 升级（23 个版本化资产、manifest、
+  composer、预算裁剪、注入防护）；单人物 Character Agent（结构化输出、受控修复、
+  确定性一致性检查、expectedRevision 校验）；人物 API 与 Character Lab；Mock Fixture 全离线测试。
+- 交付物：`@mandate/agent-runtime` 实装、人物 API 6 端点、Character Lab、
+  7 个新测试文件、ADR-010~014、`check:phase3` CI 门、Phase 3 性能基准。
+- 验收标准：`check:phase3` 全绿；Prompt/视图不含越权信息（恶意输入测试）；
+  Agent 调用不改变 GameState、不产生 StateChangeLog。
+- 实际证据：`docs/07-phase-3-implementation.md`、`docs/progress/2026-07-26-phase3-session.md`、
+  `docs/progress/phase3-benchmark.json`。
+- 延后：农历日期显示方案评审（CONFLICT-001）与 Phase 7 一并处理；记忆语义检索留待后续评审。
+- 不做：会议编排、政策解析、向量数据库。
 
 ## Phase 4 · 会议对话原型
 

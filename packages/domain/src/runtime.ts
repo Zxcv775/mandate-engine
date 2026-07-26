@@ -221,7 +221,7 @@ export interface HiddenState {
  * GameState：单一事实源（Single Source of Truth）。
  * 一切模块读取本对象；一切修改经状态引擎并写入 StateChangeLog。
  */
-export interface GameState {
+export interface LegacyGameState {
   sessionId: string;
   /** 游戏内日期（公历 ISO 字符串） */
   currentGameDate: string;
@@ -240,6 +240,7 @@ export interface GameState {
   hidden: HiddenState;
 }
 
+/** 提供给 LLM 的最小状态视图：复制可见数据并剥离顶层隐藏状态。 */
 /** 单条状态变更记录 */
 export interface StateChange {
   path: string;
@@ -252,7 +253,7 @@ export type StateChangeActor = "player" | "system" | "rule_engine";
 /**
  * StateChangeLog：一切状态修改的审计记录，只增不改。
  */
-export interface StateChangeLog {
+export interface LegacyStateChangeLog {
   id: string;
   sessionId: string;
   realTimestamp: string;

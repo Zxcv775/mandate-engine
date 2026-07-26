@@ -1,12 +1,14 @@
 {
   "name": "mandate-engine",
-  "version": "0.0.0",
+  "version": "0.3.0",
   "private": true,
   "description": "天命：帝国推演 —— LLM 驱动的中国历史皇帝模拟游戏",
   "type": "module",
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=24.15.0 <25",
+    "npm": ">=11 <12"
   },
+  "packageManager": "npm@11.16.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -15,22 +17,47 @@
     "brace-expansion": "^5.0.8"
   },
   "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names server,web \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm run dev --workspace @mandate/server",
     "dev:web": "npm run dev --workspace @mandate/web",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "check:data": "node scripts/validate-data.mjs"
+    "test:watch": "vitest",
+    "check:data": "tsx scripts/validate-data.ts",
+    "save:check": "tsx scripts/save-cli.ts check",
+    "save:repair": "tsx scripts/save-cli.ts repair",
+    "save:rollback": "tsx scripts/save-cli.ts rollback",
+    "save:export": "tsx scripts/save-cli.ts export",
+    "save:import": "tsx scripts/save-cli.ts import",
+    "save:migrate": "tsx scripts/save-cli.ts migrate",
+    "check:saves": "tsx scripts/check-saves.ts",
+    "test:migrations": "vitest run tests/save-integrity-migration.test.ts",
+    "test:rollback": "vitest run tests/rollback.test.ts",
+    "test:integrity": "vitest run tests/sqlite-save-system.test.ts tests/save-integrity-migration.test.ts tests/save-import-export.test.ts",
+    "test:determinism": "vitest run tests/state-engine.test.ts",
+    "benchmark:phase2": "tsx scripts/benchmark-phase2.ts",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run check:data",
+    "check:phase2": "npm run lint && npm run typecheck && npm test && npm run build && npm run check:data && npm run check:saves && npm run test:migrations && npm run test:rollback && npm run test:integrity && npm run test:determinism",
+    "check:characters": "vitest run tests/character-schema.test.ts",
+    "test:character-views": "vitest run tests/character-view.test.ts",
+    "test:character-memory": "vitest run tests/character-memory.test.ts",
+    "test:character-security": "vitest run tests/character-security.test.ts tests/phase3-integration.test.ts",
+    "test:prompt-assets": "vitest run tests/prompt-system.test.ts tests/character-prompt.test.ts",
+    "benchmark:phase3": "tsx scripts/benchmark-phase3.ts",
+    "check:phase3": "npm run check:phase2 && npm run check:characters && npm run test:character-views && npm run test:character-memory && npm run test:character-security && npm run test:prompt-assets"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^24.0.0",
+    "concurrently": "^9.2.1",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.0.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0"

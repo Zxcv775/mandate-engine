@@ -9,6 +9,8 @@ export interface MockLLMProviderOptions {
   responses?: string[];
   /** 队列耗尽后的兜底应答函数 */
   handler?: MockHandler;
+  /** 返回结果中的模型标识；默认与运行时配置一致 */
+  model?: string;
 }
 
 /**
@@ -20,12 +22,14 @@ export class MockLLMProvider extends BaseLLMProvider {
 
   private readonly queue: string[];
   private readonly handler?: MockHandler;
+  private readonly model: string;
   /** 全部调用的消息副本（测试断言用） */
   readonly calls: LLMMessage[][] = [];
 
   constructor(options: MockLLMProviderOptions = {}) {
     super();
     this.queue = [...(options.responses ?? [])];
+    this.model = options.model ?? "mock-model";
     if (options.handler !== undefined) {
       this.handler = options.handler;
     }
@@ -46,7 +50,7 @@ export class MockLLMProvider extends BaseLLMProvider {
           : "";
     return Promise.resolve({
       text,
-      model: "mock-model",
+      model: this.model,
       provider: this.name,
       usage: estimateUsage(messages, text),
     });

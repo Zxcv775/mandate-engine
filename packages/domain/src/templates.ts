@@ -1,158 +1,201 @@
-import type { Modifier, TemplateMeta } from "./common";
+import { z } from "zod";
+import { ModifierSchema, TemplateMetaSchema } from "./common";
+
+const IdSchema = z.string().trim().min(1);
+const NameSchema = z.string().trim().min(1);
+const YearSchema = z.number().int().min(0).max(9_999);
+
+/** 模板侧实体（只读，存于 data/，git 版本控制）。 */
+export const DynastySchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    startYear: YearSchema,
+    endYear: YearSchema.optional(),
+    institutionPackId: IdSchema,
+    meta: TemplateMetaSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.endYear !== undefined && value.endYear < value.startYear) {
+      context.addIssue({
+        code: "custom",
+        path: ["endYear"],
+        message: "结束年份不得早于开始年份",
+      });
+    }
+  });
+export type Dynasty = z.infer<typeof DynastySchema>;
+
+export const ScenarioStatusSchema = z.enum(["prototype", "playable"]);
+export type ScenarioStatus = z.infer<typeof ScenarioStatusSchema>;
+
+export const HistoricalDataCompletenessSchema = z.enum(["placeholder", "partial", "complete"]);
+export type HistoricalDataCompleteness = z.infer<typeof HistoricalDataCompletenessSchema>;
+
+export const ScenarioSchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    dynastyId: IdSchema,
+    startGameDate: z.iso.date(),
+    synopsis: z.string().trim().min(1),
+    initialDataRef: z.string().trim().min(1),
+    coreCharacterIds: z.array(IdSchema).min(1),
+    status: ScenarioStatusSchema,
+    historicalDataCompleteness: HistoricalDataCompletenessSchema,
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type Scenario = z.infer<typeof ScenarioSchema>;
 
 /**
- * 模板侧实体（只读，存于 data/，git 版本控制）。
- * 红线：运行时禁止修改模板（FR-HIST-002 / ADR-004）。
+ * 人物模板已在 Phase 3 升级为分层人物卡（见 character-template.ts / ADR-010）。
+ * 此处保留 Character/CharacterSchema 别名，兼容 data-loader 与 game-engine 的既有引用。
  */
+export {
+  CharacterTemplateSchema as CharacterSchema,
+  type CharacterTemplate as Character,
+} from "./character-template";
 
-/** 朝代 */
-export interface Dynasty {
-  id: string;
-  name: string;
-  startYear: number;
-  endYear?: number;
-  /** 关联的制度包 ID（data/institutions/<pack>/） */
-  institutionPackId: string;
-  meta: TemplateMeta;
-}
+export const OfficeSchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    grade: z.number().int().min(1).max(9),
+    institutionId: IdSchema,
+    powers: z.array(z.string().trim().min(1)).min(1),
+    quota: z.number().int().nonnegative(),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type Office = z.infer<typeof OfficeSchema>;
 
-/** 剧本：一次游戏的开局定义 */
-export interface Scenario {
-  id: string;
-  name: string;
-  dynastyId: string;
-  /** 开局日期（公历 ISO 字符串；农历换算见需求 CONFLICT-001） */
-  startGameDate: string;
-  synopsis: string;
-  /** 初始数据目录（相对仓库根） */
-  initialDataRef: string;
-  coreCharacterIds: string[];
-  meta: TemplateMeta;
-}
+export const InstitutionTypeSchema = z.enum([
+  "decision",
+  "administration",
+  "censorate",
+  "military",
+  "fiscal",
+  "intelligence",
+  "palace",
+  "local",
+]);
+export type InstitutionType = z.infer<typeof InstitutionTypeSchema>;
 
-/** 人物四维能力（0-100） */
-export interface CharacterAbilities {
-  administration: number;
-  military: number;
-  intrigue: number;
-  scholarship: number;
-}
+export const InstitutionSchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    type: InstitutionTypeSchema,
+    parentId: IdSchema.optional(),
+    functions: z.array(z.string().trim().min(1)).min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type Institution = z.infer<typeof InstitutionSchema>;
 
-/**
- * 人物模板。
- * 人格/能力/目标为模板；忠诚/官职/生死为运行时（见 CharacterState）。
- * deathYear 记录历史结局，玩家行为可以改变（模板不被修改）。
- */
-export interface Character {
-  id: string;
-  name: string;
-  courtesyName?: string;
-  birthYear?: number;
-  deathYear?: number;
-  factionId?: string;
-  /** 人格特质（键为特质名，值 0-1） */
-  personality: Record<string, number>;
-  abilities: CharacterAbilities;
-  /** 野心 0-100 */
-  ambition: number;
-  privateGoals: string[];
-  /** 知识范围：信息不完全的边界，NPC 发言不得越界（FR-CHAR-002） */
-  knowledgeScope: string[];
-  meta: TemplateMeta;
-}
+export const InstitutionPackSchema = z
+  .object({
+    id: IdSchema,
+    dynastyId: IdSchema,
+    institutions: z.array(InstitutionSchema).min(1),
+    offices: z.array(OfficeSchema),
+    decisionStructure: z.string().trim().min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type InstitutionPack = z.infer<typeof InstitutionPackSchema>;
 
-/** 官职（模板） */
-export interface Office {
-  id: string;
-  name: string;
-  /** 品级 1-9（正一品至从九品） */
-  grade: number;
-  institutionId: string;
-  powers: string[];
-  /** 编制数 */
-  quota: number;
-  meta: TemplateMeta;
-}
+export const FactionSchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    ideology: z.string().trim().min(1).optional(),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type Faction = z.infer<typeof FactionSchema>;
 
-export type InstitutionType =
-  | "decision" // 决策（内阁）
-  | "administration" // 行政（六部）
-  | "censorate" // 监察（都察院）
-  | "military" // 军事
-  | "fiscal" // 财政
-  | "intelligence" // 情报（厂卫）
-  | "palace" // 宫廷
-  | "local"; // 地方行政
+export const GameEventKindSchema = z.enum([
+  "historical_fixed",
+  "historical_conditional",
+  "dynamic",
+  "character",
+  "regional",
+  "disaster",
+  "war",
+  "court",
+]);
+export type GameEventKind = z.infer<typeof GameEventKindSchema>;
 
-/** 机构/制度单元（制度包组成） */
-export interface Institution {
-  id: string;
-  name: string;
-  type: InstitutionType;
-  parentId?: string;
-  functions: string[];
-  meta: TemplateMeta;
-}
+export const EventTriggerSchema = z
+  .object({
+    gameDate: z.iso.date().optional(),
+    expression: z.string().trim().min(1).optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Number(value.gameDate !== undefined) + Number(value.expression !== undefined) === 1,
+    "事件触发器必须且只能包含 gameDate 或 expression",
+  );
+export type EventTrigger = z.infer<typeof EventTriggerSchema>;
 
-/** 制度包：朝代差异的数据表达，引擎加载后约束会议/任免/政策权限 */
-export interface InstitutionPack {
-  id: string;
-  dynastyId: string;
-  institutions: Institution[];
-  offices: Office[];
-  /** 中央决策结构说明（数据化细节随制度包扩展） */
-  decisionStructure: string;
-  meta: TemplateMeta;
-}
+export const GameEventSchema = z
+  .object({
+    id: IdSchema,
+    kind: GameEventKindSchema,
+    trigger: EventTriggerSchema,
+    effects: z.array(ModifierSchema).min(1),
+    repeatable: z.boolean().optional(),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type GameEvent = z.infer<typeof GameEventSchema>;
 
-/** 派系（模板部分；运行时见 FactionState） */
-export interface Faction {
-  id: string;
-  name: string;
-  ideology?: string;
-  meta: TemplateMeta;
-}
+export const EventChainStepSchema = z
+  .object({
+    eventId: IdSchema,
+    branches: z.record(IdSchema, IdSchema).optional(),
+  })
+  .strict();
+export type EventChainStep = z.infer<typeof EventChainStepSchema>;
 
-export type GameEventKind =
-  | "historical_fixed"
-  | "historical_conditional"
-  | "dynamic"
-  | "character"
-  | "regional"
-  | "disaster"
-  | "war"
-  | "court";
+export const EventChainSchema = z
+  .object({
+    id: IdSchema,
+    name: NameSchema,
+    steps: z.array(EventChainStepSchema).min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type EventChain = z.infer<typeof EventChainSchema>;
 
-/** 事件触发条件：固定日期或条件 DSL 表达式（白名单求值，禁 eval） */
-export interface EventTrigger {
-  gameDate?: string;
-  expression?: string;
-}
+export const RulePackSchema = z
+  .object({
+    packId: IdSchema,
+    description: z.string().trim().min(1),
+    modifiers: z.array(ModifierSchema).min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type RulePack = z.infer<typeof RulePackSchema>;
 
-/**
- * 事件模板。命名 GameEvent 以避免与 DOM 全局 Event 冲突。
- * effects 由规则引擎结算，LLM 只叙述已发生的事件。
- */
-export interface GameEvent {
-  id: string;
-  kind: GameEventKind;
-  trigger: EventTrigger;
-  effects: Modifier[];
-  /** 默认 false：每个事件只触发一次（FR-EVT-002） */
-  repeatable?: boolean;
-  meta: TemplateMeta;
-}
+export const WorldbookEntrySchema = z
+  .object({
+    keys: z.array(z.string().trim().min(1)).min(1),
+    content: z.string().trim().min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type WorldbookEntry = z.infer<typeof WorldbookEntrySchema>;
 
-/** 事件链（模板）：有分支的连续事件 */
-export interface EventChain {
-  id: string;
-  name: string;
-  steps: EventChainStep[];
-  meta: TemplateMeta;
-}
-
-export interface EventChainStep {
-  eventId: string;
-  /** 分支映射：结果键 → 下一事件 id */
-  branches?: Record<string, string>;
-}
+export const WorldbookSchema = z
+  .object({
+    id: IdSchema,
+    description: z.string().trim().min(1),
+    entries: z.array(WorldbookEntrySchema).min(1),
+    meta: TemplateMetaSchema,
+  })
+  .strict();
+export type Worldbook = z.infer<typeof WorldbookSchema>;

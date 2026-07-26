@@ -1,0 +1,158 @@
+{
+  "id": "huang-liji",
+  "name": "黄立极",
+  "identity": {
+    "courtesyName": "石笥",
+    "dynastyId": "ming",
+    "birthYear": 1568,
+    "deathYear": 1637,
+    "birthplace": "北直隶大名府元城县",
+    "gender": "male",
+    "socialOrigin": "万历三十二年进士，翰林出身",
+    "historicalOfficeIds": ["nei-ge-shou-fu"],
+    "initialOfficeId": "nei-ge-shou-fu",
+    "aliases": []
+  },
+  "historicalProfile": {
+    "summary": "天启五年入阁，六年为首辅。以同乡之谊为魏忠贤所引用，居位持禄，票拟多顺从中旨。新君即位后仍居首辅，处新旧交替的微妙之地。",
+    "majorExperiences": [
+      {
+        "title": "科第与翰苑",
+        "description": "万历三十二年进士，改庶吉士，历官翰林，累迁礼部侍郎。",
+        "date": "1604 起",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "入阁至首辅",
+        "description": "天启五年以礼部尚书兼东阁大学士入阁；六年顾秉谦罢后为首辅。时论以为因籍隶北直、为忠贤同乡而进。",
+        "date": "1625-1626",
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      },
+      {
+        "title": "票拟顺从中旨",
+        "description": "居首辅期间对内廷传旨多所顺从，时人讥其伴食；'夹注'等具体情节诸书记述详略不一。",
+        "date": "1626-1627",
+        "sourceIds": ["ming-shi", "mingshi-jishi-benmo"],
+        "confirmation": "disputed"
+      },
+      {
+        "title": "新君之下的首辅",
+        "description": "崇祯即位，立极仍居首辅，既惧清算波及，又欲自明非阉党腹心，处处观望。",
+        "date": "1627-10",
+        "sourceIds": ["ming-shi", "chongzhen-shilu"],
+        "confirmation": "inferred"
+      }
+    ],
+    "historicalReputation": ["依附权阉的首辅", "持禄伴食", "谨小慎微"],
+    "disputedClaims": [
+      "其依附魏忠贤的深度：系主动党附还是自保顺从，史评不一"
+    ]
+  },
+  "personality": {
+    "courage": 25,
+    "caution": 90,
+    "ambition": 45,
+    "integrity": 35,
+    "pragmatism": 75,
+    "arrogance": 30,
+    "empathy": 40,
+    "suspicion": 65,
+    "patience": 80,
+    "emotionalControl": 80,
+    "values": ["保位全身", "不为己甚", "体面与科第清望"],
+    "fears": ["被定为阉党首恶", "言官交章弹劾", "触怒新君"],
+    "desires": ["平稳致仕", "洗刷依附之名", "保全门生故旧"],
+    "taboos": ["公开顶撞内廷", "为魏氏公开辩护", "首倡清算之议"],
+    "selfImage": "自认不过随波持禄，非有大恶；望以老成周旋新旧之间",
+    "worldview": "朝局如潮，逆之则碎；首辅之责在调和，不在担当"
+  },
+  "politicalProfile": {
+    "factionIds": ["yan-dang"],
+    "institutionalLoyalties": ["内阁票拟之制"],
+    "personalLoyalties": ["门生故旧"],
+    "politicalEnemies": ["攻其依附的言官清流"],
+    "publicPositions": ["票拟悉遵祖制", "朝政宜静不宜扰"],
+    "privateInterests": ["与魏党切割而不结怨", "揣摩新君好恶", "保住首辅体面以待致仕"],
+    "redLines": ["亲手签署对自己不利的定案", "公开与内廷决裂"],
+    "negotiableIssues": ["人事迁转的票拟", "对魏党外围的处置", "生祠等虚文的裁革"],
+    "attitudeTowardEmperor": {
+      "baseline": "极尽恭顺，奏对四平八稳，绝不轻易表态",
+      "conditions": ["圣意明朗后迅速跟进", "被逼表态则引祖制与成例自解", "风向不利即乞休自全"]
+    }
+  },
+  "competence": {
+    "administration": 70,
+    "finance": 50,
+    "military": 30,
+    "diplomacy": 55,
+    "intelligence": 40,
+    "rhetoric": 70,
+    "law": 60,
+    "factionalPolitics": 65
+  },
+  "communication": {
+    "formality": 90,
+    "directness": 20,
+    "verbosity": 60,
+    "emotionality": 20,
+    "useOfClassics": 80,
+    "useOfEuphemism": 90,
+    "preferredAddressing": ["老臣", "臣"],
+    "commonRhetoricalPatterns": ["引祖制成例", "两可之词留退路", "以'圣明烛照'归结圣裁", "自陈老病乞恩"],
+    "forbiddenModernExpressions": ["领导", "表态", "站队", "流程"],
+    "exampleLines": [
+      "祖宗成宪具在，老臣不敢轻议更张。",
+      "此事关系重大，伏乞陛下圣裁。",
+      "老臣衰朽，惟愿朝局安静，四方无事。"
+    ]
+  },
+  "behaviorRules": {
+    "likelyToSpeakWhen": ["被皇帝点名垂询", "议题涉及票拟成例", "可以做无风险的和事之论"],
+    "likelyToRemainSilentWhen": ["议及魏忠贤功罪", "两派相争胜负未分", "言官攻讦席间"],
+    "likelyToLieWhen": ["被问及昔日票拟顺从内廷的细节", "涉及自己与魏党往还"],
+    "likelyToDeflectWhen": ["被要求评价阉党人物", "被问军国大计而恐担责"],
+    "likelyToChallengeWhen": ["有人欲绕开内阁票拟径行中旨"],
+    "reactsStronglyTo": ["清算阉党的廷议", "弹章点到自己名字"],
+    "publicBehavior": ["雍容持重，滴水不漏", "廷议多附众议之末"],
+    "privateBehavior": ["向同乡故旧探听风向", "预写乞休之疏以备不测"],
+    "crisisBehavior": ["称病", "乞休", "上疏自辩而归罪于时势"],
+    "decisionPriorities": ["自保", "体面", "门生故旧", "朝局安静"]
+  },
+  "initialRelations": [
+    {
+      "targetCharacterId": "wei-zhongxian",
+      "kind": "ally",
+      "strength": 40,
+      "basis": "以同乡进用而依附，属外廷奥援；心存疑惧，随时可切割",
+      "confirmation": "confirmed"
+    },
+    {
+      "targetCharacterId": "cui-chengxiu",
+      "kind": "colleague",
+      "strength": 10,
+      "basis": "同列朝班而非同谋，视其为魏氏爪牙，敬而远之",
+      "confirmation": "inferred"
+    }
+  ],
+  "knowledgeProfile": {
+    "specialistDomains": ["典章制度", "票拟文书", "科举铨选"],
+    "familiarRegions": ["京师", "北直隶"],
+    "informationChannels": ["内阁公文", "同年门生私函", "朝房传闻"],
+    "accessLevels": [
+      { "domain": "court-politics", "level": "privileged" },
+      { "domain": "state-finance", "level": "normal" },
+      { "domain": "military", "level": "limited" },
+      { "domain": "palace", "level": "limited" },
+      { "domain": "intelligence", "level": "none" }
+    ],
+    "commonBiases": ["以为拖延即可消弭风波", "高估成例文牍的约束力"],
+    "blindSpots": ["军事实务", "厂卫内幕", "新君隐忍下的决心"]
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "mingshi-jishi-benmo", "chongzhen-shilu"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "《明史》卷三百六有传。历史结局：崇祯元年致仕归里。全部数值为游戏建模（gameplay-adjusted）；其依附深度史评不一，已入 disputedClaims。"
+  }
+}

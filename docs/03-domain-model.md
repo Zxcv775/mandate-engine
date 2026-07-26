@@ -56,11 +56,21 @@
 
 ### Character（人物）
 
-- 用途：历史人物模板（人格/能力为模板，忠诚/官职/生死为运行时状态）。
-- 主要字段（模板）：`id`、`name`、`courtesyName?`、`birthYear?`、`deathYear?`（历史结局，可被玩家改变）、`factionId?`、`personality`、`abilities{administration, military, intrigue, scholarship}`、`ambition`、`privateGoals`、`knowledgeScope`（信息不完全的边界）、`meta`。
-- 运行时对应：`CharacterState { characterId, alive, locationRegionId?, currentOfficeId?, loyalty, fearOfEmperor, attitudeToEmperor, factionId?, memoryIds }`。
+- 用途：历史人物模板（Phase 3 起为分层人物卡，见 ADR-010）。
+- 主要字段（模板 `CharacterTemplate`）：`id`、`name`、`identity`（字号/生卒/籍贯/历史官职/
+  开局官职与状态）、`historicalProfile`（简介 + 逐条带 sourceIds 与四类确认状态的经历 +
+  disputedClaims）、`personality`（10 维 0-100 + values/fears/desires/taboos/selfImage/worldview）、
+  `politicalProfile`（派系/效忠/政敌/公开主张/私下利益/底线）、`competence`（8 维 0-100）、
+  `communication`（语体刻度 + 自称 + 禁语 + 风格示例）、`behaviorRules`（场合行为倾向）、
+  `initialRelations`、`knowledgeProfile`（领域访问级别/渠道/偏见/盲区）、`meta`
+  （整卡必须 `gameplay-adjusted`：数值为游戏建模，非史料测量）。
+- 运行时对应（Phase 2 实际 Schema，未变）：`CharacterRuntimeState { characterId, status,
+  officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
+- 记忆对应（Phase 3，独立于 GameState）：`CharacterMemory`（来源 revision/类型/可信度/
+  重要度/可见性/状态），存 SQLite `character_memories`，见 ADR-012。
+- 视图对应：`CharacterStateView`（角色有限知识视图，逐条认知标注），见 ADR-011。
 - 关系：担任 Office；属于 Faction；参与 Meeting；撰写 Memorial；持有 Relationship。
-- 归属：**两者**。LLM 可写：否（LLM 只为其生成发言）。
+- 归属：**三层**（模板 / 运行态 / 记忆）。LLM 可写：否（LLM 只产出发言、候选行动与记忆候选）。
 
 ### Office（官职）
 
@@ -232,3 +242,45 @@
 | 记忆摘要 | Memory.content | Memory Manager 写入 |
 
 除上表外，LLM 对任何实体字段均无写权限。
+
+## 4. Phase 2 运行时聚合
+
+`packages/domain/src/state.ts` 是实际 GameState Schema 的唯一来源。顶层包含：
+
+- 版本与身份：`schemaVersion`、`stateVersion`、`saveId`、`scenarioId`、`dynastyId`；
+- 顺序：`revision`、`tick`、ISO `currentDate`；
+- 确定性：`rng.seed`（原始 seed 的 SHA-256）与 `rng.cursor`；
+- 运行态：`country`、`characters`、`offices`、`policies`、`regions`、`meetings`、`eventQueue`、`flags`；
+- 内部态：`hidden`；
+- 审计元数据：`meta.createdAt/updatedAt/sourceIds/sourceCatalogPresent`。
+
+国家资源使用非负安全整数；legitimacy/stability/administrativeCapacity/militaryReadiness 限制在 0..100。
+人物状态、政策状态和会议状态均为 strict enum；运行态只保存模板 ID 与变化值，不复制历史传记。
+
+## 5. Command 与 Mutation
+
+Phase 2 Command 是 strict discriminated union：`game.create`、`country.adjust-resource`、
+`character.assign-office`、`time.advance`、`checkpoint.create`、`save.rollback`。所有命令包含 saveId、
+baseRevision、actor、createdAt，可选 idempotencyKey。未知 commandType 或字段会在应用状态前拒绝。
+
+Mutation 记录 aggregate/entity、operation、JSON Pointer path、before/after、reason、sourceIds、visibility 和 tags。
+Mutation Applier 只操作副本，拒绝不存在路径、before 不匹配和 `__proto__/prototype/constructor` 路径；完成后重新
+通过 GameState Schema。inverse 由 before/after 与反向 operation 生成。
+
+## 6. StateChangeLog 与 Save DTO
+
+`StateChangeLogEntry` 按 `txId + revision + sequence` 分组，保存 actor/command、mutation、inverse、state hash、
+prevLogHash 与 entryHash。visibility 为 public/internal/sealed；普通 API 永久过滤 sealed。
+
+存档 DTO 包括 SaveMetadata、CheckpointMetadata、ExportManifest、ImportResult、ValidationReport 和 RepairPlan。
+导出 manifest 明确记录 schema/state/export format version、lineage、revision、source metadata mode、加密与
+safe-share 状态。
+
+## 7. 只读状态视图
+
+- `PlayerStateView`：GameState 去除 `hidden`，深拷贝后只读返回。
+- `CharacterStateView`：仅公开国家摘要、角色自身、已知政策/会议和 sourceIds，不包含完整 hidden/sealed。
+- `DebugStateView`：仅内部引擎与测试可构建，包含完整状态。
+
+View 是派生 DTO，不是事实源；修改 View 不会反向修改 GameState。Phase 3 Agent 必须从这些视图读取，并通过
+白名单 Command 提交候选动作。

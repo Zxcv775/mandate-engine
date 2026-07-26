@@ -19,5 +19,10 @@
         "notes": "'东林馀孽'为当时政治语境用词，正文使用时注意叙事立场。"
       }
     }
-  ]
+  ],
+  "meta": {
+    "sourceIds": ["ming-shi"],
+    "confirmation": "confirmed",
+    "notes": "Phase 1 世界观占位条目；完整 Prompt 注入策略留待后续阶段。"
+  }
 }

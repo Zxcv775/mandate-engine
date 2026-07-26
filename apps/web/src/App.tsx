@@ -1,28 +1,32 @@
-import { useEffect } from "react";
-import { useAppStore } from "./store";
+import { useState } from "react";
+import { CharacterLab } from "./features/character-lab/CharacterLab";
+import { RuntimeDashboard } from "./features/runtime-dashboard/RuntimeDashboard";
+import "./app.css";
 
-const STATUS_TEXT = {
-  unknown: "探测中……",
-  online: "在线",
-  offline: "离线（请先运行 npm run dev:server）",
-} as const;
+type AppView = "dashboard" | "character-lab";
 
-/** Phase 0 最小页面：确认前后端联通；完整界面在 Phase 8 实现 */
 export function App() {
-  const { serverStatus, refreshServerStatus } = useAppStore();
-
-  useEffect(() => {
-    void refreshServerStatus();
-  }, [refreshServerStatus]);
+  const [view, setView] = useState<AppView>("dashboard");
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", lineHeight: 1.8 }}>
-      <h1>天命：帝国推演</h1>
-      <p>Mandate Engine · Phase 0：项目立项与架构基线</p>
-      <p>
-        服务端状态：<strong>{STATUS_TEXT[serverStatus]}</strong>
-      </p>
-      <p>本阶段不包含游戏玩法，玩法将按 docs/05-roadmap.md 分阶段交付。</p>
-    </main>
+    <>
+      <nav className="app-nav">
+        <button
+          type="button"
+          className={view === "dashboard" ? "active" : ""}
+          onClick={() => setView("dashboard")}
+        >
+          运行时控制台
+        </button>
+        <button
+          type="button"
+          className={view === "character-lab" ? "active" : ""}
+          onClick={() => setView("character-lab")}
+        >
+          Character Lab
+        </button>
+      </nav>
+      {view === "dashboard" ? <RuntimeDashboard /> : <CharacterLab />}
+    </>
   );
 }
