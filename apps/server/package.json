@@ -16,6 +16,7 @@
     "@mandate/domain": "*",
     "@mandate/game-engine": "*",
     "@mandate/llm-adapters": "*",
+    "@mandate/meeting-engine": "*",
     "@mandate/prompt-system": "*",
     "@mandate/save-system": "*",
     "@mandate/shared": "*",

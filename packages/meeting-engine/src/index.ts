@@ -12,3 +12,6 @@ export * from "./meeting-state-machine";
 export * from "./speaker-eligibility";
 export * from "./speaker-scheduler";
 export * from "./meeting-director";
+export * from "./outcome-command-mapper";
+export * from "./leak-assessment";
+export * from "./meeting-minutes";
