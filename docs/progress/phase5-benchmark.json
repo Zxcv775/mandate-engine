@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-07-26T18:38:18.451Z",
+  "node": "v24.18.0",
+  "ruleEvaluation100": {
+    "label": "rules-100",
+    "avgMs": 1.1143
+  },
+  "ruleEvaluation500": {
+    "label": "rules-500",
+    "avgMs": 3.5756
+  },
+  "effectiveValue500": {
+    "label": "effective-value-500",
+    "avgMs": 0.1466
+  },
+  "singleTick20Policies": {
+    "totalMs": 28.41,
+    "perPolicyMs": 1.421
+  },
+  "longRun20x120": {
+    "totalMs": 40676,
+    "avgTickMs": 341.82
+  },
+  "stateChangeLogRows": 9558,
+  "reportPagination": {
+    "label": "report-page",
+    "avgMs": 0.1905
+  },
+  "stageResultQuery": {
+    "label": "stage-results",
+    "avgMs": 0.3994
+  },
+  "reportRows": 4440
+}

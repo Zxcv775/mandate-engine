@@ -1,0 +1,82 @@
+{
+  "id": "policy-neitang-liaoxiang",
+  "name": "发内帑接济辽饷",
+  "dynastyId": "ming",
+  "category": "fiscal",
+  "summary": "辽东军饷积欠，边兵鼓噪可虞。发内帑银接济辽饷，先补积欠，再核实兵额造册。",
+  "objective": "补发辽饷积欠，安辑边军",
+  "scope": {
+    "kind": "institutional",
+    "institutionIds": ["hu-bu"]
+  },
+  "responsibleInstitutionId": "hu-bu",
+  "allowedOfficeIds": ["hu-bu-shang-shu", "liao-dong-xun-fu", "nei-ge-shou-fu"],
+  "cost": {
+    "startup": {
+      "treasuryTaels": 300000
+    },
+    "upkeepPerTick": {
+      "treasuryTaels": 2000
+    }
+  },
+  "duration": {
+    "estimatedTicks": 45,
+    "stages": [
+      {
+        "stageId": "stage-jieyun",
+        "title": "解运饷银赴边",
+        "objective": "太仓与内帑并发，解赴宁远诸镇",
+        "expectedTicks": 45,
+        "successCriteria": {
+          "minFundingRatio": 0.8
+        },
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-metric",
+            "metric": "militaryReadiness",
+            "amount": 5,
+            "reason": "饷银到镇，军心稍安"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": 2,
+        "reason": "边军得饷，鼓噪之患暂弭"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "militaryReadiness",
+        "amount": -4,
+        "reason": "饷不至镇，边军哗然"
+      },
+      {
+        "type": "queue-event-candidate",
+        "eventId": "event-candidate-bianbing-mutiny"
+      }
+    ],
+    "longTermModifiers": []
+  },
+  "resistance": {
+    "administrativeDifficulty": 40,
+    "affectedInterestGroups": [],
+    "expectedOpposition": []
+  },
+  "legitimacy": {
+    "baseImpact": 2,
+    "politicalCost": 4
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu", "mingshi-jishi-benmo"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "崇祯初宁远兵变因缺饷而起、朝廷发帑接济为史实（《明史·庄烈帝纪》崇祯元年七月宁远兵变）；金额与工期为游戏建模。失败效果仅入 hidden 事件候选队列（Phase 6 消费）。文字表述待 Phase 7 复核。 场景内户部尚书暂虚悬，允许内阁首辅督办（可玩性调整）。"
+  }
+}

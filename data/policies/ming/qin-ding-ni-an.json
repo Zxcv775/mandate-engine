@@ -1,0 +1,92 @@
+{
+  "id": "policy-qinding-nian",
+  "name": "钦定逆案·清算阉党",
+  "dynastyId": "ming",
+  "category": "supervision",
+  "summary": "魏忠贤既败，诏廷臣会审阉党，分等定罪，颁《钦定逆案》布告天下，以清朝纲。",
+  "objective": "厘定阉党名籍，分等治罪，杜绝翻案",
+  "scope": { "kind": "national" },
+  "responsibleInstitutionId": "nei-ge",
+  "allowedOfficeIds": ["nei-ge-shou-fu"],
+  "cost": {
+    "startup": { "treasuryTaels": 5000 },
+    "upkeepPerTick": { "administrativeCapacity": 6 }
+  },
+  "duration": {
+    "estimatedTicks": 120,
+    "stages": [
+      {
+        "stageId": "stage-huishen",
+        "title": "廷臣会审定名籍",
+        "objective": "会官检核章奏，厘定首逆、交结、谄附诸等名籍",
+        "expectedTicks": 60,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-banxing",
+        "title": "颁行逆案",
+        "objective": "定罪颁示，褫夺阉党官职，永不叙用",
+        "expectedTicks": 60,
+        "successCriteria": {},
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-metric",
+            "metric": "legitimacy",
+            "amount": 4,
+            "reason": "钦案颁行，中外称快，新政之望大振"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [
+      {
+        "type": "adjust-character-metric",
+        "character": "wei-zhongxian",
+        "metric": "stress",
+        "amount": 20,
+        "reason": "钦案既兴，阉党人人自危"
+      }
+    ],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": 2,
+        "reason": "朝纲一新，人心稍定"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": -3,
+        "reason": "清算不了，物议籍籍"
+      }
+    ],
+    "longTermModifiers": [
+      {
+        "target": { "kind": "country" },
+        "metric": "administrativeCapacity",
+        "operation": "add",
+        "value": -2,
+        "durationTicks": 120,
+        "stacking": "unique-by-source",
+        "reason": "大批官员罢黜，职司一时乏人"
+      }
+    ]
+  },
+  "resistance": {
+    "administrativeDifficulty": 60,
+    "affectedInterestGroups": ["yan-dang"],
+    "expectedOpposition": ["yan-dang"]
+  },
+  "legitimacy": { "baseImpact": 5, "politicalCost": 10 },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu", "guoque"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "钦定逆案于崇祯二年三月颁布为史实（《明史·庄烈帝纪》《国榷》）；本模板时序压缩至崇祯初以配合场景（时序调整已标注），成本/难度/效果数值均为游戏建模。文字表述待 Phase 7 复核。"
+  }
+}

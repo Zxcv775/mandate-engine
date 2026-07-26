@@ -3,11 +3,13 @@
 > LLM 驱动的中国历史政治模拟游戏。
 > **LLM 扮演人物、生成语言；规则与状态引擎计算事实、数值和后果。**
 
-首个剧本为明末 **崇祯初政**。当前已完成 Phase 4：在 Phase 3 单人物 Character Agent 之上，新增可控制、可恢复、可审计的
-多人物议政系统——Meeting State Machine（12 态全矩阵）、确定性 Meeting Director 与
-Speaker Scheduler、两阶段 Agent 回合（崩溃恢复 + 幂等）、append-only Transcript、
-结果候选白名单裁决（唯一世界写路径仍是 StateEngine）、会议纪要与分化记忆、
-秘密议事确定性泄密评估，以及 Meeting Lab 调试台。
+首个剧本为明末 **崇祯初政**。当前已完成 Phase 5：在会议编排（Phase 4）之上，新增数据驱动
+规则引擎（受限条件树 + 八种白名单 effect，禁 eval）、统一 Modifier 系统
+（可叠加/可过期/可审计）、政策完整生命周期（提出 → 御批 → 颁行 → 逐 tick 执行结算 →
+奏报回馈；11 态状态机 + 8 个白名单命令）、确定性执行偏差（拖延/表面完成/数字造假/
+层层加码/选择性执行/腐败损耗）与奏报-真实分离（玩家读奏报，真实值在 hidden 仅 Debug）、
+9 个崇祯初政政策模板（史料标注），以及 Policy Lab 调试台。会议候选可映射为
+policy.propose——御前"准行"即立案。
 
 ## 环境要求
 

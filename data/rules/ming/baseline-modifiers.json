@@ -33,6 +33,27 @@
       "sourceIds": ["ming-shi"]
     },
     {
+      "id": "rule-legitimacy-collapse-block",
+      "version": 1,
+      "scope": "policy-legality",
+      "description": "合法性崩坏（低于一成五）时直诏不行：中旨已无人奉行",
+      "priority": 200,
+      "condition": {
+        "op": "and",
+        "conditions": [
+          { "op": "eq", "path": "policy.source", "value": "direct-decree" },
+          { "op": "lt", "path": "country.legitimacy", "value": 15 }
+        ]
+      },
+      "effects": [
+        {
+          "type": "set-policy-blocked",
+          "reason": "威信扫地，中旨出而无人奉行，直诏立策不可行"
+        }
+      ],
+      "sourceIds": ["ming-shi"]
+    },
+    {
       "id": "rule-low-stability-resistance",
       "version": 1,
       "scope": "policy-resolution",

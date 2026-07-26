@@ -22,7 +22,7 @@ import {
 } from "@mandate/rule-engine";
 import { fnv1a } from "@mandate/shared";
 import { transitionPolicy, type PolicyCommandAssets } from "./policy-commands";
-import { applyMutations } from "./mutation";
+import { applyMutationsInPlaceUnsafe } from "./mutation";
 import { createDeterministicRandomSource } from "./rng";
 
 /**
@@ -93,15 +93,18 @@ function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-/** 结算内规划的效果按草稿依序应用并录制 */
+/** 结算内规划的效果按草稿依序原地应用并录制（构造时克隆一次；失败即整体丢弃） */
 class DraftRecorder {
   mutations: ProposedMutation[] = [];
+  readonly draft: GameState;
 
-  constructor(public draft: GameState) {}
+  constructor(base: Readonly<GameState>) {
+    this.draft = structuredClone(base) as GameState;
+  }
 
   push(items: readonly ProposedMutation[]): void {
     if (items.length === 0) return;
-    this.draft = applyMutations(this.draft, items);
+    applyMutationsInPlaceUnsafe(this.draft as unknown as Record<string, unknown>, items);
     this.mutations.push(...items);
   }
 }
@@ -112,7 +115,7 @@ export function planPolicyResolution(
   assets: PolicyCommandAssets,
   options: ResolutionOptions,
 ): PolicyResolutionResult {
-  const recorder = new DraftRecorder(structuredClone(state) as GameState);
+  const recorder = new DraftRecorder(state);
   const stageResults: PolicyStageResultRecord[] = [];
   const reports: PolicyReport[] = [];
   const deviationLogs: PolicyDeviationLogRecord[] = [];

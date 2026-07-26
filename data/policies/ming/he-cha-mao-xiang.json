@@ -1,0 +1,74 @@
+{
+  "id": "policy-hecha-maoxiang",
+  "name": "核查各镇冒饷虚兵",
+  "dynastyId": "ming",
+  "category": "supervision",
+  "summary": "九边诸镇兵额虚冒、饷银浮支。遣科道官分道核查各镇实兵实饷，造册报部，岁省浮费。",
+  "objective": "核实边镇兵额饷数，裁汰虚冒",
+  "scope": { "kind": "institutional", "institutionIds": ["bing-bu", "du-cha-yuan"] },
+  "responsibleInstitutionId": "bing-bu",
+  "allowedOfficeIds": ["bing-bu-shang-shu", "liao-dong-xun-fu"],
+  "cost": {
+    "startup": { "treasuryTaels": 15000 },
+    "upkeepPerTick": { "treasuryTaels": 400, "administrativeCapacity": 5 }
+  },
+  "duration": {
+    "estimatedTicks": 150,
+    "stages": [
+      {
+        "stageId": "stage-fendao",
+        "title": "分道点核",
+        "objective": "科道分道赴镇，按册点验实兵",
+        "expectedTicks": 90,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-zaoce",
+        "title": "造册核饷",
+        "objective": "核定各镇实额，浮饷分年扣解",
+        "expectedTicks": 60,
+        "successCriteria": {},
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-resource",
+            "resource": "treasuryTaels",
+            "amount": 50000,
+            "reason": "岁省浮饷（首期扣解入官）"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "administrativeCapacity",
+        "amount": 3,
+        "reason": "边饷有籍可稽，度支渐有头绪"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "militaryReadiness",
+        "amount": -3,
+        "reason": "核饷激变，镇兵怨望"
+      }
+    ],
+    "longTermModifiers": []
+  },
+  "resistance": {
+    "administrativeDifficulty": 80,
+    "affectedInterestGroups": [],
+    "expectedOpposition": ["yan-dang"]
+  },
+  "legitimacy": { "baseImpact": 1, "politicalCost": 8 },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "明末边镇虚冒与朝廷核饷之议为史实（《明史·食货志》饷银条）；核查节奏与省额为游戏建模；史料对崇祯初专项核查记载有限，属合理推测。文字表述待 Phase 7 复核。"
+  }
+}

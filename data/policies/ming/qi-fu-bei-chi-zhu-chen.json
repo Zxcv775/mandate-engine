@@ -1,0 +1,81 @@
+{
+  "id": "policy-qifu-zhuchen",
+  "name": "起复被斥诸臣",
+  "dynastyId": "ming",
+  "category": "personnel",
+  "summary": "天启间为阉党所斥正人，诏吏部开列名籍，量才起复，以收人望而实庶位。",
+  "objective": "起复被斥正人，充实朝署",
+  "scope": { "kind": "national" },
+  "responsibleInstitutionId": "nei-ge",
+  "allowedOfficeIds": ["nei-ge-shou-fu"],
+  "cost": {
+    "startup": {},
+    "upkeepPerTick": { "administrativeCapacity": 3 }
+  },
+  "duration": {
+    "estimatedTicks": 70,
+    "stages": [
+      {
+        "stageId": "stage-kailie",
+        "title": "开列名籍",
+        "objective": "吏部会内阁开列被斥诸臣名籍，分别可用",
+        "expectedTicks": 30,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-qiyong",
+        "title": "量才起用",
+        "objective": "以次起复，铨补要缺",
+        "expectedTicks": 40,
+        "successCriteria": {},
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-metric",
+            "metric": "administrativeCapacity",
+            "amount": 4,
+            "reason": "正人还朝，庶位渐实"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": 2,
+        "reason": "起废之诏一下，士林翕然望治"
+      }
+    ],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": 1,
+        "reason": "朝署充实，政务渐理"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": -2,
+        "reason": "起复迁延，人望渐失"
+      }
+    ],
+    "longTermModifiers": []
+  },
+  "resistance": {
+    "administrativeDifficulty": 45,
+    "affectedInterestGroups": ["yan-dang", "dong-lin"],
+    "expectedOpposition": ["yan-dang"]
+  },
+  "legitimacy": { "baseImpact": 3, "politicalCost": 5 },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu", "guoque"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "崇祯初起复天启间被斥诸臣（韩爌、钱龙锡等入阁）为史实（《明史·庄烈帝纪》）；节奏与数值为游戏建模。文字表述待 Phase 7 复核。"
+  }
+}

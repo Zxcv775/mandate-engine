@@ -24,7 +24,11 @@
   确定性发言调度、两阶段 Agent 回合与崩溃恢复、Transcript、结果候选白名单裁决、
   会议纪要与分化记忆、泄密评估、会议 API 与 Meeting Lab；`check:phase4` 全绿。
   见 ADR-015~021 与 `docs/08-phase-4-implementation.md`。
-- **Phase 5 尚未开始**；入口见 `docs/05-roadmap.md`，不得自动进入。
+- **Phase 5（规则引擎与政策执行）已完成并验收**：规则 DSL + 解释器、Modifier 系统、
+  政策 11 态生命周期与 8 个白名单命令、time.advance 同事务执行结算（六类确定性偏差、
+  奏报/真实分离）、migration 004、9 个政策模板、政策 API 与 Policy Lab；
+  `check:phase5` 全绿。见 ADR-022~026 与 `docs/09-phase-5-implementation.md`。
+- **Phase 6 尚未开始**；入口见 `docs/05-roadmap.md`，不得自动进入。
 - 仓库：<https://github.com/Zxcv775/mandate-engine>（PRIVATE，默认分支 main）。
 - 会话记录：`docs/progress/`（按日期归档，重开会话先读最新一份）。
 
