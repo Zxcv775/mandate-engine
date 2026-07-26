@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-26T07:55:28.771Z",
+  "generatedAt": "2026-07-26T12:14:46.760Z",
   "environment": {
     "platform": "win32",
     "release": "10.0.26100",
@@ -26,86 +26,86 @@
   },
   "timingsMs": {
     "createSave": {
-      "average": 23.902,
-      "minimum": 23.902,
-      "maximum": 23.902,
+      "average": 28.644,
+      "minimum": 28.644,
+      "maximum": 28.644,
       "runs": 1
     },
     "loadRevision0": {
-      "average": 0.321,
-      "minimum": 0.269,
-      "maximum": 0.421,
+      "average": 0.347,
+      "minimum": 0.304,
+      "maximum": 0.382,
       "runs": 5
     },
     "commitSingleMutation": {
-      "average": 3.935,
-      "minimum": 3.194,
-      "maximum": 5.81,
+      "average": 4.113,
+      "minimum": 3.492,
+      "maximum": 5.488,
       "runs": 5
     },
     "createCheckpoint": {
-      "average": 6.23,
-      "minimum": 6.23,
-      "maximum": 6.23,
+      "average": 5.99,
+      "minimum": 5.99,
+      "maximum": 5.99,
       "runs": 1
     },
     "loadRevision100": {
-      "average": 0.211,
-      "minimum": 0.175,
-      "maximum": 0.309,
+      "average": 0.181,
+      "minimum": 0.141,
+      "maximum": 0.279,
       "runs": 5
     },
     "loadRevision1000": {
-      "average": 0.221,
-      "minimum": 0.191,
-      "maximum": 0.242,
+      "average": 0.198,
+      "minimum": 0.161,
+      "maximum": 0.286,
       "runs": 5
     },
     "replay50": {
-      "average": 4.597,
-      "minimum": 3.783,
-      "maximum": 5.83,
+      "average": 5.47,
+      "minimum": 4.932,
+      "maximum": 6.722,
       "runs": 5
     },
     "replay100": {
-      "average": 6.896,
-      "minimum": 6.116,
-      "maximum": 8.011,
+      "average": 10.463,
+      "minimum": 10.231,
+      "maximum": 11.04,
       "runs": 5
     },
     "commitTenMutations": {
-      "average": 4.546,
-      "minimum": 3.166,
-      "maximum": 5.537,
+      "average": 5.088,
+      "minimum": 2.879,
+      "maximum": 7.264,
       "runs": 5
     },
     "exportSave": {
-      "average": 157.214,
-      "minimum": 125.368,
-      "maximum": 173.066,
+      "average": 132.115,
+      "minimum": 124.513,
+      "maximum": 137.372,
       "runs": 5
     },
     "importSave": {
-      "average": 154.233,
-      "minimum": 154.233,
-      "maximum": 154.233,
+      "average": 116.711,
+      "minimum": 116.711,
+      "maximum": 116.711,
       "runs": 1
     },
     "validateSave": {
-      "average": 73.872,
-      "minimum": 70.886,
-      "maximum": 84.01,
+      "average": 375.392,
+      "minimum": 370.409,
+      "maximum": 383.569,
       "runs": 5
     }
   },
   "sizes": {
     "averageLogPayloadBytes": 248.946,
-    "tenThousandLogDatabaseBytes": 11554816,
-    "snapshotInterval50Bytes": 2973696,
-    "snapshotInterval100Bytes": 3076096,
-    "exportWithSourcesBytes": 681899,
-    "exportWithoutSourcesBytes": 5013,
-    "observedWalBytes": 4185952
+    "tenThousandLogDatabaseBytes": 11694080,
+    "snapshotInterval50Bytes": 3063808,
+    "snapshotInterval100Bytes": 3133440,
+    "exportWithSourcesBytes": 684725,
+    "exportWithoutSourcesBytes": 6645,
+    "observedWalBytes": 4190072
   },
   "anomalies": [
     "本次 snapshot/100 文件未小于 snapshot/50；SQLite 页分配与工作负载差异使文件大小不具单调性"

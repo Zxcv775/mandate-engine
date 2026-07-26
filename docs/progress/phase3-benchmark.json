@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-26T10:46:58.526Z",
-  "node": "v25.2.1",
+  "generatedAt": "2026-07-26T12:13:27.895Z",
+  "node": "v24.18.0",
   "iterations": 50,
   "characterViewBuild": {
     "label": "character-view-build",
-    "avgMs": 0.083
+    "avgMs": 0.091
   },
   "memorySelector100": {
     "label": "memory-selector-100",
@@ -12,24 +12,24 @@
   },
   "memorySelector1000": {
     "label": "memory-selector-1000",
-    "avgMs": 0.363
+    "avgMs": 0.342
   },
   "promptComposition": {
     "label": "prompt-composition",
-    "avgMs": 0.367
+    "avgMs": 0.338
   },
   "promptSize": {
-    "characters": 5727,
-    "estimatedTokens": 2866,
+    "characters": 5867,
+    "estimatedTokens": 2936,
     "segments": 11
   },
   "mockAgentRespond": {
     "label": "mock-agent-respond",
-    "avgMs": 0.69
+    "avgMs": 0.698
   },
   "memoryDatabase": {
     "insertedRows": 1000,
-    "insertTotalMs": 446.3,
+    "insertTotalMs": 458.3,
     "bytesBefore": 4096,
     "bytesAfter": 540672,
     "bytesPerMemory": 536.6

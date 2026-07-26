@@ -25,7 +25,10 @@ describe("Phase 1 根脚本", () => {
 
 describe("GitHub Actions", () => {
   it("在 main push 与 PR 上以 Mock Provider 顺序执行六道门禁", async () => {
-    const workflow = await readFile(new URL(".github/workflows/ci.yml", root), "utf8");
+    // checkout 可能按 autocrlf 产出 CRLF，断言前统一为 LF
+    const workflow = (
+      await readFile(new URL(".github/workflows/ci.yml", root), "utf8")
+    ).replace(/\r\n/g, "\n");
 
     expect(workflow).toContain("actions/checkout@v6");
     expect(workflow).toContain("actions/setup-node@v6");

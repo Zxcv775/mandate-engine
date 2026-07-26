@@ -143,6 +143,116 @@ const CHILD_TABLES: readonly TableDefinition[] = [
   },
 ];
 
+/**
+ * 人物记忆与对话记录随存档同行迁移（P4.0，ADR-012 补遗）。
+ * 旧版载荷（数据库版本 1）没有这两张表——复制前须检查表存在。
+ */
+const MEMORY_TABLES: readonly TableDefinition[] = [
+  {
+    table: "character_memories",
+    columns: [
+      "memory_id",
+      "save_id",
+      "character_id",
+      "type",
+      "content",
+      "structured_content_json",
+      "related_character_ids_json",
+      "related_entity_ids_json",
+      "topic_tags_json",
+      "source_revision",
+      "source_tx_id",
+      "source_meeting_id",
+      "source_command_id",
+      "source_type",
+      "confidence",
+      "importance",
+      "visibility",
+      "status",
+      "created_at",
+      "last_recalled_at",
+      "recall_count",
+    ],
+  },
+  {
+    table: "character_conversation_turns",
+    columns: [
+      "turn_id",
+      "save_id",
+      "character_id",
+      "speaker_id",
+      "mode",
+      "input_text",
+      "speech",
+      "state_revision",
+      "prompt_versions_json",
+      "created_at",
+    ],
+  },
+];
+
+function tableExists(database: DatabaseSync, table: string): boolean {
+  return (
+    database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(table) !== undefined
+  );
+}
+
+/** 载荷内记忆行的 revision 必须不超过其存档 head（§2.3 合法性校验） */
+function assertMemoryRevisionsValid(
+  database: DatabaseSync,
+  saveId: string,
+  headRevision: number,
+): void {
+  const checks: readonly (readonly [string, string])[] = [
+    ["character_memories", "source_revision"],
+    ["character_conversation_turns", "state_revision"],
+  ];
+  for (const [table, column] of checks) {
+    if (!tableExists(database, table)) continue;
+    const row = database
+      .prepare(`SELECT COUNT(*) AS bad FROM ${table} WHERE save_id = ? AND ${column} > ?`)
+      .get(saveId, headRevision) as { bad: number };
+    if (Number(row.bad) > 0) {
+      throw new SaveSystemError(
+        "SAVE_PACKAGE_INVALID",
+        `载荷 ${table} 存在超出 head revision 的记录`,
+      );
+    }
+  }
+}
+
+/** 复制记忆行：主键去重合并（INSERT OR IGNORE），可选 saveId/主键重映射（fork 用） */
+function copyMemoryRows(
+  source: DatabaseSync,
+  target: DatabaseSync,
+  sourceSaveId: string,
+  options: { targetSaveId?: string; rewritePrimaryKeyPrefix?: string } = {},
+): void {
+  for (const definition of MEMORY_TABLES) {
+    if (!tableExists(source, definition.table)) continue;
+    const primaryKey = definition.columns[0]!;
+    const columns = definition.columns.join(", ");
+    const rows = source
+      .prepare(`SELECT ${columns} FROM ${definition.table} WHERE save_id = ?`)
+      .all(sourceSaveId) as unknown as Array<Record<string, SQLInputValue>>;
+    const insert = target.prepare(
+      `INSERT OR IGNORE INTO ${definition.table} (${columns}) VALUES (${definition.columns
+        .map(() => "?")
+        .join(", ")})`,
+    );
+    for (const row of rows) {
+      const copy: Record<string, SQLInputValue> = { ...row };
+      if (options.targetSaveId) copy.save_id = options.targetSaveId;
+      if (options.rewritePrimaryKeyPrefix) {
+        copy[primaryKey] = `${options.rewritePrimaryKeyPrefix}${String(row[primaryKey])}`;
+      }
+      insert.run(...definition.columns.map((column) => copy[column] ?? null));
+    }
+  }
+}
+
 function importedSave(database: DatabaseSync, saveId: string): SaveRow {
   const row = database.prepare("SELECT * FROM saves WHERE save_id = ?").get(saveId) as
     | SaveRow
@@ -268,6 +378,7 @@ export async function importVerifiedPackage(
       importedRow = importedSave(importedDatabase, parsed.manifest.saveId);
     }
     const importedHead = importedRepository.loadHeadState(parsed.manifest.saveId);
+    assertMemoryRevisionsValid(importedDatabase, parsed.manifest.saveId, importedHead.revision);
     const localSave = local.getSave(parsed.manifest.saveId);
     const importedAt = clock.now().toISOString();
 
@@ -278,6 +389,7 @@ export async function importVerifiedPackage(
         for (const table of CHILD_TABLES) {
           insertRows(importedDatabase, local.database, table, parsed.manifest.saveId);
         }
+        copyMemoryRows(importedDatabase, local.database, parsed.manifest.saveId);
         recordImport(
           local.database,
           parsed.manifest.saveId,
@@ -363,6 +475,8 @@ export async function importVerifiedPackage(
             },
           );
         }
+        // 记忆行按主键去重合并（同世界线快进：本地已有行保持不变）
+        copyMemoryRows(importedDatabase, local.database, importedRow.save_id);
         local.database
           .prepare(
             `UPDATE saves SET title = ?, status = ?, head_revision = ?, schema_version = ?,
@@ -438,6 +552,11 @@ export async function importVerifiedPackage(
         metadata: forkMetadata,
         state: forkState,
         sourceCatalog: storedSourceCatalog(importedRow),
+      });
+      // fork：记忆行随世界线复制，saveId 重映射 + 主键前缀重写避免与本地行冲突
+      copyMemoryRows(importedDatabase, local.database, importedRow.save_id, {
+        targetSaveId: forkSaveId,
+        rewritePrimaryKeyPrefix: `fork_${forkSaveId.slice(-12)}_`,
       });
       recordImport(
         local.database,
