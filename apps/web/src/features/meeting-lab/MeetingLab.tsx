@@ -127,9 +127,11 @@ export function MeetingLab() {
           {state.characters.map((character) => (
             <label
               key={character.characterId}
+              htmlFor={`mlab-participant-${character.characterId}`}
               className={character.availableForAudience ? "" : "disabled"}
             >
               <input
+                id={`mlab-participant-${character.characterId}`}
                 type="checkbox"
                 disabled={!character.availableForAudience}
                 checked={state.selectedParticipants.includes(character.characterId)}
@@ -200,6 +202,18 @@ export function MeetingLab() {
               onClick={() => void state.conclude()}
             >
               结束会议
+            </button>
+            <button
+              type="button"
+              disabled={
+                state.busy ||
+                !["draft", "scheduled", "preparing", "paused", "failed"].includes(
+                  state.session.status,
+                )
+              }
+              onClick={() => void state.cancel()}
+            >
+              取消会议
             </button>
             <button type="button" disabled={state.busy} onClick={() => void state.loadLeak()}>
               泄密评估(Debug)

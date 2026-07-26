@@ -933,6 +933,30 @@ export class MeetingService {
     return session;
   }
 
+  async cancelMeeting(
+    saveId: string,
+    meetingId: string,
+    input: { expectedRevision: number; reason?: string },
+  ): Promise<MeetingSessionState> {
+    const session = this.requireSession(saveId, meetingId);
+    const reason = input.reason ?? "圣意取消";
+    const expected = session.meetingVersion;
+    // 先在会话侧验证转换合法（draft/scheduled/preparing/paused/failed → cancelled），
+    // 再提交世界投影命令，最后落会话，避免命令成功而会话转换非法的不一致。
+    const next = transitionMeeting(session, { type: "meeting.cancel", reason }).next;
+    await this.options.gameStateService.commitCommand({
+      commandId: `cmd_meeting_cancel_${this.idFactory()}`,
+      commandType: "meeting.cancel",
+      saveId,
+      baseRevision: input.expectedRevision,
+      actor: { type: "system", id: "meeting-director" },
+      payload: { meetingId, reason },
+      createdAt: this.clock.now().toISOString(),
+    });
+    this.options.meetings.updateSession(next, expected);
+    return next;
+  }
+
   async concludeMeeting(
     saveId: string,
     meetingId: string,

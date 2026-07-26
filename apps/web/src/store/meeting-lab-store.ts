@@ -5,6 +5,7 @@ import { listCharacters } from "../api/characters";
 import { getSaveState, listSaves } from "../api/saves";
 import {
   addAgenda,
+  cancelMeeting,
   concludeMeeting,
   createMeeting,
   getDebugLeak,
@@ -63,6 +64,7 @@ export interface MeetingLabState {
   conclude(): Promise<void>;
   pause(): Promise<void>;
   resume(): Promise<void>;
+  cancel(): Promise<void>;
   loadLeak(): Promise<void>;
 }
 
@@ -272,6 +274,17 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
       await guarded(async () => {
         const { selectedSaveId, session } = get();
         await resumeMeeting(selectedSaveId!, session!.meetingId);
+        await get().refreshMeeting();
+      });
+    },
+    async cancel() {
+      await guarded(async () => {
+        const { selectedSaveId, session, headRevision } = get();
+        await cancelMeeting(selectedSaveId!, session!.meetingId, {
+          expectedRevision: headRevision!,
+          reason: "调试取消",
+        });
+        await refreshHead(selectedSaveId!);
         await get().refreshMeeting();
       });
     },
