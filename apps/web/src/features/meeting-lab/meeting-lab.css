@@ -1,0 +1,166 @@
+.mlab-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mlab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.mlab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.mlab-row label,
+.mlab-actions select {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.mlab-row select,
+.mlab-row input,
+.mlab-actions textarea,
+.mlab-actions select {
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.mlab-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #475467;
+  align-items: center;
+}
+
+.mlab-create,
+.mlab-run {
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mlab-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.mlab-participants label.disabled {
+  color: #98a2b3;
+}
+
+.mlab-controls,
+.mlab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.mlab-actions textarea {
+  flex: 1 1 260px;
+}
+
+.mlab-pending {
+  color: #b54708;
+  font-weight: 600;
+}
+
+.mlab-decision {
+  color: #175cd3;
+  font-size: 0.85rem;
+}
+
+.mlab-columns {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+.mlab-transcript {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.mlab-turn-tag {
+  display: inline-block;
+  background: #f2f4f7;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  margin-right: 6px;
+  color: #475467;
+}
+
+.mlab-trace {
+  color: #98a2b3;
+  font-size: 0.75rem;
+}
+
+.mlab-outcomes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.mlab-status {
+  display: inline-block;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  margin-right: 6px;
+  background: #eef4ff;
+  color: #175cd3;
+}
+
+.mlab-accepted {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.mlab-rejected {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.mlab-debug {
+  background: #101828;
+  color: #d0d5dd;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.mlab-error {
+  color: #b42318;
+  font-weight: 600;
+}

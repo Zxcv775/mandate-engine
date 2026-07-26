@@ -734,6 +734,7 @@ export class MeetingService {
       visibility: defaultTurnVisibility(session, agendaItem),
       stateRevision: state.revision,
       meetingVersion: session.meetingVersion + 1,
+      actionId: request.actionId,
       sourceTurnIds: [...output.referencedTurnIds],
       promptVersions: { ...agentResult.prompt.manifest.promptVersions },
       providerTrace: {
