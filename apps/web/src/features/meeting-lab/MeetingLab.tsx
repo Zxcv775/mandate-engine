@@ -122,6 +122,20 @@ export function MeetingLab() {
               onChange={(e) => state.setField("newAgendaTitle", e.target.value)}
             />
           </label>
+          <label>
+            议程关联政策模板（可选）
+            <select
+              value={state.newAgendaTemplateId}
+              onChange={(e) => state.setField("newAgendaTemplateId", e.target.value)}
+            >
+              <option value="">（不关联）</option>
+              {state.policyTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className="mlab-participants">
           {state.characters.map((character) => (

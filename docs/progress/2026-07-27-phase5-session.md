@@ -47,3 +47,24 @@ benchmark 首跑暴露 applyMutations 每条 mutation 全量克隆状态（O(mut
 ## 验证状态
 
 见 Phase 5 最终报告（会话输出）；check:phase5 全链在 Node 24.18.0 下真实退出码 0。
+
+## 验收实测（浏览器 Meeting Lab + Policy Lab）
+
+- 闭环一（会议→政策）全程实测：Meeting Lab 创建"议陕西赈灾"（议程关联政策模板
+  policy-zhenji-shaanxi，验收期为此给 Lab 补了议程模板选择）→ 崔呈秀荐策产生
+  可执行 propose-policy 候选 → 准行 → 政策以会议来源立案（proposed）→ Policy Lab
+  御批 → 颁行（黄立极 + 追加 5 万，国库扣 17 万核对一致）→ 推进 3 tick（奏报流 3 条、
+  预算扣维持、tick1 数字造假偏差 roll=0.0626 入偏差流水）→ Debug 真实 vs 奏报对比 →
+  adjust 追加 15 万 → 大步推进至 completed 100%，留下 stability+2 长期 Modifier。
+- 闭环二（直诏+偏差+废止）全程实测：直诏"清查京营占役"（合法性 75→74，
+  模板 +1 − 直诏规则 2）→ 指派崔呈秀颁行 → 逐日推进触发 7 条偏差
+  （selective-execution/delay/corruption-loss）→ 奏报 19% vs 真实 14%、腐败累计
+  147 两、玩家 API 无 real 字段泄露 → suspend → resume → cancel（退回未耗预算、
+  合法性再扣 politicalCost 一半至 70）→ 导出 .mesave → 全新库导入：2 政策终态、
+  2 条真实档案、12 条结算明细、7 条偏差、2 个 Modifier 全部完整。
+- 验收发现并修复：**旧 stateVersion 存档未在载入时前向迁移**（dev 库中 Phase 4
+  旧档使 /api/saves 500）——loadStateAtRevision 改为按原始文档校验哈希与重放后
+  执行 forward-only 迁移（持久化迁移仍走 migrateSave），补回归测试；
+  Meeting Lab 议程表单缺"关联政策模板"选择（闭环一映射所需）——已补。
+- 环境注记：浏览器面板隐藏时 computer 点击对 React 视图切换不生效，
+  验收改用 DOM 事件驱动（js click/change），交互语义等价。

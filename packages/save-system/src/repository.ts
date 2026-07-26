@@ -22,6 +22,7 @@ import {
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync, StatementResultingChanges } from "node:sqlite";
 import { SaveSystemError } from "./errors";
+import { migrateGameStateDocument } from "./state-migrations";
 import type {
   ChangeQuery,
   CheckpointInput,
@@ -275,10 +276,13 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
       )
       .get(saveId, revision) as SnapshotRow | undefined;
     if (!snapshot) throw new SaveSystemError("STATE_INVALID", `存档缺少可用快照：${saveId}`);
-    let state = GameStateSchema.parse(json(snapshot.state_json));
-    if (hashState(state) !== snapshot.state_hash) {
+    // §4.6 前向兼容：旧 stateVersion 快照先按原始文档校验哈希并重放变更，
+    // 再经 forward-only 迁移进入当前 Schema（持久化迁移仍走 migrateSave）。
+    const rawDocument = json<Record<string, unknown>>(snapshot.state_json);
+    if (hashState(rawDocument) !== snapshot.state_hash) {
       throw new SaveSystemError("STATE_INVALID", `快照哈希不匹配：${snapshot.snapshot_id}`);
     }
+    let workingDocument = rawDocument;
     const changes = this.loadChanges(saveId, Number(snapshot.revision) + 1, revision);
     if (changes.length > 0) {
       const mutations: ProposedMutation[] = changes.map((entry) => ({
@@ -293,19 +297,24 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
         visibility: entry.visibility,
         tags: entry.tags,
       }));
-      state = GameStateSchema.parse(applyMutations(state, mutations));
+      workingDocument = applyMutations(
+        workingDocument as unknown as GameState,
+        mutations,
+      ) as unknown as Record<string, unknown>;
     }
+    // head hash 是按落库时（迁移前）文档计算的：先比对原始文档，再做前向迁移
+    if (revision === Number(save.head_revision)) {
+      const metadata = json<{ headStateHash?: string }>(save.metadata_json);
+      if (metadata.headStateHash && metadata.headStateHash !== hashState(workingDocument)) {
+        throw new SaveSystemError("STATE_INVALID", "存档 head state hash 不匹配");
+      }
+    }
+    const state = migrateGameStateDocument(workingDocument).state;
     if (state.revision !== revision) {
       throw new SaveSystemError(
         "STATE_INVALID",
         `重放 revision 不一致：期望 ${revision}，得到 ${state.revision}`,
       );
-    }
-    if (revision === Number(save.head_revision)) {
-      const metadata = json<{ headStateHash?: string }>(save.metadata_json);
-      if (metadata.headStateHash && metadata.headStateHash !== hashState(state)) {
-        throw new SaveSystemError("STATE_INVALID", "存档 head state hash 不匹配");
-      }
     }
     return state;
   }

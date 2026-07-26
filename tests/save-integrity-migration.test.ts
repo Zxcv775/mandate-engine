@@ -74,6 +74,32 @@ describe("forward-only state migrations", () => {
     );
   });
 
+  it("旧 stateVersion 快照载入即前向迁移（未持久化迁移也能列出与读取）", async () => {
+    const system = await setup();
+    const current = await system.service.loadState("save_demo");
+    // 构造 v1（Phase 4 形态）快照：去掉 Phase 5 新增字段
+    const legacy = structuredClone(current) as unknown as Record<string, unknown>;
+    legacy.stateVersion = 1;
+    delete legacy.modifiers;
+    delete (legacy.hidden as Record<string, unknown>).policyTruth;
+    system.database.exec("PRAGMA ignore_check_constraints = ON");
+    system.database
+      .prepare("UPDATE save_snapshots SET state_json = ?, state_hash = ? WHERE save_id = ?")
+      .run(stableStringify(legacy), hashState(legacy), "save_demo");
+    system.database
+      .prepare("UPDATE saves SET state_version = ?, metadata_json = ? WHERE save_id = ?")
+      .run(1, stableStringify({ headStateHash: hashState(legacy) }), "save_demo");
+    system.database.exec("PRAGMA ignore_check_constraints = OFF");
+
+    // 不调用 migrateSave：list 与 load 都应经载入期前向迁移正常工作
+    const listed = await system.service.listSaves();
+    expect(listed.some((save) => save.saveId === "save_demo")).toBe(true);
+    const state = await system.service.loadState("save_demo");
+    expect(state.stateVersion).toBe(2);
+    expect(state.modifiers).toEqual({});
+    expect(state.hidden.policyTruth).toEqual({});
+  });
+
   it("records database migration checksums exactly once", async () => {
     const system = await setup();
     const rows = system.database
