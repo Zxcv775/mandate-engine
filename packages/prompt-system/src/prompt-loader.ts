@@ -42,7 +42,16 @@ export const promptRegistry: Readonly<Record<PromptId, PromptRegistration>> = {
   },
   "memory.memory-context": { version: "v1", assetPath: "memory/memory-context.v1.md" },
   "memory.memory-candidate": { version: "v1", assetPath: "memory/memory-candidate.v1.md" },
+  "meeting.agenda-context": { version: "v1", assetPath: "meeting/agenda-context.v1.md" },
+  "meeting.transcript-context": {
+    version: "v1",
+    assetPath: "meeting/transcript-context.v1.md",
+  },
   "output.character-response": { version: "v1", assetPath: "output/character-response.v1.md" },
+  "output.meeting-character-response": {
+    version: "v1",
+    assetPath: "output/meeting-character-response.v1.md",
+  },
   "output.repair-structured-output": {
     version: "v1",
     assetPath: "output/repair-structured-output.v1.md",

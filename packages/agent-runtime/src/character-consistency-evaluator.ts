@@ -23,6 +23,10 @@ export interface ConsistencyEvaluationInput {
   readonly venueRestricted?: readonly string[];
   /** 此前立场（可选；提供时才检查无理由立场反转） */
   readonly previousStances?: readonly StancePosition[];
+  /** Phase 4：该角色实际可见的会议回合 id（提供时校验 referencedTurnIds ⊆ 可见集） */
+  readonly visibleTurnIds?: readonly string[];
+  /** Phase 4：会议输出的引用回合（与 visibleTurnIds 搭配校验） */
+  readonly referencedTurnIds?: readonly string[];
 }
 
 interface Violation {
@@ -190,6 +194,19 @@ export function evaluateCharacterConsistency(
         code: "UNKNOWN_INFO_CLAIM",
         severity: "warning",
         message: `断言引用了视图之外的来源：${claim.claim.slice(0, 30)}`,
+      });
+    }
+  }
+
+  // Phase 4：人物不得引用自己未见过的会议回合（含他人 internalAssessment 等一切不可见内容）
+  if (input.referencedTurnIds && input.visibleTurnIds) {
+    const visible = new Set(input.visibleTurnIds);
+    const unknown = input.referencedTurnIds.filter((turnId) => !visible.has(turnId));
+    if (unknown.length > 0) {
+      violations.push({
+        code: "UNKNOWN_INFO_CLAIM",
+        severity: "error",
+        message: `引用了不可见的会议回合：${unknown.slice(0, 3).join("、")}`,
       });
     }
   }

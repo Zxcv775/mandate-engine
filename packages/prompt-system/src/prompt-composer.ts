@@ -5,7 +5,9 @@ import type {
   CharacterMemoryView,
   CharacterStateView,
   CharacterTemplate,
+  MeetingContextBudget,
 } from "@mandate/domain";
+import { DEFAULT_MEETING_CONTEXT_BUDGET } from "@mandate/domain";
 import { loadPrompt } from "./prompt-loader";
 import { renderPrompt } from "./prompt-renderer";
 import { buildBudgetReport, measureSegment, PromptBudgetExceededError } from "./prompt-budget";
@@ -42,6 +44,23 @@ export function escapeDataText(text: string): string {
   return text.replace(DATA_TAG_PATTERN, "＜$1$2");
 }
 
+/** Phase 4：会议上下文段（§11）。transcript 由调用方按可见性过滤后传入，composer 只做预算裁剪 */
+export interface MeetingPromptContext {
+  readonly meetingTitle: string;
+  readonly meetingTypeLabel: string;
+  readonly agendaTitle: string;
+  readonly agendaDescription: string;
+  readonly currentTurnNumber: number;
+  readonly responseModeLabel: string;
+  readonly addressedByLabel?: string;
+  readonly transcript: readonly {
+    readonly turnId: string;
+    readonly speakerLabel: string;
+    readonly text: string;
+  }[];
+  readonly budget?: MeetingContextBudget;
+}
+
 export interface CharacterPromptInput {
   readonly scenarioName: string;
   readonly template: CharacterTemplate;
@@ -52,6 +71,46 @@ export interface CharacterPromptInput {
   readonly previousTurns: readonly CharacterConversationTurn[];
   readonly input: { speakerId: string; speakerLabel: string; text: string };
   readonly budget?: CharacterContextBudget;
+  /** 提供时进入会议模式：注入议程/席间回合段并附加会议输出契约 */
+  readonly meetingContext?: MeetingPromptContext;
+}
+
+export function renderMeetingData(
+  context: MeetingPromptContext,
+  participants: readonly { id: string; name: string }[],
+): string {
+  return [
+    `会议：${context.meetingTitle}（${context.meetingTypeLabel}）`,
+    `当前议程：${context.agendaTitle} —— ${context.agendaDescription}`,
+    `在场：${participants.map((participant) => participant.name).join("、")}`,
+    `此为本次会议第 ${context.currentTurnNumber + 1} 番发言；你被要求的应对方式：${context.responseModeLabel}${
+      context.addressedByLabel ? `（由${context.addressedByLabel}指名）` : ""
+    }`,
+  ].join("\n");
+}
+
+export function renderTranscriptData(
+  context: MeetingPromptContext,
+): { text: string; includedTurns: number; trimmedTurns: number } {
+  const budget = context.budget ?? DEFAULT_MEETING_CONTEXT_BUDGET;
+  const capped = context.transcript.slice(-budget.maxRecentTurns);
+  const lines: string[] = [];
+  let characters = 0;
+  let included = 0;
+  // 从最近往回收录，预算内尽量多留近期回合
+  for (let index = capped.length - 1; index >= 0; index--) {
+    const turn = capped[index]!;
+    const line = `[${turn.turnId}] ${turn.speakerLabel}：${turn.text}`;
+    if (characters + line.length > budget.maxTranscriptCharacters) break;
+    lines.unshift(line);
+    characters += line.length;
+    included++;
+  }
+  return {
+    text: lines.length > 0 ? lines.join("\n") : "（尚无席间发言）",
+    includedTurns: included,
+    trimmedTurns: context.transcript.length - included,
+  };
 }
 
 function describeScale(value: number): string {
@@ -312,6 +371,7 @@ export async function composeCharacterPrompt(
 ): Promise<ComposedPrompt> {
   const budget = input.budget ?? DEFAULT_CHARACTER_CONTEXT_BUDGET;
   const contextPromptId = MODE_CONTEXT_PROMPT[input.mode];
+  const meeting = input.meetingContext;
   const promptIds: readonly PromptId[] = [
     "system.character-agent-base",
     "character.identity",
@@ -319,10 +379,12 @@ export async function composeCharacterPrompt(
     "character.political-profile",
     "character.communication-style",
     contextPromptId,
+    ...(meeting ? (["meeting.agenda-context", "meeting.transcript-context"] as const) : []),
     "knowledge.known-world-state",
     "memory.memory-context",
     "memory.memory-candidate",
     "output.character-response",
+    ...(meeting ? (["output.meeting-character-response"] as const) : []),
     "context.conversation-input",
   ];
   const assets = new Map(
@@ -385,6 +447,22 @@ export async function composeCharacterPrompt(
           topicLabel: escapeDataText(topicLabel),
         }),
       },
+      ...(meeting
+        ? [
+            {
+              id: "meeting.agenda-context",
+              content: renderPrompt(template("meeting.agenda-context"), {
+                meetingData: escapeDataText(renderMeetingData(meeting, input.participants)),
+              }),
+            },
+            {
+              id: "meeting.transcript-context",
+              content: renderPrompt(template("meeting.transcript-context"), {
+                transcriptData: escapeDataText(renderTranscriptData(meeting).text),
+              }),
+            },
+          ]
+        : []),
       {
         id: "knowledge.known-world-state",
         content: renderPrompt(template("knowledge.known-world-state"), {
@@ -401,6 +479,14 @@ export async function composeCharacterPrompt(
       },
       { id: "memory.memory-candidate", content: template("memory.memory-candidate") },
       { id: "output.character-response", content: template("output.character-response") },
+      ...(meeting
+        ? [
+            {
+              id: "output.meeting-character-response",
+              content: template("output.meeting-character-response"),
+            },
+          ]
+        : []),
     ];
     const system = segments.map((segment) => segment.content).join("\n\n");
 
