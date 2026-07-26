@@ -9,3 +9,6 @@
  */
 export * from "./errors";
 export * from "./meeting-state-machine";
+export * from "./speaker-eligibility";
+export * from "./speaker-scheduler";
+export * from "./meeting-director";
