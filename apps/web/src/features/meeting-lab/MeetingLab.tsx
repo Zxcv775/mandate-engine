@@ -182,7 +182,7 @@ export function MeetingLab() {
             </button>
             <button
               type="button"
-              disabled={state.busy || !canRun}
+              disabled={state.busy || !(canRun || state.session.status === "failed")}
               onClick={() => void state.pause()}
             >
               暂停

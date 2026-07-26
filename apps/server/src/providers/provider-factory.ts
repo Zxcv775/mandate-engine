@@ -4,13 +4,14 @@ import {
   type LLMProvider,
   type LLMMessage,
 } from "@mandate/llm-adapters";
-import { buildMockCharacterOutput } from "@mandate/agent-runtime";
-import type { CharacterConversationMode } from "@mandate/domain";
+import { buildMockCharacterOutput, buildMockMeetingOutput } from "@mandate/agent-runtime";
+import type { CharacterConversationMode, MeetingResponseType } from "@mandate/domain";
 import type { RuntimeConfig } from "../config/index";
 
 /**
  * 默认 Mock 的兜底应答：识别 Character Agent Prompt 时返回合法结构化响应，
- * 保证离线环境可以完整走通人物闭环（含 Character Lab 联调）；其余请求返回空串。
+ * 保证离线环境可以完整走通人物/会议闭环（含 Character Lab / Meeting Lab 联调）；
+ * 其余请求返回空串。
  */
 function defaultMockHandler(messages: LLMMessage[]): string {
   const text = messages.map((message) => message.content).join("\n");
@@ -23,6 +24,22 @@ function defaultMockHandler(messages: LLMMessage[]): string {
     ["当前场合：奏疏应对", "memorial-response"],
   ];
   const mode = modeByMarker.find(([marker]) => text.includes(marker))?.[1] ?? "general";
+  // 会议模式：Prompt 含会议输出补充契约 → 必须返回带会议字段的输出
+  if (text.includes("会议输出补充字段")) {
+    const modeLabel = /你被要求的应对方式：(陈奏|答问|回应他人|警示)/.exec(text)?.[1];
+    const labelMap: Record<string, MeetingResponseType> = {
+      陈奏: "speech",
+      答问: "answer",
+      回应他人: "rebuttal",
+      警示: "warning",
+    };
+    return JSON.stringify(
+      buildMockMeetingOutput("support", {
+        mode,
+        responseType: (modeLabel ? labelMap[modeLabel] : undefined) ?? "speech",
+      }),
+    );
+  }
   return JSON.stringify(buildMockCharacterOutput("support", { mode }));
 }
 
