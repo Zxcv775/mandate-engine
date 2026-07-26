@@ -80,8 +80,21 @@ function updateExportCopy(
       metadata.headStateHash = stateHash;
     }
     if (options.safeShareMode === "safe_share") {
-      // 安全分享：sealed 记忆属于绝不出境的私密数据（ADR-012）
+      // 安全分享：sealed 记忆与 sealed/private 会议内容属于绝不出境的私密数据（ADR-012/018/021）
       database.prepare("DELETE FROM character_memories WHERE visibility = 'sealed'").run();
+      const dropIfExists = (sql: string) => {
+        try {
+          database.prepare(sql).run();
+        } catch {
+          // 旧版数据库无会议表时忽略
+        }
+      };
+      dropIfExists("DELETE FROM meeting_turns WHERE visibility IN ('sealed', 'private')");
+      dropIfExists("DELETE FROM meeting_minutes WHERE kind = 'private'");
+      dropIfExists("DELETE FROM meeting_leak_assessments");
+      dropIfExists(
+        "DELETE FROM meeting_sessions WHERE visibility = 'sealed' OR type = 'secret-council'",
+      );
     }
     const title =
       options.safeShareMode === "safe_share"

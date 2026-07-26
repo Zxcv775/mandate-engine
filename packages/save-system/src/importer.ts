@@ -199,6 +199,48 @@ function tableExists(database: DatabaseSync, table: string): boolean {
   );
 }
 
+/**
+ * Phase 4 会议表随存档迁移（ADR-018）。
+ * 空库/快进导入按 save_id 复制；快进时会议 head 与可变子表用 REPLACE 取载荷较新态，
+ * append-only 的 turns 用 IGNORE 去重。分叉导入不携带会议史（已知边界，见 docs/08）。
+ */
+const MEETING_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ignore" }[] = [
+  { table: "meeting_sessions", strategy: "replace" },
+  { table: "meeting_participants", strategy: "replace" },
+  { table: "meeting_agenda_items", strategy: "replace" },
+  { table: "meeting_turns", strategy: "ignore" },
+  { table: "meeting_outcome_candidates", strategy: "replace" },
+  { table: "meeting_minutes", strategy: "replace" },
+  { table: "meeting_leak_assessments", strategy: "replace" },
+];
+
+function copyMeetingRows(
+  source: DatabaseSync,
+  target: DatabaseSync,
+  saveId: string,
+): void {
+  for (const { table, strategy } of MEETING_IMPORT_TABLES) {
+    if (!tableExists(source, table)) continue;
+    const rows = source
+      .prepare(
+        table === "meeting_participants" || table === "meeting_agenda_items"
+          ? `SELECT t.* FROM ${table} t
+             JOIN meeting_sessions s ON s.meeting_id = t.meeting_id WHERE s.save_id = ?`
+          : `SELECT * FROM ${table} WHERE save_id = ?`,
+      )
+      .all(saveId) as unknown as Array<Record<string, SQLInputValue>>;
+    if (rows.length === 0) continue;
+    const columns = Object.keys(rows[0]!);
+    const insert = target.prepare(
+      `INSERT OR ${strategy === "replace" ? "REPLACE" : "IGNORE"} INTO ${table}
+       (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+    );
+    for (const row of rows) {
+      insert.run(...columns.map((column) => row[column] ?? null));
+    }
+  }
+}
+
 /** 载荷内记忆行的 revision 必须不超过其存档 head（§2.3 合法性校验） */
 function assertMemoryRevisionsValid(
   database: DatabaseSync,
@@ -390,6 +432,7 @@ export async function importVerifiedPackage(
           insertRows(importedDatabase, local.database, table, parsed.manifest.saveId);
         }
         copyMemoryRows(importedDatabase, local.database, parsed.manifest.saveId);
+        copyMeetingRows(importedDatabase, local.database, parsed.manifest.saveId);
         recordImport(
           local.database,
           parsed.manifest.saveId,
@@ -477,6 +520,7 @@ export async function importVerifiedPackage(
         }
         // 记忆行按主键去重合并（同世界线快进：本地已有行保持不变）
         copyMemoryRows(importedDatabase, local.database, importedRow.save_id);
+        copyMeetingRows(importedDatabase, local.database, importedRow.save_id);
         local.database
           .prepare(
             `UPDATE saves SET title = ?, status = ?, head_revision = ?, schema_version = ?,
