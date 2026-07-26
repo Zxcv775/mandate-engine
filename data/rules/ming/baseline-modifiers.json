@@ -1,0 +1,21 @@
+{
+  "packId": "ming-baseline-rules",
+  "description": "明朝基线规则示例：欠饷对士气的影响。Phase 5 规则引擎实现后扩充。",
+  "modifiers": [
+    {
+      "id": "rule-unpaid-morale",
+      "sourceId": "ming-baseline-rules",
+      "targetPath": "army:*.morale",
+      "operation": "add",
+      "value": -2,
+      "durationTurns": 1,
+      "condition": "army.payArrearsMonths >= 3",
+      "reason": "欠饷三个月以上，士气每回合下降"
+    }
+  ],
+  "meta": {
+    "sourceIds": ["ming-shi"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "明末欠饷与兵变的关联为史实；数值为设计占位（gameplay-adjusted），Phase 9 平衡。"
+  }
+}

@@ -1,0 +1,69 @@
+[
+  {
+    "id": "nei-ge",
+    "name": "内阁",
+    "type": "decision",
+    "functions": ["票拟", "辅政", "廷议召集"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "confirmed",
+      "notes": "见《明史·职官志》。具体权责边界在制度包完善时细化。"
+    }
+  },
+  {
+    "id": "hu-bu",
+    "name": "户部",
+    "type": "fiscal",
+    "functions": ["户籍", "赋税", "国库收支"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "confirmed",
+      "notes": "六部之一，MVP 财政结算的主要对接机构。"
+    }
+  },
+  {
+    "id": "bing-bu",
+    "name": "兵部",
+    "type": "military",
+    "functions": ["武官任免", "军令传递", "边防军务"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "confirmed",
+      "notes": "六部之一，辽东战局的行政对接机构。"
+    }
+  },
+  {
+    "id": "du-cha-yuan",
+    "name": "都察院",
+    "type": "censorate",
+    "functions": ["监察百官", "弹劾", "巡按地方"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "confirmed",
+      "notes": "言官体系核心，党争中的重要力量。"
+    }
+  },
+  {
+    "id": "jin-yi-wei",
+    "name": "锦衣卫",
+    "type": "intelligence",
+    "functions": ["侍卫", "缉捕", "诏狱"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "confirmed",
+      "notes": "皇帝直属情报与特务机构，秘密议事的信息渠道之一。"
+    }
+  },
+  {
+    "id": "dong-chang",
+    "name": "东厂",
+    "type": "intelligence",
+    "parentId": "nei-ge",
+    "functions": ["侦缉", "监视百官", "密报"],
+    "meta": {
+      "sourceIds": ["ming-shi"],
+      "confirmation": "disputed",
+      "notes": "崇祯即位初期由魏忠贤控制。组织隶属关系的细节存在不同记载，标注 disputed，Phase 7 据史料复核。"
+    }
+  }
+]

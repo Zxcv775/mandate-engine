@@ -1,0 +1,38 @@
+{
+  "name": "mandate-engine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "天命：帝国推演 —— LLM 驱动的中国历史皇帝模拟游戏",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "brace-expansion": "^5.0.8"
+  },
+  "scripts": {
+    "dev:server": "npm run dev --workspace @mandate/server",
+    "dev:web": "npm run dev --workspace @mandate/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "check:data": "node scripts/validate-data.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

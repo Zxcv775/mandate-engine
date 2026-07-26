@@ -1,0 +1,28 @@
+[
+  {
+    "id": "ming-shi",
+    "title": "明史",
+    "author": "张廷玉等（清修）",
+    "sourceType": "primary",
+    "citation": "《明史》三百三十二卷，中华书局点校本",
+    "reliability": "high",
+    "notes": "官修正史。涉及明末人物评价时需注意清修立场（如对崇祯、东林的评价倾向）。"
+  },
+  {
+    "id": "chongzhen-shilu",
+    "title": "崇祯实录",
+    "sourceType": "primary",
+    "citation": "《明实录》附录《崇祯实录》十七卷",
+    "reliability": "high",
+    "notes": "编年体原始记录，明末朝政日期的主要依据。"
+  },
+  {
+    "id": "guoque",
+    "title": "国榷",
+    "author": "谈迁",
+    "sourceType": "primary",
+    "citation": "《国榷》一百零四卷",
+    "reliability": "medium",
+    "notes": "私修编年史，可校正清修史书曲笔之处；与《明史》互证使用。"
+  }
+]

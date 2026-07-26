@@ -1,0 +1,33 @@
+{
+  "id": "wei-zhongxian",
+  "name": "魏忠贤",
+  "birthYear": 1568,
+  "deathYear": 1627,
+  "factionId": "yan-dang",
+  "personality": {
+    "ruthless": 0.9,
+    "cunning": 0.85,
+    "vain": 0.8
+  },
+  "abilities": {
+    "administration": 55,
+    "military": 20,
+    "intrigue": 90,
+    "scholarship": 15
+  },
+  "ambition": 90,
+  "privateGoals": [
+    "保持对厂卫与廷杖体系的控制",
+    "维持阉党在六部与地方的布局"
+  ],
+  "knowledgeScope": [
+    "东厂情报网",
+    "宫内事务",
+    "阉党成员动态"
+  ],
+  "meta": {
+    "sourceIds": ["ming-shi"],
+    "confirmation": "inferred",
+    "notes": "事迹见《明史·宦官传》。deathYear 为历史结局（崇祯即位后贬往凤阳、途中自缢），玩家行为可改变；人格与能力数值为占位（gameplay-adjusted），Phase 7 依据史料重校。"
+  }
+}

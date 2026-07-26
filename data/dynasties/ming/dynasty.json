@@ -1,0 +1,12 @@
+{
+  "id": "ming",
+  "name": "明",
+  "startYear": 1368,
+  "endYear": 1644,
+  "institutionPackId": "ming-standard",
+  "meta": {
+    "sourceIds": ["ming-shi"],
+    "confirmation": "confirmed",
+    "notes": "起止年采用通行说法：1368 年朱元璋建国，1644 年甲申之变（南明延续不计入）。"
+  }
+}

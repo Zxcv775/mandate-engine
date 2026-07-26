@@ -1,0 +1,23 @@
+{
+  "id": "ming-core-worldbook",
+  "description": "明朝核心世界观条目（Prompt 注入用）。Phase 3 prompt-system 完善后扩充。",
+  "entries": [
+    {
+      "keys": ["魏忠贤", "阉党"],
+      "content": "魏忠贤，天启朝权宦，提督东厂，党羽遍布内阁六部，称'九千岁'。崇祯即位后其权势根基动摇。",
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed"
+      }
+    },
+    {
+      "keys": ["东林", "党争"],
+      "content": "东林党以江南士大夫为核心，天启朝遭阉党残酷打压。崇祯初立，东林馀孽期待起复，党争余波未平。",
+      "meta": {
+        "sourceIds": ["ming-shi"],
+        "confirmation": "confirmed",
+        "notes": "'东林馀孽'为当时政治语境用词，正文使用时注意叙事立场。"
+      }
+    }
+  ]
+}

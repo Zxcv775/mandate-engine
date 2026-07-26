@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# 环境变量（含密钥，严禁提交）
+.env
+.env.local
+
+# 运行时数据
+saves/
+logs/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+
+# 系统文件
+.DS_Store
+Thumbs.db

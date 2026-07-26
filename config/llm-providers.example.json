@@ -1,0 +1,23 @@
+{
+  "providers": [
+    {
+      "name": "mock",
+      "type": "mock",
+      "comment": "离线 Mock，测试与默认开发使用，零网络"
+    },
+    {
+      "name": "local-llm",
+      "type": "openai-compatible",
+      "baseUrl": "http://127.0.0.1:1234/v1",
+      "model": "local-model",
+      "comment": "本地模型示例（LM Studio / Ollama 的 OpenAI 兼容端点）"
+    },
+    {
+      "name": "cloud-example",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.example.com/v1",
+      "model": "example-model",
+      "comment": "云端 OpenAI 兼容端点示例；API Key 经环境变量 LLM_API_KEY 注入，禁止写入本文件"
+    }
+  ]
+}
