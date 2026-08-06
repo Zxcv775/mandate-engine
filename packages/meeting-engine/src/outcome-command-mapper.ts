@@ -43,12 +43,30 @@ const AssignOfficePreviewSchema = z
   })
   .strict();
 
-/** 候选类型 → 允许的命令类型白名单 */
-const SUPPORTED_COMMAND_TYPES = new Set(["country.adjust-resource", "character.assign-office"]);
+/** Phase 5：政策立案预览（templateId 必须命中已装载模板） */
+const ProposePolicyPreviewSchema = z
+  .object({
+    templateId: z.string().trim().min(1),
+    reason: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
+/** 候选类型 → 允许的命令类型白名单（Phase 5 扩展 policy.propose） */
+const SUPPORTED_COMMAND_TYPES = new Set([
+  "country.adjust-resource",
+  "character.assign-office",
+  "policy.propose",
+]);
+
+export interface OutcomeMappingContext {
+  /** 已装载的政策模板 ID 清单（policy.propose 候选校验用） */
+  readonly policyTemplateIds?: readonly string[];
+}
 
 export function mapOutcomeToCommand(
   candidate: MeetingOutcomeCandidate,
   state: GameState,
+  context: OutcomeMappingContext = {},
 ): OutcomeCommandMappingResult {
   if (!candidate.commandPreview || candidate.unsupportedCommand) {
     return {
@@ -62,7 +80,50 @@ export function mapOutcomeToCommand(
     return {
       ok: false,
       code: "MEETING_OUTCOME_UNSUPPORTED",
-      reason: `命令类型不在 Phase 4 白名单：${commandType}`,
+      reason: `命令类型不在白名单：${commandType}`,
+    };
+  }
+
+  if (commandType === "policy.propose") {
+    const parsed = ProposePolicyPreviewSchema.safeParse(payload);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "MEETING_OUTCOME_INVALID",
+        reason: `政策立案 Payload 非法：${parsed.error.issues[0]?.message ?? "未知"}`,
+      };
+    }
+    if (!(context.policyTemplateIds ?? []).includes(parsed.data.templateId)) {
+      return {
+        ok: false,
+        code: "MEETING_OUTCOME_INVALID",
+        reason: `政策模板不存在：${parsed.data.templateId}`,
+      };
+    }
+    const policyId = `policy_${candidate.outcomeCandidateId.replace(/^outcome_/, "")}`;
+    if (state.policies[policyId]) {
+      return {
+        ok: false,
+        code: "MEETING_OUTCOME_INVALID",
+        reason: `该候选已立案：${policyId}`,
+      };
+    }
+    return {
+      ok: true,
+      command: {
+        commandType: "policy.propose",
+        saveId: state.saveId,
+        payload: {
+          policyId,
+          templateId: parsed.data.templateId,
+          origin: {
+            kind: "meeting",
+            meetingId: candidate.meetingId,
+            outcomeCandidateId: candidate.outcomeCandidateId,
+          },
+          ...(parsed.data.reason === undefined ? {} : { reason: parsed.data.reason }),
+        },
+      } as never,
     };
   }
 

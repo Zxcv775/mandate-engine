@@ -3,8 +3,10 @@ import { createStore } from "zustand/vanilla";
 import { ApiClientError } from "../api/client";
 import { listCharacters } from "../api/characters";
 import { getSaveState, listSaves } from "../api/saves";
+import { listPolicyTemplates, type PolicyTemplateSummary } from "../api/policies";
 import {
   addAgenda,
+  cancelMeeting,
   concludeMeeting,
   createMeeting,
   getDebugLeak,
@@ -44,6 +46,9 @@ export interface MeetingLabState {
   newTitle: string;
   newType: string;
   newAgendaTitle: string;
+  /** Phase 5：议程关联政策模板（人物可荐策映射为 policy.propose） */
+  newAgendaTemplateId: string;
+  policyTemplates: readonly PolicyTemplateSummary[];
   selectedParticipants: readonly string[];
   // 动作输入
   actionText: string;
@@ -52,7 +57,10 @@ export interface MeetingLabState {
   refreshSaves(): Promise<void>;
   selectSave(saveId: string): Promise<void>;
   refreshMeeting(meetingId?: string): Promise<void>;
-  setField(field: "newTitle" | "newType" | "newAgendaTitle" | "actionText", value: string): void;
+  setField(
+    field: "newTitle" | "newType" | "newAgendaTitle" | "newAgendaTemplateId" | "actionText",
+    value: string,
+  ): void;
   toggleParticipant(characterId: string): void;
   setTarget(characterId?: string): void;
   create(): Promise<void>;
@@ -63,6 +71,7 @@ export interface MeetingLabState {
   conclude(): Promise<void>;
   pause(): Promise<void>;
   resume(): Promise<void>;
+  cancel(): Promise<void>;
   loadLeak(): Promise<void>;
 }
 
@@ -109,6 +118,8 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
     newTitle: "御前会议·议处魏忠贤",
     newType: "imperial-council",
     newAgendaTitle: "如何处置魏忠贤",
+    newAgendaTemplateId: "",
+    policyTemplates: [],
     selectedParticipants: [],
     actionText: "众卿以为魏忠贤当如何处置？",
 
@@ -120,9 +131,10 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
 
     async selectSave(saveId) {
       await guarded(async () => {
-        const [characters, meetings] = await Promise.all([
+        const [characters, meetings, policyTemplates] = await Promise.all([
           listCharacters(saveId),
           listMeetings(saveId),
+          listPolicyTemplates(saveId),
         ]);
         set({
           selectedSaveId: saveId,
@@ -132,6 +144,7 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
             availableForAudience: c.availableForAudience,
           })),
           meetings,
+          policyTemplates,
           selectedParticipants: characters
             .filter((c) => c.availableForAudience)
             .map((c) => c.characterId),
@@ -191,6 +204,7 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
         await addAgenda(saveId, session.meetingId, {
           title: state.newAgendaTitle,
           description: state.newAgendaTitle,
+          ...(state.newAgendaTemplateId ? { relatedEntityIds: [state.newAgendaTemplateId] } : {}),
         });
         await refreshHead(saveId);
         await state.refreshMeeting(session.meetingId);
@@ -272,6 +286,17 @@ export const meetingLabStore = createStore<MeetingLabState>()((set, get) => {
       await guarded(async () => {
         const { selectedSaveId, session } = get();
         await resumeMeeting(selectedSaveId!, session!.meetingId);
+        await get().refreshMeeting();
+      });
+    },
+    async cancel() {
+      await guarded(async () => {
+        const { selectedSaveId, session, headRevision } = get();
+        await cancelMeeting(selectedSaveId!, session!.meetingId, {
+          expectedRevision: headRevision!,
+          reason: "调试取消",
+        });
+        await refreshHead(selectedSaveId!);
         await get().refreshMeeting();
       });
     },

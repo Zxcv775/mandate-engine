@@ -56,8 +56,11 @@ describe("forward-only state migrations", () => {
     delete country.treasuryTaels;
 
     const migrated = migrateGameStateDocument(legacy);
-    expect(migrated.appliedMigrationIds).toEqual(["state-001-treasury-taels"]);
-    expect(migrated.state.stateVersion).toBe(1);
+    expect(migrated.appliedMigrationIds).toEqual([
+      "state-001-treasury-taels",
+      "state-002-policy-lifecycle",
+    ]);
+    expect(migrated.state.stateVersion).toBe(2);
     expect(migrated.state.country.treasuryTaels).toBe(current.country.treasuryTaels);
     expect(migrated.state.country).not.toHaveProperty("treasury");
   });
@@ -71,15 +74,47 @@ describe("forward-only state migrations", () => {
     );
   });
 
+  it("旧 stateVersion 快照载入即前向迁移（未持久化迁移也能列出与读取）", async () => {
+    const system = await setup();
+    const current = await system.service.loadState("save_demo");
+    // 构造 v1（Phase 4 形态）快照：去掉 Phase 5 新增字段
+    const legacy = structuredClone(current) as unknown as Record<string, unknown>;
+    legacy.stateVersion = 1;
+    delete legacy.modifiers;
+    delete (legacy.hidden as Record<string, unknown>).policyTruth;
+    system.database.exec("PRAGMA ignore_check_constraints = ON");
+    system.database
+      .prepare("UPDATE save_snapshots SET state_json = ?, state_hash = ? WHERE save_id = ?")
+      .run(stableStringify(legacy), hashState(legacy), "save_demo");
+    system.database
+      .prepare("UPDATE saves SET state_version = ?, metadata_json = ? WHERE save_id = ?")
+      .run(1, stableStringify({ headStateHash: hashState(legacy) }), "save_demo");
+    system.database.exec("PRAGMA ignore_check_constraints = OFF");
+
+    // 不调用 migrateSave：list 与 load 都应经载入期前向迁移正常工作
+    const listed = await system.service.listSaves();
+    expect(listed.some((save) => save.saveId === "save_demo")).toBe(true);
+    const state = await system.service.loadState("save_demo");
+    expect(state.stateVersion).toBe(2);
+    expect(state.modifiers).toEqual({});
+    expect(state.hidden.policyTruth).toEqual({});
+  });
+
   it("records database migration checksums exactly once", async () => {
     const system = await setup();
     const rows = system.database
       .prepare("SELECT migration_id, checksum FROM schema_migrations ORDER BY migration_id")
       .all() as Array<{ migration_id: string; checksum: string }>;
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(9);
     expect(rows[0]).toMatchObject({ migration_id: "001-initial-save-schema" });
     expect(rows[1]).toMatchObject({ migration_id: "002-character-memories" });
     expect(rows[2]).toMatchObject({ migration_id: "003-meeting-orchestration" });
+    expect(rows[3]).toMatchObject({ migration_id: "004-policy-details" });
+    expect(rows[4]).toMatchObject({ migration_id: "005-rollback-timeline" });
+    expect(rows[5]).toMatchObject({ migration_id: "006-policy-cost-ledger" });
+    expect(rows[6]).toMatchObject({ migration_id: "007-meeting-ruling-idempotency" });
+    expect(rows[7]).toMatchObject({ migration_id: "008-meeting-session-history" });
+    expect(rows[8]).toMatchObject({ migration_id: "009-meeting-ruling-timeline-idempotency" });
     for (const row of rows) {
       expect(row.checksum).toMatch(/^[a-f0-9]{64}$/);
     }
@@ -107,9 +142,9 @@ describe("forward-only state migrations", () => {
     expect(result).toMatchObject({
       saveId: "save_demo",
       fromVersion: 0,
-      toVersion: 1,
+      toVersion: 2,
       changed: true,
-      appliedMigrationIds: ["state-001-treasury-taels"],
+      appliedMigrationIds: ["state-001-treasury-taels", "state-002-policy-lifecycle"],
     });
     expect((await system.service.loadState("save_demo")).country).toMatchObject({
       treasuryTaels: current.country.treasuryTaels,
@@ -124,9 +159,14 @@ describe("forward-only state migrations", () => {
     ).toEqual({ checkpoint_kind: "pre_migration" });
     expect(
       system.database
-        .prepare("SELECT migration_id FROM save_state_migrations WHERE save_id = ?")
+        .prepare(
+          "SELECT migration_id FROM save_state_migrations WHERE save_id = ? ORDER BY migration_id",
+        )
         .all("save_demo"),
-    ).toEqual([{ migration_id: "state-001-treasury-taels" }]);
+    ).toEqual([
+      { migration_id: "state-001-treasury-taels" },
+      { migration_id: "state-002-policy-lifecycle" },
+    ]);
     expect(await system.service.migrateSave("save_demo")).toMatchObject({ changed: false });
   });
 
@@ -189,11 +229,17 @@ describe("forward-only state migrations", () => {
     await target.service.importSave({ bytes: exported.bytes });
     expect(
       target.database
-        .prepare("SELECT migration_id, checksum FROM save_state_migrations WHERE save_id = ?")
+        .prepare(
+          "SELECT migration_id, checksum FROM save_state_migrations WHERE save_id = ? ORDER BY migration_id",
+        )
         .all("save_demo"),
     ).toEqual([
       expect.objectContaining({
         migration_id: "state-001-treasury-taels",
+        checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+      expect.objectContaining({
+        migration_id: "state-002-policy-lifecycle",
         checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     ]);

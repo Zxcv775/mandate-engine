@@ -77,17 +77,20 @@
 - 风险：多 NPC 轮次成本与延迟（限制 MVP 参与人数）。
 - 不做：政策结算、事件联动。
 
-## Phase 5 · 政策与规则引擎
+## Phase 5 · 政策与规则引擎（已完成）
 
-- 目标：自然语言指令 → 草案 → 校验 → 廷议 → 裁决 → 规则结算全链路。
-- 前置：Phase 4。
-- 主要任务：Policy Parser（结构化输出 + 重试降级）；制度约束检查（制度包）；
-  Modifier 合成与结算；白名单条件 DSL 求值器（禁 eval）；
-  执行偏差/地方阻力模型（简化版）；StateChangeLog 规则引用。
-- 交付物：`rule-engine` 完整实现 + 确定性测试；Parser API；政策 UI 流程。
-- 验收标准：FR-POL-001~004、FR-RULE-001/002、FR-TEST-001。
-- 风险：DSL 表达力与安全的平衡（先小后大）；LLM 解析鲁棒性（Mock 测试兜底）。
-- 不做：战争细化、复杂经济。
+- 已交付：规则 DSL（受限条件树 + 白名单 effect，ADR-022）与纯函数解释器 + RuleTrace；
+  统一 Modifier 系统与 resolveEffectiveValue（ADR-024）；政策 11 态状态机与
+  policy.* 八命令（ADR-023）；time.advance 同事务执行结算（阻力系数分解 ×
+  六类确定性偏差 × 派生 RNG，ADR-025/026）；migration 004 明细三表与
+  奏报/真实分离；会议候选 propose-policy 白名单映射；9 个崇祯初政模板；
+  政策 API + Policy Lab；`check:phase5` 全绿。
+- 调整：政策创建走"模板 + 白名单命令"而非自然语言 Policy Parser——LLM 只在会议中
+  荐策（propose-policy 候选），Parser 式自由立策留待后续阶段评审。
+- 代码审查加固：回滚时间线投影、会议共享事务、幂等竞态、Agent 陈旧响应、safe-share、
+  ZIP 导入边界、政策责任校验/成本账本/无操作防线等见 `docs/10-review-fixes.md`；
+  migration 005/006/007 仅扩展审计、投影与裁决幂等，不进入 Phase 6。
+- 见 ADR-022~026、`docs/09-phase-5-implementation.md` 与 `docs/10-review-fixes.md`。
 
 ## Phase 6 · 事件和时间推进
 

@@ -440,3 +440,22 @@ Provider 调用在事务外，阶段 B commitAgentTurn 幂等提交）→ 结果
 白名单候选经 StateEngine 变更世界。保密：秘密议事对非参与者零可见，safe_share
 导出删除 sealed/private 内容；泄密为确定性评分 + 确定性 roll，触发只产生 hidden
 候选事件。详见 ADR-015~021 与 docs/08-phase-4-implementation.md。
+
+## 19. Phase 5 规则引擎与政策执行
+
+政策链：会议候选（propose-policy 预览）或直诏 → policy.propose/approve（合法性规则，
+直诏承担数据驱动代价）/issue（资格与成本预检，hidden 真实档案建档）→ time.advance
+同事务结算（维持成本 → 阻力系数十项分解 → policy-resolution 规则 → 六类确定性偏差 →
+阶段/终局）→ Mutation Plan 经 StateEngine 原子提交 → 明细/奏报/偏差同事务落
+migration 004 三表（commitTransition.extraWrites）。
+
+规则引擎（packages/rule-engine，纯函数，仅依赖 domain+shared）：受限条件树
+（白名单路径，hidden 一律拒绝）× 八种白名单 effect；求值 priority↓+ruleId 序；
+RuleTrace 全程留痕；Modifier 统一经 resolveEffectiveValue 合成
+（add→mul→clamp 确定序 + 三种叠加语义 + 过期清理留痕）。随机数为派生流
+（fnv1a(saveId:policyId) + tick×32），不动世界 RNG cursor——同 seed 重放与
+回滚重推逐 tick 一致。
+
+信息边界：政策运行态的进度是奏报口径（玩家可见）；真实进度/腐败/偏差在
+hidden.policyTruth 与偏差流水（仅 Debug API；safe_share 全剥离）。
+详见 ADR-022~026 与 docs/09-phase-5-implementation.md。

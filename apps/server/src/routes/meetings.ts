@@ -2,6 +2,7 @@ import {
   AddAgendaRequestSchema,
   CreateMeetingRequestSchema,
   MeetingActionRequestSchema,
+  MeetingCancelRequestSchema,
   MeetingIdParamsSchema,
   MeetingPauseRequestSchema,
   MeetingRulingRequestSchema,
@@ -115,5 +116,11 @@ export function registerMeetingRoutes(app: FastifyInstance, service: MeetingServ
     const { saveId, meetingId } = MeetingIdParamsSchema.parse(request.params);
     const body = MeetingStepRequestSchema.parse(request.body);
     return successResponse(request, await service.concludeMeeting(saveId, meetingId, body));
+  });
+
+  app.post("/api/saves/:saveId/meetings/:meetingId/cancel", async (request) => {
+    const { saveId, meetingId } = MeetingIdParamsSchema.parse(request.params);
+    const body = MeetingCancelRequestSchema.parse(request.body);
+    return successResponse(request, await service.cancelMeeting(saveId, meetingId, body));
   });
 }

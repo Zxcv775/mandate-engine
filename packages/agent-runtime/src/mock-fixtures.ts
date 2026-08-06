@@ -55,6 +55,8 @@ const SPEECH_BY_STANCE: Readonly<
 export interface BuildMockOutputOptions {
   readonly mode?: CharacterConversationMode;
   readonly characterId?: string;
+  /** Phase 5：荐策命中的政策模板（recommend-policy 的 targetEntityIds） */
+  readonly policyTemplateId?: string;
 }
 
 export function buildMockCharacterOutput(
@@ -103,8 +105,10 @@ export function buildMockCharacterOutput(
         ? [
             {
               type: "recommend-policy",
-              summary: "先清厘积欠粮饷，以安军心",
-              targetEntityIds: [],
+              summary: options.policyTemplateId
+                ? "此策于时局有益，恳请圣裁采行"
+                : "先清厘积欠粮饷，以安军心",
+              targetEntityIds: options.policyTemplateId ? [options.policyTemplateId] : [],
               rationale: ["军心不稳则守备难恃"],
               confidence: 70,
             },
@@ -267,12 +271,14 @@ export function createCharacterMockProvider(
         const referenced = [...fullText.matchAll(/^\[([^\]\n]+)\] /gm)]
           .map((match) => match[1]!)
           .slice(-1);
+        const policyTemplateId = /议程关联政策模板：([A-Za-z0-9_-]+)/.exec(fullText)?.[1];
         return JSON.stringify(
           buildMockMeetingOutput(stance, {
             mode,
             responseType,
             referencedTurnIds: referenced,
             ...(characterId === undefined ? {} : { characterId }),
+            ...(policyTemplateId === undefined ? {} : { policyTemplateId }),
           }),
         );
       }

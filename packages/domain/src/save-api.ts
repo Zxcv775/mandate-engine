@@ -6,6 +6,11 @@ import { PlayerStateViewSchema } from "./state";
 import { StateChangeLogEntrySchema } from "./mutations";
 import { ApiResponseMetaSchema } from "./api";
 
+/** 存档导入的统一线格式上限：16 MiB ZIP，经 base64 后约 21.34 MiB。 */
+export const MAX_SAVE_ARCHIVE_BYTES = 16 * 1024 * 1024;
+export const MAX_SAVE_IMPORT_BASE64_LENGTH = Math.ceil(MAX_SAVE_ARCHIVE_BYTES / 3) * 4;
+export const SAVE_IMPORT_HTTP_BODY_LIMIT = MAX_SAVE_IMPORT_BASE64_LENGTH + 16 * 1024;
+
 const IdSchema = z
   .string()
   .trim()
@@ -134,10 +139,7 @@ export const ExportSaveRequestSchema = z
 
 export const ImportSaveRequestSchema = z
   .object({
-    packageBase64: z
-      .string()
-      .min(1)
-      .max(100 * 1024 * 1024),
+    packageBase64: z.string().min(1).max(MAX_SAVE_IMPORT_BASE64_LENGTH),
     password: z.string().min(8).max(1_024).optional(),
     clientId: IdSchema.optional(),
   })

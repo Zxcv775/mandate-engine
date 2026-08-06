@@ -33,6 +33,8 @@ export interface CommitResult {
 export interface CommitTransitionOptions {
   preCommitCheckpoint?: CheckpointInput;
   validateBeforeCommit?: () => void;
+  /** Phase 5：与状态变更同事务的附加写入（政策明细/奏报等 append-only 表） */
+  extraWrites?: () => void;
 }
 
 export interface CheckpointInput {
@@ -68,7 +70,12 @@ export interface SaveRepositoryContract {
   loadStateAtRevision(saveId: string, revision: number): GameState;
   loadChanges(saveId: string, fromRevision?: number, toRevision?: number): StateChangeLogEntry[];
   createCheckpoint(saveId: string, input: CheckpointInput): CheckpointMetadata;
-  findIdempotentResult(saveId: string, idempotencyKey: string): CommitResult | null;
+  findIdempotentResult(
+    saveId: string,
+    idempotencyKey: string,
+    requestHash: string,
+  ): CommitResult | null;
+  runInTransaction<T>(work: () => T): T;
   commitTransition(
     command: GameCommand,
     transition: import("@mandate/game-engine").StateTransition,

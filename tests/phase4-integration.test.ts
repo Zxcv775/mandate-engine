@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createCharacterMockProvider } from "@mandate/agent-runtime";
+import { parseSavePackage } from "@mandate/save-system";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../apps/server/src/app";
@@ -348,6 +349,10 @@ describe("闭环二：秘密议事与重载恢复（§27）", () => {
     });
     expect(exported.statusCode).toBe(200);
     const packageBase64 = J(exported).data.packageBase64 as string;
+    const safePackage = parseSavePackage(Buffer.from(packageBase64, "base64"));
+    const rawPayload = Buffer.from(safePackage.payload).toString("utf8");
+    expect(rawPayload).not.toContain("SEALED_PLOT_MARKER");
+    expect(rawPayload).not.toContain("夜召承恩");
     const importApp = await buildApp({
       config: parseRuntimeConfig({ NODE_ENV: "test", LLM_PROVIDER: "mock" }),
       provider: createCharacterMockProvider({}, NAMES),
@@ -360,6 +365,10 @@ describe("闭环二：秘密议事与重载恢复（§27）", () => {
     });
     expect(imported.statusCode).toBe(200);
     const importedSaveId = J(imported).data.saveId;
+    const importedState = J(
+      await importApp.inject({ method: "GET", url: `/api/saves/${importedSaveId}/state` }),
+    ).data;
+    expect(importedState.meetings.secret).toBeUndefined();
     const importedMeetings = J(
       await importApp.inject({ method: "GET", url: `/api/saves/${importedSaveId}/meetings` }),
     ).data as Array<{ meetingId: string }>;

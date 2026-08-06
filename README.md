@@ -3,11 +3,13 @@
 > LLM 驱动的中国历史政治模拟游戏。
 > **LLM 扮演人物、生成语言；规则与状态引擎计算事实、数值和后果。**
 
-首个剧本为明末 **崇祯初政**。当前已完成 Phase 4：在 Phase 3 单人物 Character Agent 之上，新增可控制、可恢复、可审计的
-多人物议政系统——Meeting State Machine（12 态全矩阵）、确定性 Meeting Director 与
-Speaker Scheduler、两阶段 Agent 回合（崩溃恢复 + 幂等）、append-only Transcript、
-结果候选白名单裁决（唯一世界写路径仍是 StateEngine）、会议纪要与分化记忆、
-秘密议事确定性泄密评估，以及 Meeting Lab 调试台。
+首个剧本为明末 **崇祯初政**。当前已完成 Phase 5：在会议编排（Phase 4）之上，新增数据驱动
+规则引擎（受限条件树 + 八种白名单 effect，禁 eval）、统一 Modifier 系统
+（可叠加/可过期/可审计）、政策完整生命周期（提出 → 御批 → 颁行 → 逐 tick 执行结算 →
+奏报回馈；11 态状态机 + 8 个白名单命令）、确定性执行偏差（拖延/表面完成/数字造假/
+层层加码/选择性执行/腐败损耗）与奏报-真实分离（玩家读奏报，真实值在 hidden 仅 Debug）、
+9 个崇祯初政政策模板（史料标注），以及 Policy Lab 调试台。会议候选可映射为
+policy.propose——御前"准行"即立案。
 
 ## 环境要求
 
@@ -127,24 +129,30 @@ npm run test:character-memory
 npm run test:character-security
 npm run test:prompt-assets
 npm run check:phase3
+npm run check:phase4
+npm run check:phase5
+npm run check:review-fixes
 ```
 
-`check:phase3` 串行执行 Phase 2 全部门禁与 Phase 3 人物/记忆/Prompt/安全测试。
+`check:phase5` 串行覆盖 Phase 2–5 全部门禁；`check:review-fixes` 聚合回滚投影、会议原子性、
+幂等竞态、Agent 陈旧响应、导入安全、政策成本与 safe-share 的审查专项回归。
 CI 使用 Mock Provider 与临时 SQLite，不需要 Secrets，也不写开发存档。
 性能基准可通过 `npm run benchmark:phase2` / `npm run benchmark:phase3` 复现，报告位于 `docs/progress/`。
 
 ## 目录结构
 
 ```text
-apps/server                 # Fastify 装配、统一错误/Envelope、Scenario/Save/Character API
-apps/web                    # Runtime Dashboard、Save Browser、Character Lab
-packages/domain             # 历史模板 + GameState/Command/Save + Phase 3 人物卡/视图/记忆/Agent 契约
+apps/server                 # Fastify 装配、统一错误/Envelope、Save/Character/Meeting/Policy API
+apps/web                    # Runtime Dashboard、Save Browser、Character/Meeting/Policy Lab
+packages/domain             # 历史模板 + GameState/Command/Save + 人物/会议/政策/规则契约
 packages/game-engine        # 纯状态引擎、RNG/Clock、stable hash、initial state
-packages/save-system        # SQLite、事务、Repository、迁移、回滚、导入导出、人物记忆仓储
+packages/save-system        # SQLite、共享事务、时间线投影、导入导出、人物/会议/政策仓储
 packages/data-loader        # 只读历史模板校验、引用检查、ScenarioBundle
 packages/llm-adapters       # Mock / OpenAI-compatible Provider
 packages/prompt-system      # 注册式版本化 Prompt 资产 + manifest + composer + budget
 packages/agent-runtime      # 知识视图、记忆策略/选择器、Context Builder、Character Agent
+packages/meeting-engine     # 会议状态机、调度、Director、候选映射与泄密评估
+packages/rule-engine        # 白名单 DSL、Modifier、政策生命周期与确定性结算
 data                        # 只读历史模板
 scripts                     # data/save CLI、临时存档校验与 benchmark
 tests                       # 单元、Repository、事务、API、CLI、安全与集成测试
@@ -156,22 +164,19 @@ tests                       # 单元、Repository、事务、API、CLI、安全�
 2. StateEngine/GameStateService 是唯一写入口；Route、React、LLM、Prompt 不直接改状态。
 3. Command 白名单 + baseRevision + idempotency，Mutation 先计划、后校验、再原子提交。
 4. seed/cursor 和 Clock 可注入；核心引擎禁止 `Math.random()`。
-5. StateChangeLog 追加式且有 hash chain；回滚创建新 revision，不删除旧历史。
+5. StateChangeLog 与回滚事件追加式保留；当前态查询按回滚时间线投影，不删除旧审计历史。
 6. API、日志、存档和导出不持久化原始凭据；普通 View 剥离 hidden/sealed。
 
 7. 角色只见其身份允许的信息：知识视图六级可见性 + 认知标注；Agent 不读完整 GameState。
 8. LLM 输出只是建议：结构化契约 + 受控修复 + 确定性一致性检查；候选行动不会自动执行。
 
 详细设计见 `docs/02-system-architecture.md`、`docs/03-domain-model.md`、
-`docs/06-phase-2-implementation.md`、`docs/07-phase-3-implementation.md` 与 ADR-006~014。
+`docs/06-phase-2-implementation.md` 至 `docs/10-review-fixes.md` 与 ADR-006~026。
 
 ## 当前边界与下一阶段
 
-Phase 3 没有实现会议状态机、Meeting Director、多人物并发讨论、政策解析/结算、完整规则/事件链、
-向量数据库/RAG、云存档或正式游戏 UI。
-
-Phase 4 应实现 Meeting Director、朝会/御前会议/秘密议事状态机、多人物发言调度、议程推进、
-发言资格、会议记录、泄密风险与会议结果候选；不会由本阶段自动开始。
+Phase 5 已完成会议与政策闭环；Phase 6 尚未开始。当前仍未实现完整事件链、奏折生成管线、
+向量数据库/RAG、云存档或正式游戏 UI。下一阶段范围以 `docs/05-roadmap.md` 为准，不自动进入。
 
 ## 许可证
 

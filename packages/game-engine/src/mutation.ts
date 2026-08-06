@@ -45,11 +45,11 @@ function parentAtPath(root: Record<string, unknown>, segments: readonly string[]
   return current as Record<string, unknown>;
 }
 
-export function applyMutation(state: Readonly<GameState>, input: ProposedMutation): GameState {
+/** 在已克隆的可变根上原地应用一条 mutation（校验语义与克隆版一致） */
+function applyMutationInPlace(root: Record<string, unknown>, input: ProposedMutation): void {
   const mutation = ProposedMutationSchema.parse(input);
-  const next = structuredClone(state) as unknown as Record<string, unknown>;
   const segments = decodePointer(mutation.path);
-  const parent = parentAtPath(next, segments);
+  const parent = parentAtPath(root, segments);
   const key = segments.at(-1) as string;
   const exists = Object.prototype.hasOwnProperty.call(parent, key);
 
@@ -65,7 +65,7 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
       );
     }
     parent[key] = structuredClone(mutation.after);
-    return next as unknown as GameState;
+    return;
   }
   if (mutation.operation === "remove") {
     if (!exists) {
@@ -84,7 +84,7 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
       );
     }
     delete parent[key];
-    return next as unknown as GameState;
+    return;
   }
 
   if (!exists) {
@@ -97,17 +97,39 @@ export function applyMutation(state: Readonly<GameState>, input: ProposedMutatio
     );
   }
   parent[key] = structuredClone(mutation.after);
-  return next as unknown as GameState;
 }
 
+export function applyMutation(state: Readonly<GameState>, input: ProposedMutation): GameState {
+  return applyMutations(state, [input]);
+}
+
+/**
+ * 批量应用：整体只克隆一次（Phase 5 性能修正——此前每条 mutation 全量克隆状态，
+ * 政策结算的多 mutation 事务呈 O(mutations × stateSize)）。失败时抛错、
+ * 调用方丢弃返回值即可，语义与逐条克隆版一致。
+ */
 export function applyMutations(
   state: Readonly<GameState>,
   mutations: readonly ProposedMutation[],
 ): GameState {
-  return mutations.reduce(
-    (current, mutation) => applyMutation(current, mutation),
-    state as GameState,
-  );
+  const next = structuredClone(state) as unknown as Record<string, unknown>;
+  for (const mutation of mutations) {
+    applyMutationInPlace(next, mutation);
+  }
+  return next as unknown as GameState;
+}
+
+/**
+ * 引擎内部：在调用方持有的可变草稿上原地批量应用（政策结算的草稿推进用）。
+ * 注意：失败时草稿可能已被部分修改——仅可用于"失败即整体丢弃草稿"的场景。
+ */
+export function applyMutationsInPlaceUnsafe(
+  draftRoot: Record<string, unknown>,
+  mutations: readonly ProposedMutation[],
+): void {
+  for (const mutation of mutations) {
+    applyMutationInPlace(draftRoot, mutation);
+  }
 }
 
 const inverseOperations = {

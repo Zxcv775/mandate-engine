@@ -78,6 +78,14 @@ export const MeetingPauseRequestSchema = z
   .object({ reason: z.string().trim().min(1).max(200).optional() })
   .strict();
 
+export const MeetingCancelRequestSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    reason: z.string().trim().min(1).max(200).optional(),
+  })
+  .strict();
+export type MeetingCancelRequest = z.infer<typeof MeetingCancelRequestSchema>;
+
 export const MeetingTurnsQuerySchema = z
   .object({
     agendaItemId: IdSchema.optional(),

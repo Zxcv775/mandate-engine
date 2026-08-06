@@ -122,14 +122,30 @@ export function MeetingLab() {
               onChange={(e) => state.setField("newAgendaTitle", e.target.value)}
             />
           </label>
+          <label>
+            议程关联政策模板（可选）
+            <select
+              value={state.newAgendaTemplateId}
+              onChange={(e) => state.setField("newAgendaTemplateId", e.target.value)}
+            >
+              <option value="">（不关联）</option>
+              {state.policyTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className="mlab-participants">
           {state.characters.map((character) => (
             <label
               key={character.characterId}
+              htmlFor={`mlab-participant-${character.characterId}`}
               className={character.availableForAudience ? "" : "disabled"}
             >
               <input
+                id={`mlab-participant-${character.characterId}`}
                 type="checkbox"
                 disabled={!character.availableForAudience}
                 checked={state.selectedParticipants.includes(character.characterId)}
@@ -200,6 +216,18 @@ export function MeetingLab() {
               onClick={() => void state.conclude()}
             >
               结束会议
+            </button>
+            <button
+              type="button"
+              disabled={
+                state.busy ||
+                !["draft", "scheduled", "preparing", "paused", "failed"].includes(
+                  state.session.status,
+                )
+              }
+              onClick={() => void state.cancel()}
+            >
+              取消会议
             </button>
             <button type="button" disabled={state.busy} onClick={() => void state.loadLeak()}>
               泄密评估(Debug)

@@ -1,4 +1,4 @@
-import { SeededRng } from "@mandate/shared";
+import { SeededRng, fnv1a } from "@mandate/shared";
 import type {
   CharacterTemplate,
   MeetingAgendaItem,
@@ -48,15 +48,8 @@ export interface SpeakerSchedulingResult {
   readonly tieBreakUsed: boolean;
 }
 
-/** 确定性字符串哈希（FNV-1a 32bit），为 tie-break 派生种子 */
-export function fnv1a(text: string): number {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < text.length; index++) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
-}
+/** 确定性字符串哈希（FNV-1a 32bit），为 tie-break 派生种子；实现下沉至 shared（Phase 5） */
+export { fnv1a };
 
 function scoreCandidate(
   candidate: SpeakerCandidateInput,

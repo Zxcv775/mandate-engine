@@ -1,0 +1,81 @@
+{
+  "id": "policy-juanmian-bufu",
+  "name": "蠲免灾区逋赋",
+  "dynastyId": "ming",
+  "category": "relief",
+  "summary": "灾伤州县历年逋欠钱粮，民力已竭而有司催科不止。诏灾区逋赋分别蠲免、缓征，与民休息。",
+  "objective": "蠲免灾区积欠，纾解民力",
+  "scope": {
+    "kind": "regional",
+    "regionIds": ["shaanxi"]
+  },
+  "responsibleInstitutionId": "hu-bu",
+  "allowedOfficeIds": ["hu-bu-shang-shu", "nei-ge-shou-fu"],
+  "cost": {
+    "startup": {},
+    "upkeepPerTick": {
+      "administrativeCapacity": 3
+    }
+  },
+  "duration": {
+    "estimatedTicks": 40,
+    "stages": [
+      {
+        "stageId": "stage-kaihe",
+        "title": "开报核蠲",
+        "objective": "州县开报灾伤分数，部核蠲缓则例",
+        "expectedTicks": 40,
+        "successCriteria": {},
+        "onCompleteEffects": [
+          {
+            "type": "adjust-region-metric",
+            "region": "context",
+            "metric": "stability",
+            "amount": 4,
+            "reason": "蠲书到县，穷檐稍苏"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [
+      {
+        "type": "adjust-country-resource",
+        "resource": "treasuryTaels",
+        "amount": -20000,
+        "reason": "蠲免额赋，岁入相应核减"
+      }
+    ],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": 2,
+        "reason": "催科稍宽，流亡渐还"
+      },
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": 2,
+        "reason": "恤民之诏，中外颂圣德"
+      }
+    ],
+    "failure": [],
+    "longTermModifiers": []
+  },
+  "resistance": {
+    "administrativeDifficulty": 35,
+    "affectedInterestGroups": [],
+    "expectedOpposition": []
+  },
+  "legitimacy": {
+    "baseImpact": 3,
+    "politicalCost": 3
+  },
+  "meta": {
+    "sourceIds": ["ming-shi", "chongzhen-shilu"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "崇祯初对陕西等灾区蠲缓逋赋之诏为史实（《明史·庄烈帝纪》）；蠲免规模与岁入影响为游戏建模。地区实体未落地，region 效果结算时跳过留痕（Phase 6 接入）。文字表述待 Phase 7 复核。 场景内户部尚书暂虚悬，允许内阁首辅督办（可玩性调整）。"
+  }
+}

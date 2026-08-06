@@ -18,6 +18,7 @@ import {
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import type { Clock } from "@mandate/game-engine";
 import { SaveSystemError } from "./errors";
+import { currentTimelineRevisionPredicate } from "./timeline";
 
 /**
  * 会议持久层（ADR-018/020）。
@@ -44,76 +45,45 @@ export interface TurnListFilter {
   readonly cursor?: number;
 }
 
+export interface MeetingRulingRecord {
+  readonly rulingId: string;
+  readonly saveId: string;
+  readonly meetingId: string;
+  readonly agendaItemId: string;
+  readonly idempotencyKey: string;
+  readonly requestHash: string;
+  readonly stateRevision: number;
+  readonly result: unknown;
+  readonly createdAt: string;
+}
+
 function toJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-interface SessionRow {
-  meeting_id: string;
-  save_id: string;
-  type: MeetingSessionState["type"];
-  status: MeetingSessionState["status"];
-  title: string;
-  purpose: string;
-  created_at_revision: number;
-  started_at_revision: number | null;
-  concluded_at_revision: number | null;
-  meeting_version: number;
-  turn_number: number;
-  participant_ids_json: string;
-  chair_character_id: string;
-  agenda_item_ids_json: string;
-  current_agenda_item_id: string | null;
-  current_speaker_id: string | null;
-  pending_player_action_json: string | null;
-  pending_agent_action_json: string | null;
-  limits_json: string;
-  used_turns: number;
-  visibility: MeetingVisibility;
-  outcome_candidate_ids_json: string;
-  pause_reason: string | null;
-  failure_code: string | null;
-  created_at: string;
-  updated_at: string;
+function jsonToSession(value: string): MeetingSessionState {
+  const parsed = JSON.parse(value) as Record<string, unknown>;
+  for (const key of [
+    "startedAtRevision",
+    "concludedAtRevision",
+    "currentAgendaItemId",
+    "currentSpeakerId",
+    "pendingPlayerAction",
+    "pendingAgentAction",
+    "pauseReason",
+    "failureCode",
+  ]) {
+    if (parsed[key] === null) delete parsed[key];
+  }
+  return MeetingSessionStateSchema.parse(parsed);
 }
 
-function rowToSession(row: SessionRow): MeetingSessionState {
-  return MeetingSessionStateSchema.parse({
-    meetingId: row.meeting_id,
-    saveId: row.save_id,
-    type: row.type,
-    status: row.status,
-    title: row.title,
-    purpose: row.purpose,
-    createdAtRevision: row.created_at_revision,
-    ...(row.started_at_revision === null ? {} : { startedAtRevision: row.started_at_revision }),
-    ...(row.concluded_at_revision === null
-      ? {}
-      : { concludedAtRevision: row.concluded_at_revision }),
-    meetingVersion: row.meeting_version,
-    turnNumber: row.turn_number,
-    participantIds: JSON.parse(row.participant_ids_json),
-    chairCharacterId: row.chair_character_id,
-    agendaItemIds: JSON.parse(row.agenda_item_ids_json),
-    ...(row.current_agenda_item_id === null
-      ? {}
-      : { currentAgendaItemId: row.current_agenda_item_id }),
-    ...(row.current_speaker_id === null ? {} : { currentSpeakerId: row.current_speaker_id }),
-    ...(row.pending_player_action_json === null
-      ? {}
-      : { pendingPlayerAction: JSON.parse(row.pending_player_action_json) }),
-    ...(row.pending_agent_action_json === null
-      ? {}
-      : { pendingAgentAction: JSON.parse(row.pending_agent_action_json) }),
-    limits: JSON.parse(row.limits_json),
-    usedTurns: row.used_turns,
-    visibility: row.visibility,
-    outcomeCandidateIds: JSON.parse(row.outcome_candidate_ids_json),
-    ...(row.pause_reason === null ? {} : { pauseReason: row.pause_reason }),
-    ...(row.failure_code === null ? {} : { failureCode: row.failure_code }),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  });
+function versionObject(value: string): Record<string, unknown> {
+  const parsed = JSON.parse(value) as Record<string, unknown>;
+  for (const [key, item] of Object.entries(parsed)) {
+    if (item === null) delete parsed[key];
+  }
+  return parsed;
 }
 
 function sessionToParams(session: MeetingSessionState): SQLInputValue[] {
@@ -161,6 +131,39 @@ export class MeetingRepository {
     private readonly clock: Clock,
   ) {}
 
+  private meetingSaveId(meetingId: string): string {
+    const row = this.database
+      .prepare("SELECT save_id FROM meeting_sessions WHERE meeting_id = ?")
+      .get(meetingId) as { save_id: string } | undefined;
+    if (!row) throw new SaveSystemError("MEETING_NOT_FOUND", `会议不存在：${meetingId}`);
+    return row.save_id;
+  }
+
+  private headRevision(saveId: string): number {
+    const row = this.database
+      .prepare("SELECT head_revision FROM saves WHERE save_id = ?")
+      .get(saveId) as { head_revision: number } | undefined;
+    if (!row) throw new SaveSystemError("SAVE_NOT_FOUND", `存档不存在：${saveId}`);
+    return Number(row.head_revision);
+  }
+
+  private insertSessionVersion(session: MeetingSessionState): void {
+    this.database
+      .prepare(
+        `INSERT INTO meeting_session_versions (
+           meeting_id, save_id, state_revision, meeting_version, session_json, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        session.meetingId,
+        session.saveId,
+        this.headRevision(session.saveId),
+        session.meetingVersion,
+        toJson(session),
+        this.clock.now().toISOString(),
+      );
+  }
+
   /** 原子创建会议（session + 参与者 + 议程） */
   createSession(
     session: MeetingSessionState,
@@ -168,8 +171,9 @@ export class MeetingRepository {
     agendaItems: readonly MeetingAgendaItem[],
   ): void {
     const parsed = MeetingSessionStateSchema.parse(session);
+    const ownsTransaction = !this.database.isTransaction;
     try {
-      this.database.exec("BEGIN IMMEDIATE");
+      if (ownsTransaction) this.database.exec("BEGIN IMMEDIATE");
       this.database
         .prepare(
           `INSERT INTO meeting_sessions (${SESSION_COLUMNS})
@@ -184,9 +188,10 @@ export class MeetingRepository {
       for (const item of agendaItems) {
         this.upsertAgendaItem(item);
       }
-      this.database.exec("COMMIT");
+      this.insertSessionVersion(parsed);
+      if (ownsTransaction) this.database.exec("COMMIT");
     } catch (error) {
-      if (this.database.isTransaction) this.database.exec("ROLLBACK");
+      if (ownsTransaction && this.database.isTransaction) this.database.exec("ROLLBACK");
       throw error instanceof SaveSystemError
         ? error
         : new SaveSystemError("DATABASE_ERROR", "创建会议失败", error);
@@ -195,9 +200,18 @@ export class MeetingRepository {
 
   getSession(meetingId: string): MeetingSessionState | null {
     const row = this.database
-      .prepare(`SELECT ${SESSION_COLUMNS} FROM meeting_sessions WHERE meeting_id = ?`)
-      .get(meetingId) as SessionRow | undefined;
-    return row ? rowToSession(row) : null;
+      .prepare(
+        `SELECT session_json FROM meeting_session_versions
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_session_versions.save_id",
+             "meeting_session_versions.state_revision",
+           )}
+         ORDER BY state_revision DESC, meeting_version DESC
+         LIMIT 1`,
+      )
+      .get(meetingId) as { session_json: string } | undefined;
+    return row ? jsonToSession(row.session_json) : null;
   }
 
   requireSession(meetingId: string): MeetingSessionState {
@@ -211,10 +225,25 @@ export class MeetingRepository {
   listSessions(saveId: string): MeetingSessionState[] {
     const rows = this.database
       .prepare(
-        `SELECT ${SESSION_COLUMNS} FROM meeting_sessions WHERE save_id = ? ORDER BY created_at, meeting_id`,
+        `SELECT meeting_id, session_json FROM meeting_session_versions
+         WHERE save_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_session_versions.save_id",
+             "meeting_session_versions.state_revision",
+           )}
+         ORDER BY meeting_id, state_revision DESC, meeting_version DESC`,
       )
-      .all(saveId) as unknown as SessionRow[];
-    return rows.map(rowToSession);
+      .all(saveId) as unknown as Array<{ meeting_id: string; session_json: string }>;
+    const sessions = new Map<string, MeetingSessionState>();
+    for (const row of rows) {
+      if (!sessions.has(row.meeting_id))
+        sessions.set(row.meeting_id, jsonToSession(row.session_json));
+    }
+    return [...sessions.values()].sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) ||
+        left.meetingId.localeCompare(right.meetingId),
+    );
   }
 
   /** 乐观锁更新：expectedVersion 不符抛 MEETING_VERSION_STALE */
@@ -223,9 +252,22 @@ export class MeetingRepository {
       ...next,
       updatedAt: this.clock.now().toISOString(),
     });
-    const result = this.database
-      .prepare(
-        `UPDATE meeting_sessions SET
+    const ownsTransaction = !this.database.isTransaction;
+    try {
+      if (ownsTransaction) this.database.exec("BEGIN IMMEDIATE");
+      const current = this.getSession(parsed.meetingId);
+      if (!current) {
+        throw new SaveSystemError("MEETING_NOT_FOUND", `会议不存在：${parsed.meetingId}`);
+      }
+      if (current.meetingVersion !== expectedVersion) {
+        throw new SaveSystemError(
+          "MEETING_VERSION_STALE",
+          `meetingVersion 过期：期望 ${expectedVersion}，当前 ${current.meetingVersion}`,
+        );
+      }
+      this.database
+        .prepare(
+          `UPDATE meeting_sessions SET
            status = ?, title = ?, purpose = ?,
            started_at_revision = ?, concluded_at_revision = ?,
            meeting_version = ?, turn_number = ?, participant_ids_json = ?,
@@ -233,45 +275,41 @@ export class MeetingRepository {
            pending_player_action_json = ?, pending_agent_action_json = ?, limits_json = ?,
            used_turns = ?, outcome_candidate_ids_json = ?, pause_reason = ?, failure_code = ?,
            updated_at = ?
-         WHERE meeting_id = ? AND meeting_version = ?`,
-      )
-      .run(
-        parsed.status,
-        parsed.title,
-        parsed.purpose,
-        parsed.startedAtRevision ?? null,
-        parsed.concludedAtRevision ?? null,
-        parsed.meetingVersion,
-        parsed.turnNumber,
-        toJson(parsed.participantIds),
-        toJson(parsed.agendaItemIds),
-        parsed.currentAgendaItemId ?? null,
-        parsed.currentSpeakerId ?? null,
-        parsed.pendingPlayerAction ? toJson(parsed.pendingPlayerAction) : null,
-        parsed.pendingAgentAction ? toJson(parsed.pendingAgentAction) : null,
-        toJson(parsed.limits),
-        parsed.usedTurns,
-        toJson(parsed.outcomeCandidateIds),
-        parsed.pauseReason ?? null,
-        parsed.failureCode ?? null,
-        parsed.updatedAt,
-        parsed.meetingId,
-        expectedVersion,
-      );
-    if (Number(result.changes) === 0) {
-      const current = this.getSession(parsed.meetingId);
-      if (!current) {
-        throw new SaveSystemError("MEETING_NOT_FOUND", `会议不存在：${parsed.meetingId}`);
-      }
-      throw new SaveSystemError(
-        "MEETING_VERSION_STALE",
-        `meetingVersion 过期：期望 ${expectedVersion}，当前 ${current.meetingVersion}`,
-      );
+         WHERE meeting_id = ?`,
+        )
+        .run(
+          parsed.status,
+          parsed.title,
+          parsed.purpose,
+          parsed.startedAtRevision ?? null,
+          parsed.concludedAtRevision ?? null,
+          parsed.meetingVersion,
+          parsed.turnNumber,
+          toJson(parsed.participantIds),
+          toJson(parsed.agendaItemIds),
+          parsed.currentAgendaItemId ?? null,
+          parsed.currentSpeakerId ?? null,
+          parsed.pendingPlayerAction ? toJson(parsed.pendingPlayerAction) : null,
+          parsed.pendingAgentAction ? toJson(parsed.pendingAgentAction) : null,
+          toJson(parsed.limits),
+          parsed.usedTurns,
+          toJson(parsed.outcomeCandidateIds),
+          parsed.pauseReason ?? null,
+          parsed.failureCode ?? null,
+          parsed.updatedAt,
+          parsed.meetingId,
+        );
+      this.insertSessionVersion(parsed);
+      if (ownsTransaction) this.database.exec("COMMIT");
+    } catch (error) {
+      if (ownsTransaction && this.database.isTransaction) this.database.exec("ROLLBACK");
+      throw error;
     }
   }
 
   upsertParticipant(participant: MeetingParticipantState): void {
     const parsed = MeetingParticipantStateSchema.parse(participant);
+    const saveId = this.meetingSaveId(parsed.meetingId);
     this.database
       .prepare(
         `INSERT OR REPLACE INTO meeting_participants (
@@ -295,38 +333,51 @@ export class MeetingRepository {
         parsed.visibleUntilTurn ?? null,
         toJson(parsed.runtimeFlags),
       );
+    this.database
+      .prepare(
+        `INSERT INTO meeting_participant_versions (
+           meeting_id, save_id, character_id, state_revision, entity_json, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        parsed.meetingId,
+        saveId,
+        parsed.characterId,
+        this.headRevision(saveId),
+        toJson(parsed),
+        this.clock.now().toISOString(),
+      );
   }
 
   listParticipants(meetingId: string): MeetingParticipantState[] {
     const rows = this.database
-      .prepare("SELECT * FROM meeting_participants WHERE meeting_id = ? ORDER BY character_id")
-      .all(meetingId) as unknown as Array<Record<string, SQLInputValue>>;
-    return rows.map((row) =>
-      MeetingParticipantStateSchema.parse({
-        meetingId: row.meeting_id,
-        characterId: row.character_id,
-        role: row.role,
-        attendance: row.attendance,
-        speakingRights: row.speaking_rights,
-        turnsSpoken: Number(row.turns_spoken),
-        ...(row.last_spoke_at_turn === null
-          ? {}
-          : { lastSpokeAtTurn: Number(row.last_spoke_at_turn) }),
-        requestedToSpeak: Number(row.requested_to_speak) === 1,
-        ...(row.granted_by_emperor_at_turn === null
-          ? {}
-          : { grantedByEmperorAtTurn: Number(row.granted_by_emperor_at_turn) }),
-        challengedCharacterIds: JSON.parse(String(row.challenged_character_ids_json)),
-        ...(row.visible_until_turn === null
-          ? {}
-          : { visibleUntilTurn: Number(row.visible_until_turn) }),
-        runtimeFlags: JSON.parse(String(row.runtime_flags_json)),
-      }),
+      .prepare(
+        `SELECT character_id, entity_json FROM meeting_participant_versions
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_participant_versions.save_id",
+             "meeting_participant_versions.state_revision",
+           )}
+         ORDER BY character_id, state_revision DESC, version_id DESC`,
+      )
+      .all(meetingId) as unknown as Array<{ character_id: string; entity_json: string }>;
+    const participants = new Map<string, MeetingParticipantState>();
+    for (const row of rows) {
+      if (!participants.has(row.character_id)) {
+        participants.set(
+          row.character_id,
+          MeetingParticipantStateSchema.parse(versionObject(row.entity_json)),
+        );
+      }
+    }
+    return [...participants.values()].sort((left, right) =>
+      left.characterId < right.characterId ? -1 : left.characterId > right.characterId ? 1 : 0,
     );
   }
 
   upsertAgendaItem(item: MeetingAgendaItem): void {
     const parsed = MeetingAgendaItemSchema.parse(item);
+    const saveId = this.meetingSaveId(parsed.meetingId);
     this.database
       .prepare(
         `INSERT OR REPLACE INTO meeting_agenda_items (
@@ -351,31 +402,51 @@ export class MeetingRepository {
         toJson(parsed.requiredOfficeIds),
         parsed.visibility,
       );
+    this.database
+      .prepare(
+        `INSERT INTO meeting_agenda_item_versions (
+           meeting_id, save_id, agenda_item_id, state_revision, entity_json, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        parsed.meetingId,
+        saveId,
+        parsed.agendaItemId,
+        this.headRevision(saveId),
+        toJson(parsed),
+        this.clock.now().toISOString(),
+      );
   }
 
   listAgendaItems(meetingId: string): MeetingAgendaItem[] {
     const rows = this.database
       .prepare(
-        "SELECT * FROM meeting_agenda_items WHERE meeting_id = ? ORDER BY sequence, agenda_item_id",
+        `SELECT agenda_item_id, entity_json FROM meeting_agenda_item_versions
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_agenda_item_versions.save_id",
+             "meeting_agenda_item_versions.state_revision",
+           )}
+         ORDER BY agenda_item_id, state_revision DESC, version_id DESC`,
       )
-      .all(meetingId) as unknown as Array<Record<string, SQLInputValue>>;
-    return rows.map((row) =>
-      MeetingAgendaItemSchema.parse({
-        agendaItemId: row.agenda_item_id,
-        meetingId: row.meeting_id,
-        title: row.title,
-        description: row.description,
-        topicIds: JSON.parse(String(row.topic_ids_json)),
-        proposerId: row.proposer_id,
-        status: row.status,
-        priority: Number(row.priority),
-        sequence: Number(row.sequence),
-        maxTurns: Number(row.max_turns),
-        usedTurns: Number(row.used_turns),
-        relatedEntityIds: JSON.parse(String(row.related_entity_ids_json)),
-        requiredOfficeIds: JSON.parse(String(row.required_office_ids_json)),
-        visibility: row.visibility,
-      }),
+      .all(meetingId) as unknown as Array<{ agenda_item_id: string; entity_json: string }>;
+    const agendaItems = new Map<string, MeetingAgendaItem>();
+    for (const row of rows) {
+      if (!agendaItems.has(row.agenda_item_id)) {
+        agendaItems.set(
+          row.agenda_item_id,
+          MeetingAgendaItemSchema.parse(versionObject(row.entity_json)),
+        );
+      }
+    }
+    return [...agendaItems.values()].sort(
+      (left, right) =>
+        left.sequence - right.sequence ||
+        (left.agendaItemId < right.agendaItemId
+          ? -1
+          : left.agendaItemId > right.agendaItemId
+            ? 1
+            : 0),
     );
   }
 
@@ -426,8 +497,16 @@ export class MeetingRepository {
 
   hasTurnForAction(actionId: string): boolean {
     return (
-      this.database.prepare("SELECT 1 FROM meeting_turns WHERE action_id = ?").get(actionId) !==
-      undefined
+      this.database
+        .prepare(
+          `SELECT 1 FROM meeting_turns
+           WHERE action_id = ?
+             AND ${currentTimelineRevisionPredicate(
+               "meeting_turns.save_id",
+               "meeting_turns.state_revision",
+             )}`,
+        )
+        .get(actionId) !== undefined
     );
   }
 
@@ -435,7 +514,10 @@ export class MeetingRepository {
     meetingId: string,
     filter: TurnListFilter = {},
   ): { turns: MeetingTurnRecord[]; nextCursor: number | null } {
-    const conditions = ["meeting_id = ?"];
+    const conditions = [
+      "meeting_id = ?",
+      currentTimelineRevisionPredicate("meeting_turns.save_id", "meeting_turns.state_revision"),
+    ];
     const parameters: SQLInputValue[] = [meetingId];
     if (filter.agendaItemId) {
       conditions.push("agenda_item_id = ?");
@@ -519,13 +601,14 @@ export class MeetingRepository {
         `会议未在等待该 Agent 回合：${turn.actionId ?? "-"}`,
       );
     }
+    const ownsTransaction = !this.database.isTransaction;
     try {
-      this.database.exec("BEGIN IMMEDIATE");
+      if (ownsTransaction) this.database.exec("BEGIN IMMEDIATE");
       this.appendTurn(turn);
       this.updateSession(nextSession, expectedVersion);
-      this.database.exec("COMMIT");
+      if (ownsTransaction) this.database.exec("COMMIT");
     } catch (error) {
-      if (this.database.isTransaction) this.database.exec("ROLLBACK");
+      if (ownsTransaction && this.database.isTransaction) this.database.exec("ROLLBACK");
       throw error instanceof SaveSystemError
         ? error
         : new SaveSystemError("MEETING_TRANSCRIPT_WRITE_FAILED", "Agent 回合提交失败", error);
@@ -563,46 +646,83 @@ export class MeetingRepository {
         parsed.createdAtRevision,
         parsed.createdAt,
       );
+    this.insertOutcomeCandidateVersion(parsed);
+  }
+
+  private insertOutcomeCandidateVersion(candidate: MeetingOutcomeCandidate): void {
+    this.database
+      .prepare(
+        `INSERT INTO meeting_outcome_candidate_versions (
+           meeting_id, save_id, outcome_candidate_id, state_revision, entity_json, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        candidate.meetingId,
+        candidate.saveId,
+        candidate.outcomeCandidateId,
+        this.headRevision(candidate.saveId),
+        toJson(candidate),
+        this.clock.now().toISOString(),
+      );
   }
 
   updateOutcomeStatus(outcomeCandidateId: string, status: MeetingOutcomeCandidate["status"]): void {
+    const current = this.database
+      .prepare(
+        `SELECT entity_json FROM meeting_outcome_candidate_versions
+         WHERE outcome_candidate_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_outcome_candidate_versions.save_id",
+             "meeting_outcome_candidate_versions.state_revision",
+           )}
+         ORDER BY state_revision DESC, version_id DESC LIMIT 1`,
+      )
+      .get(outcomeCandidateId) as { entity_json: string } | undefined;
+    if (!current) {
+      throw new SaveSystemError("MEETING_NOT_FOUND", `结果候选不存在：${outcomeCandidateId}`);
+    }
+    const candidate = MeetingOutcomeCandidateSchema.parse(versionObject(current.entity_json));
     const result = this.database
       .prepare("UPDATE meeting_outcome_candidates SET status = ? WHERE outcome_candidate_id = ?")
       .run(status, outcomeCandidateId);
     if (Number(result.changes) === 0) {
       throw new SaveSystemError("MEETING_NOT_FOUND", `结果候选不存在：${outcomeCandidateId}`);
     }
+    this.insertOutcomeCandidateVersion({ ...candidate, status });
   }
 
   listOutcomeCandidates(meetingId: string): MeetingOutcomeCandidate[] {
     const rows = this.database
       .prepare(
-        "SELECT * FROM meeting_outcome_candidates WHERE meeting_id = ? ORDER BY created_at, outcome_candidate_id",
+        `SELECT outcome_candidate_id, entity_json FROM meeting_outcome_candidate_versions
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_outcome_candidate_versions.save_id",
+             "meeting_outcome_candidate_versions.state_revision",
+           )}
+         ORDER BY outcome_candidate_id, state_revision DESC, version_id DESC`,
       )
-      .all(meetingId) as unknown as Array<Record<string, SQLInputValue>>;
-    return rows.map((row) =>
-      MeetingOutcomeCandidateSchema.parse({
-        outcomeCandidateId: row.outcome_candidate_id,
-        meetingId: row.meeting_id,
-        saveId: row.save_id,
-        agendaItemId: row.agenda_item_id,
-        type: row.type,
-        title: row.title,
-        summary: row.summary,
-        proposerIds: JSON.parse(String(row.proposer_ids_json)),
-        supporterIds: JSON.parse(String(row.supporter_ids_json)),
-        opponentIds: JSON.parse(String(row.opponent_ids_json)),
-        rationale: JSON.parse(String(row.rationale_json)),
-        risks: JSON.parse(String(row.risks_json)),
-        sourceTurnIds: JSON.parse(String(row.source_turn_ids_json)),
-        status: row.status,
-        ...(row.command_preview_json === null
-          ? {}
-          : { commandPreview: JSON.parse(String(row.command_preview_json)) }),
-        unsupportedCommand: Number(row.unsupported_command) === 1,
-        createdAtRevision: Number(row.created_at_revision),
-        createdAt: row.created_at,
-      }),
+      .all(meetingId) as unknown as Array<{
+      outcome_candidate_id: string;
+      entity_json: string;
+    }>;
+    const candidates = new Map<string, MeetingOutcomeCandidate>();
+    for (const row of rows) {
+      if (!candidates.has(row.outcome_candidate_id)) {
+        candidates.set(
+          row.outcome_candidate_id,
+          MeetingOutcomeCandidateSchema.parse(versionObject(row.entity_json)),
+        );
+      }
+    }
+    return [...candidates.values()].sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) ||
+        (left.outcomeCandidateId < right.outcomeCandidateId
+          ? -1
+          : left.outcomeCandidateId > right.outcomeCandidateId
+            ? 1
+            : 0),
     );
   }
 
@@ -635,7 +755,15 @@ export class MeetingRepository {
   /** private 纪要只返回给授权角色；characterId 缺省 = 仅 official */
   listMinutes(meetingId: string, characterId?: string): MeetingMinutes[] {
     const rows = this.database
-      .prepare("SELECT * FROM meeting_minutes WHERE meeting_id = ? ORDER BY kind, minutes_id")
+      .prepare(
+        `SELECT * FROM meeting_minutes
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_minutes.save_id",
+             "meeting_minutes.state_revision",
+           )}
+         ORDER BY kind, minutes_id`,
+      )
       .all(meetingId) as unknown as Array<Record<string, SQLInputValue>>;
     return rows
       .map((row) =>
@@ -681,36 +809,91 @@ export class MeetingRepository {
         parsed.createdAtRevision,
         parsed.createdAt,
       );
+    this.database
+      .prepare(
+        `INSERT INTO meeting_leak_assessment_versions (
+           meeting_id, save_id, state_revision, entity_json, created_at
+         ) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        parsed.meetingId,
+        parsed.saveId,
+        this.headRevision(parsed.saveId),
+        toJson(parsed),
+        this.clock.now().toISOString(),
+      );
   }
 
   getLeakAssessment(meetingId: string): MeetingLeakAssessment | null {
     const row = this.database
-      .prepare("SELECT * FROM meeting_leak_assessments WHERE meeting_id = ?")
-      .get(meetingId) as Record<string, SQLInputValue> | undefined;
+      .prepare(
+        `SELECT entity_json FROM meeting_leak_assessment_versions
+         WHERE meeting_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_leak_assessment_versions.save_id",
+             "meeting_leak_assessment_versions.state_revision",
+           )}
+         ORDER BY state_revision DESC, version_id DESC LIMIT 1`,
+      )
+      .get(meetingId) as { entity_json: string } | undefined;
     if (!row) return null;
-    return MeetingLeakAssessmentSchema.parse({
-      meetingId: row.meeting_id,
-      saveId: row.save_id,
-      riskScore: Number(row.risk_score),
-      riskLevel: row.risk_level,
-      contributingFactors: JSON.parse(String(row.contributing_factors_json)),
-      ...(row.deterministic_roll_json === null
-        ? {}
-        : { deterministicRoll: JSON.parse(String(row.deterministic_roll_json)) }),
-      potentialAudienceIds: JSON.parse(String(row.potential_audience_ids_json)),
-      createdAtRevision: Number(row.created_at_revision),
-      createdAt: row.created_at,
-    });
+    return MeetingLeakAssessmentSchema.parse(versionObject(row.entity_json));
+  }
+
+  getRulingByIdempotencyKey(
+    saveId: string,
+    meetingId: string,
+    idempotencyKey: string,
+  ): MeetingRulingRecord | null {
+    const row = this.database
+      .prepare(
+        `SELECT * FROM meeting_rulings
+         WHERE save_id = ? AND meeting_id = ? AND idempotency_key = ?
+           AND ${currentTimelineRevisionPredicate(
+             "meeting_rulings.save_id",
+             "meeting_rulings.state_revision",
+           )}
+         ORDER BY state_revision DESC, ruling_id DESC
+         LIMIT 1`,
+      )
+      .get(saveId, meetingId, idempotencyKey) as Record<string, SQLInputValue> | undefined;
+    if (!row) return null;
+    return {
+      rulingId: String(row.ruling_id),
+      saveId: String(row.save_id),
+      meetingId: String(row.meeting_id),
+      agendaItemId: String(row.agenda_item_id),
+      idempotencyKey: String(row.idempotency_key),
+      requestHash: String(row.request_hash),
+      stateRevision: Number(row.state_revision),
+      result: JSON.parse(String(row.result_json)),
+      createdAt: String(row.created_at),
+    };
+  }
+
+  insertRuling(record: MeetingRulingRecord): void {
+    this.database
+      .prepare(
+        `INSERT INTO meeting_rulings (
+           ruling_id, save_id, meeting_id, agenda_item_id, idempotency_key,
+           request_hash, state_revision, result_json, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        record.rulingId,
+        record.saveId,
+        record.meetingId,
+        record.agendaItemId,
+        record.idempotencyKey,
+        record.requestHash,
+        record.stateRevision,
+        toJson(record.result),
+        record.createdAt,
+      );
   }
 
   /** 恢复辅助：找出仍有 pending Agent 回合的会议（服务重启后处理） */
   findPendingAgentSessions(saveId: string): MeetingSessionState[] {
-    const rows = this.database
-      .prepare(
-        `SELECT ${SESSION_COLUMNS} FROM meeting_sessions
-         WHERE save_id = ? AND pending_agent_action_json IS NOT NULL`,
-      )
-      .all(saveId) as unknown as SessionRow[];
-    return rows.map(rowToSession);
+    return this.listSessions(saveId).filter((session) => session.pendingAgentAction !== undefined);
   }
 }

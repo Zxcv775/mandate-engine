@@ -19,9 +19,21 @@ import {
   planMeetingCreate,
   planMeetingStart,
 } from "./meeting-commands";
+import {
+  planPolicyAdjust,
+  planPolicyApprove,
+  planPolicyCancel,
+  planPolicyIssue,
+  planPolicyPropose,
+  planPolicyReject,
+  planPolicyResume,
+  planPolicySuspend,
+  type PolicyCommandAssets,
+} from "./policy-commands";
+import { planPolicyResolution, type PolicyResolutionArtifacts } from "./policy-resolution";
 import { applyMutations, invertMutation, validateMutatedState } from "./mutation";
 import { createDeterministicRandomSource, type RandomSource } from "./rng";
-import { hashState } from "./stable-json";
+import { hashState, stableStringify } from "./stable-json";
 
 export interface TimeAdvanceContext {
   readonly state: Readonly<GameState>;
@@ -40,6 +52,11 @@ export interface StateEngineOptions {
   timeAdvanceHooks?: readonly TimeAdvanceHook[];
 }
 
+/** applyCommand 的可选装配上下文：政策命令所需模板与规则（由 save-system 装配层提供） */
+export interface ApplyCommandContext {
+  readonly policyAssets?: PolicyCommandAssets;
+}
+
 export interface StateTransition {
   nextState: GameState;
   mutations: readonly ProposedMutation[];
@@ -48,6 +65,8 @@ export interface StateTransition {
   afterHash: string;
   rngCursorBefore: number;
   rngCursorAfter: number;
+  /** Phase 5：政策结算明细（time.advance / policy.resolve-tick 时产生，供同事务落明细表） */
+  policyResolution?: PolicyResolutionArtifacts;
 }
 
 function mutation(
@@ -192,7 +211,11 @@ export class StateEngine {
     this.timeAdvanceHooks = options.timeAdvanceHooks ?? [];
   }
 
-  applyCommand(inputState: Readonly<GameState>, inputCommand: GameCommand): StateTransition {
+  applyCommand(
+    inputState: Readonly<GameState>,
+    inputCommand: GameCommand,
+    context: ApplyCommandContext = {},
+  ): StateTransition {
     const stateResult = GameStateSchema.safeParse(inputState);
     if (!stateResult.success) {
       throw new StateEngineError(
@@ -223,14 +246,15 @@ export class StateEngine {
 
     const random = createDeterministicRandomSource(state.rng.seed, state.rng.cursor);
     const mutations: ProposedMutation[] = [];
+    let policyResolution: PolicyResolutionArtifacts | undefined;
     if (command.commandType === "country.adjust-resource") {
       mutations.push(...planResourceAdjustment(state, command));
     } else if (command.commandType === "character.assign-office") {
       mutations.push(...planOfficeAssignment(state, command));
     } else if (command.commandType === "time.advance") {
-      const context: TimeAdvanceContext = { state, command, random, clock: this.clock };
+      const hookContext: TimeAdvanceContext = { state, command, random, clock: this.clock };
       for (const hook of this.timeAdvanceHooks) {
-        mutations.push(...(hook.onBeforeAdvance?.(context) ?? []));
+        mutations.push(...(hook.onBeforeAdvance?.(hookContext) ?? []));
       }
       mutations.push(
         mutation({
@@ -253,8 +277,37 @@ export class StateEngine {
         }),
       );
       for (const hook of this.timeAdvanceHooks) {
-        mutations.push(...(hook.onAfterAdvance?.(context) ?? []));
+        mutations.push(...(hook.onAfterAdvance?.(hookContext) ?? []));
       }
+      // Phase 5：政策结算与时间推进同一事务原子提交（ADR-025）
+      if (context.policyAssets) {
+        const afterTime = applyMutations(state, mutations);
+        const newTick = state.tick + command.payload.days;
+        const resolution = planPolicyResolution(afterTime, newTick, context.policyAssets, {
+          saveId: state.saveId,
+          commitRevision: state.revision + 1,
+          nowIso: this.clock.now().toISOString(),
+          elapsedTicks: command.payload.days,
+        });
+        mutations.push(...resolution.mutations);
+        policyResolution = resolution.artifacts;
+      }
+    } else if (command.commandType === "policy.resolve-tick") {
+      // 仅 Debug/测试：不推进时间，按当前 tick 结算一次
+      const assets = context.policyAssets;
+      if (!assets) {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          "policy.resolve-tick 需要装配政策资产（templates/rules）",
+        );
+      }
+      const resolution = planPolicyResolution(state, state.tick, assets, {
+        saveId: state.saveId,
+        commitRevision: state.revision + 1,
+        nowIso: this.clock.now().toISOString(),
+      });
+      mutations.push(...resolution.mutations);
+      policyResolution = resolution.artifacts;
     } else if (command.commandType === "meeting.create") {
       mutations.push(...planMeetingCreate(state, command));
     } else if (command.commandType === "meeting.start") {
@@ -263,10 +316,51 @@ export class StateEngine {
       mutations.push(...planMeetingConclude(state, command));
     } else if (command.commandType === "meeting.cancel") {
       mutations.push(...planMeetingCancel(state, command));
+    } else if (command.commandType.startsWith("policy.")) {
+      const assets = context.policyAssets;
+      if (!assets) {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          `政策命令需要装配政策资产（templates/rules）：${command.commandType}`,
+        );
+      }
+      if (command.commandType === "policy.propose") {
+        mutations.push(...planPolicyPropose(state, command, assets));
+      } else if (command.commandType === "policy.approve") {
+        mutations.push(...planPolicyApprove(state, command, assets));
+      } else if (command.commandType === "policy.reject") {
+        mutations.push(...planPolicyReject(state, command));
+      } else if (command.commandType === "policy.issue") {
+        mutations.push(...planPolicyIssue(state, command, assets));
+      } else if (command.commandType === "policy.adjust") {
+        mutations.push(...planPolicyAdjust(state, command, assets));
+      } else if (command.commandType === "policy.suspend") {
+        mutations.push(...planPolicySuspend(state, command));
+      } else if (command.commandType === "policy.resume") {
+        mutations.push(...planPolicyResume(state, command, assets));
+      } else if (command.commandType === "policy.cancel") {
+        mutations.push(...planPolicyCancel(state, command, assets));
+      } else {
+        throw new StateEngineError(
+          "COMMAND_NOT_SUPPORTED",
+          `政策命令 ${command.commandType} 未接入白名单`,
+        );
+      }
     } else {
       throw new StateEngineError(
         "COMMAND_NOT_SUPPORTED",
         `命令 ${command.commandType} 不属于普通世界状态变更`,
+      );
+    }
+
+    const meaningfulMutations = mutations.filter(
+      (item) => stableStringify(item.before) !== stableStringify(item.after),
+    );
+    mutations.splice(0, mutations.length, ...meaningfulMutations);
+    if (mutations.length === 0) {
+      throw new StateEngineError(
+        command.commandType === "policy.adjust" ? "POLICY_NO_CHANGES" : "COMMAND_INVALID",
+        "命令没有产生任何语义变化",
       );
     }
 
@@ -315,6 +409,7 @@ export class StateEngine {
       afterHash: hashState(nextState),
       rngCursorBefore: state.rng.cursor,
       rngCursorAfter: nextState.rng.cursor,
+      ...(policyResolution === undefined ? {} : { policyResolution }),
     };
   }
 
@@ -365,6 +460,7 @@ export class StateEngine {
       "policies",
       "regions",
       "meetings",
+      "modifiers",
       "eventQueue",
       "flags",
       "hidden",

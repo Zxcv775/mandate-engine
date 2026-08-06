@@ -1,4 +1,5 @@
 import type { LLMProvider } from "@mandate/llm-adapters";
+import { SAVE_IMPORT_HTTP_BODY_LIMIT } from "@mandate/domain";
 import { createScenarioLoader, type ScenarioLoader } from "@mandate/data-loader";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { Writable } from "node:stream";
@@ -15,10 +16,13 @@ import { registerCharacterRoutes } from "./routes/characters";
 import { registerDebugCharacterRoutes } from "./routes/debug-characters";
 import { registerMeetingRoutes } from "./routes/meetings";
 import { registerDebugMeetingRoutes } from "./routes/debug-meetings";
+import { registerPolicyRoutes } from "./routes/policies";
+import { registerDebugPolicyRoutes } from "./routes/debug-policies";
 import { createLlmService, type LlmService } from "./services/llm-service";
 import { createScenarioService } from "./services/scenario-service";
 import { CharacterService } from "./services/character-service";
 import { MeetingService } from "./services/meeting-service";
+import { PolicyService } from "./services/policy-service";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -26,6 +30,7 @@ declare module "fastify" {
     gameStateService: GameStateService;
     characterService: CharacterService;
     meetingService: MeetingService;
+    policyService: PolicyService;
   }
 }
 
@@ -73,6 +78,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { config } = options;
   const app = Fastify({
     logger: resolveLoggerOptions(config, options.logger),
+    bodyLimit: SAVE_IMPORT_HTTP_BODY_LIMIT,
   });
 
   const provider = options.provider ?? createLlmProvider(config.llm);
@@ -118,6 +124,13 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   });
   app.decorate("meetingService", meetingService);
 
+  const policyService = new PolicyService({
+    gameStateService: saveSystem.service,
+    policyDetails: saveSystem.policyDetails,
+    scenarioLoader,
+  });
+  app.decorate("policyService", policyService);
+
   registerErrorHandlers(app);
   registerHealthRoute(app);
   registerVersionRoute(app);
@@ -126,9 +139,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   registerSaveRoutes(app, saveSystem.service);
   registerCharacterRoutes(app, characterService);
   registerMeetingRoutes(app, meetingService);
+  registerPolicyRoutes(app, policyService);
   if (config.debug.apiEnabled) {
     registerDebugCharacterRoutes(app, characterService);
     registerDebugMeetingRoutes(app, meetingService);
+    registerDebugPolicyRoutes(app, policyService);
   }
 
   return app;

@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 import { ApiError } from "./api-error";
 import { redactSensitiveString, SaveSystemError } from "@mandate/save-system";
 import { MeetingEngineError } from "@mandate/meeting-engine";
+import { RuleEngineError } from "@mandate/rule-engine";
 import { StateEngineError } from "@mandate/game-engine";
 
 const CHARACTER_ERROR_STATUS: Record<CharacterAgentError["code"], number> = {
@@ -46,6 +47,11 @@ export function registerErrorHandlers(app: FastifyInstance): void {
   });
 
   app.setErrorHandler((error, request, reply) => {
+    if ((error as { code?: unknown }).code === "FST_ERR_CTP_BODY_TOO_LARGE") {
+      return reply
+        .code(413)
+        .send(errorResponse(request, "REQUEST_BODY_TOO_LARGE", "请求体超过允许大小"));
+    }
     if (error instanceof ZodError) {
       const details = error.issues.map<ApiErrorDetail>((issue) => ({
         path: issue.path.map(String).join("."),
@@ -104,6 +110,34 @@ export function registerErrorHandlers(app: FastifyInstance): void {
         .send(errorResponse(request, error.code, redactSensitiveString(error.message)));
     }
 
+    if (
+      error instanceof StateEngineError &&
+      (error.code.startsWith("POLICY_") || error.code === "COMMAND_NOT_SUPPORTED")
+    ) {
+      request.log.warn({ code: error.code }, "预期政策命令错误");
+      const statusCode =
+        error.code === "POLICY_NOT_FOUND" || error.code === "POLICY_TEMPLATE_NOT_FOUND"
+          ? 404
+          : error.code === "POLICY_COST_INSUFFICIENT" ||
+              error.code === "POLICY_ASSIGNEE_INVALID" ||
+              error.code === "POLICY_LEGALITY_BLOCKED" ||
+              error.code === "POLICY_NO_CHANGES"
+            ? 422
+            : 409;
+      return reply
+        .code(statusCode)
+        .send(errorResponse(request, error.code as never, redactSensitiveString(error.message)));
+    }
+
+    if (error instanceof RuleEngineError) {
+      request.log.warn({ code: error.code }, "预期规则引擎错误");
+      const statusCode =
+        error.code === "RULE_NOT_FOUND" || error.code === "MODIFIER_TARGET_NOT_FOUND" ? 404 : 422;
+      return reply
+        .code(statusCode)
+        .send(errorResponse(request, error.code, redactSensitiveString(error.message)));
+    }
+
     if (error instanceof CharacterAgentError) {
       request.log.warn({ code: error.code }, "预期人物 Agent 错误");
       return reply
@@ -127,11 +161,15 @@ export function registerErrorHandlers(app: FastifyInstance): void {
 
     if (error instanceof SaveSystemError) {
       const statusCode =
-        error.code === "SAVE_NOT_FOUND" || error.code === "MEETING_NOT_FOUND"
+        error.code === "SAVE_NOT_FOUND" ||
+        error.code === "MEETING_NOT_FOUND" ||
+        error.code === "POLICY_NOT_FOUND" ||
+        error.code === "POLICY_TEMPLATE_NOT_FOUND"
           ? 404
           : error.code === "SAVE_ALREADY_EXISTS" ||
               error.code === "SAVE_ARCHIVED" ||
               error.code === "STATE_REVISION_CONFLICT" ||
+              error.code === "IDEMPOTENCY_KEY_CONFLICT" ||
               error.code === "ROLLBACK_TARGET_INVALID" ||
               error.code === "SAVE_VERSION_UNSUPPORTED" ||
               error.code === "MEETING_VERSION_STALE" ||
@@ -139,15 +177,25 @@ export function registerErrorHandlers(app: FastifyInstance): void {
               error.code === "MEETING_INVALID_STATE" ||
               error.code === "MEETING_ALREADY_STARTED" ||
               error.code === "MEETING_ALREADY_CONCLUDED" ||
-              error.code === "MEETING_PARTICIPANT_INVALID"
+              error.code === "MEETING_PARTICIPANT_INVALID" ||
+              error.code === "POLICY_STATUS_INVALID" ||
+              error.code === "POLICY_TRANSITION_INVALID" ||
+              error.code === "POLICY_ALREADY_DECIDED"
             ? 409
-            : error.code === "DATABASE_ERROR" ||
-                error.code === "MIGRATION_FAILED" ||
-                error.code === "SAVE_IMPORT_FAILED" ||
-                error.code === "SAVE_EXPORT_FAILED" ||
-                error.code === "MEETING_TRANSCRIPT_WRITE_FAILED"
-              ? 500
-              : 400;
+            : error.code === "POLICY_COST_INSUFFICIENT" ||
+                error.code === "POLICY_ASSIGNEE_INVALID" ||
+                error.code === "POLICY_LEGALITY_BLOCKED" ||
+                error.code === "POLICY_NO_CHANGES"
+              ? 422
+              : error.code === "SAVE_PACKAGE_INVALID"
+                ? 422
+                : error.code === "DATABASE_ERROR" ||
+                    error.code === "MIGRATION_FAILED" ||
+                    error.code === "SAVE_IMPORT_FAILED" ||
+                    error.code === "SAVE_EXPORT_FAILED" ||
+                    error.code === "MEETING_TRANSCRIPT_WRITE_FAILED"
+                  ? 500
+                  : 400;
       request.log.warn({ code: error.code }, "预期存档 API 错误");
       return reply
         .code(statusCode)

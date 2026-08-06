@@ -11,6 +11,7 @@ import {
   type GameState,
   type JsonValue,
   type ProposedMutation,
+  type Rule,
   type SaveRollbackCommand,
   type SaveMetadata,
   type SaveValidationReport,
@@ -32,6 +33,7 @@ import {
   sha256Hex,
   stableStringify,
   type Clock,
+  type PolicyCommandAssets,
 } from "@mandate/game-engine";
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
@@ -40,7 +42,8 @@ import { SaveSystemError } from "./errors";
 import { importVerifiedPackage } from "./importer";
 import { buildSavePackage, parseSavePackage } from "./package-format";
 import { createExportPayload } from "./payload";
-import type { SqliteSaveRepository } from "./repository";
+import { commandRequestHash, type SqliteSaveRepository } from "./repository";
+import type { PolicyDetailRepository } from "./policy-repository";
 import { redactSensitiveString, redactSensitiveValue } from "./security";
 import {
   STATE_DOCUMENT_MIGRATIONS,
@@ -49,6 +52,7 @@ import {
 } from "./state-migrations";
 import type { ChangeQuery, CheckpointInput, CommitResult } from "./types";
 import { validateSave } from "./validation";
+import { recordRollbackTimeline } from "./timeline";
 
 export interface CreateSaveInput {
   scenarioId: string;
@@ -62,6 +66,13 @@ export interface GameStateServiceOptions {
   scenarioLoader: ScenarioLoader;
   clock?: Clock;
   stateEngine?: StateEngine;
+  /** Phase 5：政策明细仓储（结算产物与状态变更同事务落库） */
+  policyDetails?: PolicyDetailRepository;
+}
+
+export interface PreparedCommandTransition {
+  command: GameCommand;
+  transition: import("@mandate/game-engine").StateTransition;
 }
 
 export interface RollbackInput {
@@ -200,11 +211,20 @@ export class GameStateService {
       const prior = this.options.repository.findIdempotentResult(
         command.saveId,
         command.idempotencyKey,
+        commandRequestHash(command),
       );
       if (prior) return prior;
     }
     const save = await this.getSave(command.saveId);
     if (save.headRevision !== command.baseRevision) {
+      if (command.idempotencyKey) {
+        const concurrentPrior = this.options.repository.findIdempotentResult(
+          command.saveId,
+          command.idempotencyKey,
+          commandRequestHash(command),
+        );
+        if (concurrentPrior) return concurrentPrior;
+      }
       throw new SaveSystemError(
         "STATE_REVISION_CONFLICT",
         `revision 冲突：期望 ${save.headRevision}，收到 ${command.baseRevision}`,
@@ -212,27 +232,144 @@ export class GameStateService {
     }
     const state = this.options.repository.loadHeadState(command.saveId);
     try {
-      const transition = this.stateEngine.applyCommand(state, command);
-      return this.options.repository.commitTransition(command, transition);
+      // Phase 5：政策命令与时间推进需要模板/规则资产（缓存的场景包，首次已在 createSave 加载）
+      const needsPolicyAssets =
+        command.commandType.startsWith("policy.") || command.commandType === "time.advance";
+      const context = needsPolicyAssets
+        ? { policyAssets: await this.loadPolicyAssets(save.scenarioId) }
+        : {};
+      const transition = this.stateEngine.applyCommand(state, command, context);
+      const artifacts = transition.policyResolution;
+      const policyDetails = this.options.policyDetails;
+      return this.options.repository.commitTransition(
+        command,
+        transition,
+        artifacts && policyDetails
+          ? { extraWrites: () => policyDetails.insertResolutionArtifacts(artifacts) }
+          : {},
+      );
     } catch (error) {
       if (error instanceof StateEngineError) {
         if (error.code === "STATE_REVISION_CONFLICT") {
+          if (command.idempotencyKey) {
+            const concurrentPrior = this.options.repository.findIdempotentResult(
+              command.saveId,
+              command.idempotencyKey,
+              commandRequestHash(command),
+            );
+            if (concurrentPrior) return concurrentPrior;
+          }
           throw new SaveSystemError(error.code, error.message, error.details);
         }
-        // Phase 4：会议生命周期错误保留原码，供 API 层映射 404/409
-        if (
-          error.code === "MEETING_NOT_FOUND" ||
-          error.code === "MEETING_INVALID_STATE" ||
-          error.code === "MEETING_ALREADY_STARTED" ||
-          error.code === "MEETING_ALREADY_CONCLUDED" ||
-          error.code === "MEETING_PARTICIPANT_INVALID"
-        ) {
-          throw new SaveSystemError(error.code, error.message, error.details);
+        // Phase 4/5：会议与政策生命周期错误保留原码，供 API 层映射 404/409/422
+        if (error.code.startsWith("MEETING_") || error.code.startsWith("POLICY_")) {
+          throw new SaveSystemError(error.code as never, error.message, error.details);
         }
         throw new SaveSystemError("STATE_INVALID", error.message, error.details);
       }
       throw error;
     }
+  }
+
+  async prepareCommand(state: GameState, input: GameCommand): Promise<PreparedCommandTransition> {
+    const parsed = GameCommandSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new SaveSystemError("STATE_INVALID", "Command Schema 校验失败", parsed.error.issues);
+    }
+    const command = GameCommandSchema.parse(redactSensitiveValue(parsed.data));
+    if (command.saveId !== state.saveId || command.baseRevision !== state.revision) {
+      throw new SaveSystemError(
+        "STATE_REVISION_CONFLICT",
+        `预演 revision 冲突：期望 ${state.revision}，收到 ${command.baseRevision}`,
+      );
+    }
+    try {
+      const needsPolicyAssets =
+        command.commandType.startsWith("policy.") || command.commandType === "time.advance";
+      const context = needsPolicyAssets
+        ? { policyAssets: await this.loadPolicyAssets(state.scenarioId) }
+        : {};
+      return { command, transition: this.stateEngine.applyCommand(state, command, context) };
+    } catch (error) {
+      if (error instanceof StateEngineError) {
+        if (error.code === "STATE_REVISION_CONFLICT") {
+          throw new SaveSystemError(error.code, error.message, error.details);
+        }
+        if (error.code.startsWith("MEETING_") || error.code.startsWith("POLICY_")) {
+          throw new SaveSystemError(error.code as never, error.message, error.details);
+        }
+        throw new SaveSystemError("STATE_INVALID", error.message, error.details);
+      }
+      throw error;
+    }
+  }
+
+  commitPreparedCommandsAtomically(
+    prepared: readonly PreparedCommandTransition[],
+    extraWrites?: (results: readonly CommitResult[]) => void,
+  ): CommitResult[] {
+    return this.options.repository.runInTransaction(() => {
+      const results = prepared.map(({ command, transition }) => {
+        const artifacts = transition.policyResolution;
+        return this.options.repository.commitTransition(
+          command,
+          transition,
+          artifacts && this.options.policyDetails
+            ? {
+                extraWrites: () => this.options.policyDetails?.insertResolutionArtifacts(artifacts),
+              }
+            : {},
+        );
+      });
+      extraWrites?.(results);
+      return results;
+    });
+  }
+
+  async commitCommandsAtomically(
+    inputs: readonly GameCommand[],
+    extraWrites?: (results: readonly CommitResult[]) => void,
+  ): Promise<CommitResult[]> {
+    if (inputs.length === 0) {
+      return this.commitPreparedCommandsAtomically([], extraWrites);
+    }
+    let state = this.options.repository.loadHeadState(inputs[0]!.saveId);
+    const prepared: PreparedCommandTransition[] = [];
+    for (const input of inputs) {
+      const item = await this.prepareCommand(state, input);
+      prepared.push(item);
+      state = item.transition.nextState;
+    }
+    return this.commitPreparedCommandsAtomically(prepared, extraWrites);
+  }
+
+  private readonly policyAssetsCache = new Map<string, PolicyCommandAssets>();
+
+  private async loadPolicyAssets(scenarioId: string): Promise<PolicyCommandAssets> {
+    const cached = this.policyAssetsCache.get(scenarioId);
+    if (cached) return cached;
+    const bundle = await this.options.scenarioLoader.loadScenarioBundle(scenarioId);
+    const assets: PolicyCommandAssets = {
+      // 场景包为深冻结只读：克隆一份供引擎（引擎自身不修改，克隆仅为脱 DeepReadonly 类型）
+      templates: structuredClone(
+        bundle.policyTemplates,
+      ) as unknown as PolicyCommandAssets["templates"],
+      rules: (structuredClone(bundle.rulePacks) as unknown as { rules: Rule[] }[]).flatMap(
+        (pack) => pack.rules,
+      ),
+      // 人物卡无 moralFlexibility 字段：以廉直（integrity）反相换算（ADR-025）
+      characterMetrics: Object.fromEntries(
+        bundle.characters.map((character) => [
+          character.id,
+          {
+            moralFlexibility: 100 - character.personality.integrity,
+            competence: character.competence.administration,
+          },
+        ]),
+      ),
+    };
+    this.policyAssetsCache.set(scenarioId, assets);
+    return assets;
   }
 
   async submitPlayerCommand(saveId: string, input: SubmitCommandRequest): Promise<CommitResult> {
@@ -321,6 +458,14 @@ export class GameStateService {
         if (!validation.valid) {
           throw new SaveSystemError("STATE_INVALID", "逻辑回滚后完整性校验失败", validation);
         }
+      },
+      extraWrites: () => {
+        recordRollbackTimeline(this.options.repository.database, {
+          saveId,
+          targetRevision: input.targetRevision,
+          resultRevision: transition.nextState.revision,
+          createdAt: command.createdAt,
+        });
       },
     });
     return { ...summary, transaction };

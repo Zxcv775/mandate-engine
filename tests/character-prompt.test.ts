@@ -7,6 +7,8 @@ import {
   loadPrompt,
   promptRegistry,
   renderPrompt,
+  renderPersonalityData,
+  qualitativeBand,
   type CharacterPromptInput,
   type PromptId,
 } from "@mandate/prompt-system";
@@ -103,6 +105,24 @@ describe("Prompt 资产与注册表（ADR-013）", () => {
 });
 
 describe("Prompt Composer（ADR-013）", () => {
+  it("人物性格只输出统一定性分档，不暴露原始数值", () => {
+    expect([0, 19, 20, 39, 40, 59, 60, 79, 80, 100].map(qualitativeBand)).toEqual([
+      "极低",
+      "极低",
+      "较低",
+      "较低",
+      "中等",
+      "中等",
+      "较高",
+      "较高",
+      "很高",
+      "很高",
+    ]);
+    const personality = renderPersonalityData(template);
+    expect(personality).not.toMatch(/[（(]\d+[）)]/);
+    expect(personality).toContain("胆识：");
+  });
+
   it("组合顺序稳定：安全总纲→人物→场合→知识→记忆→输出契约", async () => {
     const composed = await composeCharacterPrompt(composeInput());
     const system = composed.system;

@@ -72,6 +72,17 @@ class CachedScenarioLoader implements ScenarioLoader {
       ...pack.offices.map((value) => value.meta),
     ]);
 
+    const policyTemplates = catalog.policyTemplates.filter(
+      (template) => template.dynastyId === dynasty.id,
+    );
+    const rulePacks = catalog.rulePacks;
+    for (const template of policyTemplates) {
+      template.meta.sourceIds.forEach((id) => sourceIds.add(id));
+    }
+    for (const rulePack of rulePacks) {
+      rulePack.meta.sourceIds.forEach((id) => sourceIds.add(id));
+    }
+
     const bundle = deepFreeze(
       structuredClone({
         scenario,
@@ -81,6 +92,8 @@ class CachedScenarioLoader implements ScenarioLoader {
         institutions: pack.institutions,
         offices: pack.offices,
         historicalSources: catalog.historicalSources.filter((source) => sourceIds.has(source.id)),
+        policyTemplates,
+        rulePacks,
       }),
     );
     this.bundles.set(scenarioId, bundle);

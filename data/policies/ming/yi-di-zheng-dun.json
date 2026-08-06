@@ -1,0 +1,78 @@
+{
+  "id": "policy-yidi-zhengdun",
+  "name": "驿递整顿",
+  "dynastyId": "ming",
+  "category": "fiscal",
+  "summary": "驿递冒滥，官绅私役驿马、勘合浮发，驿站疲于供亿。清厘勘合、裁革冒滥，岁省驿费以纾民力。",
+  "objective": "清厘驿递冒滥，节省驿费",
+  "scope": { "kind": "institutional", "institutionIds": ["bing-bu"] },
+  "responsibleInstitutionId": "bing-bu",
+  "allowedOfficeIds": ["bing-bu-shang-shu"],
+  "cost": {
+    "startup": { "treasuryTaels": 3000 },
+    "upkeepPerTick": { "administrativeCapacity": 4 }
+  },
+  "duration": {
+    "estimatedTicks": 80,
+    "stages": [
+      {
+        "stageId": "stage-qingli",
+        "title": "清厘勘合",
+        "objective": "稽核勘合发放，追缴私役滥支",
+        "expectedTicks": 40,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-caige",
+        "title": "裁革冒滥",
+        "objective": "裁并冗驿、革除冒滥，核定岁额",
+        "expectedTicks": 40,
+        "successCriteria": {},
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-resource",
+            "resource": "treasuryTaels",
+            "amount": 30000,
+            "reason": "岁省驿费（首期）"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "administrativeCapacity",
+        "amount": 2,
+        "reason": "驿政稍清，政令传递有序"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "stability",
+        "amount": -3,
+        "reason": "裁驿过急，驿卒失业流散"
+      },
+      {
+        "type": "queue-event-candidate",
+        "eventId": "event-candidate-yizu-unrest"
+      }
+    ],
+    "longTermModifiers": []
+  },
+  "resistance": {
+    "administrativeDifficulty": 65,
+    "affectedInterestGroups": [],
+    "expectedOpposition": []
+  },
+  "legitimacy": { "baseImpact": 0, "politicalCost": 6 },
+  "meta": {
+    "sourceIds": ["ming-shi", "guoque"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "【时序争议】大规模裁驿为崇祯二年后刘懋所奏定（《明史·刘懋传》），本模板置于崇祯初属前移，仅取'驿递冒滥亟需整顿'的一般性议题；裁驿致驿卒流散（李自成出身驿卒）之风险以失败效果+事件候选表达。数值为游戏建模。"
+  }
+}

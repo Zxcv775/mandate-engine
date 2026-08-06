@@ -1,0 +1,84 @@
+{
+  "id": "policy-qingcha-jingying",
+  "name": "清查京营占役",
+  "dynastyId": "ming",
+  "category": "military",
+  "summary": "京营额兵多为势家占役、虚冒支粮。遣官清查占役虚冒，汰老弱、核实伍籍，以复京营战守之用。",
+  "objective": "清查占役虚冒，核实京营兵额",
+  "scope": { "kind": "institutional", "institutionIds": ["bing-bu"] },
+  "responsibleInstitutionId": "bing-bu",
+  "allowedOfficeIds": ["bing-bu-shang-shu"],
+  "cost": {
+    "startup": { "treasuryTaels": 10000 },
+    "upkeepPerTick": { "treasuryTaels": 300, "administrativeCapacity": 5 }
+  },
+  "duration": {
+    "estimatedTicks": 100,
+    "stages": [
+      {
+        "stageId": "stage-hecha",
+        "title": "按籍核查",
+        "objective": "按册点验，稽出占役、虚冒、老弱之数",
+        "expectedTicks": 50,
+        "successCriteria": {},
+        "onCompleteEffects": []
+      },
+      {
+        "stageId": "stage-taibu",
+        "title": "汰补整练",
+        "objective": "汰冗补壮，追缴冒支，整练成军",
+        "expectedTicks": 50,
+        "successCriteria": { "minFundingRatio": 0.5 },
+        "onCompleteEffects": [
+          {
+            "type": "adjust-country-resource",
+            "resource": "treasuryTaels",
+            "amount": 20000,
+            "reason": "追缴冒支月粮入官"
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "immediate": [],
+    "completion": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "militaryReadiness",
+        "amount": 6,
+        "reason": "京营伍籍复实，战守稍有可恃"
+      }
+    ],
+    "failure": [
+      {
+        "type": "adjust-country-metric",
+        "metric": "legitimacy",
+        "amount": -2,
+        "reason": "清查虎头蛇尾，为势家所笑"
+      }
+    ],
+    "longTermModifiers": [
+      {
+        "target": { "kind": "country" },
+        "metric": "militaryReadiness",
+        "operation": "add",
+        "value": 2,
+        "durationTicks": null,
+        "stacking": "unique-by-source",
+        "reason": "京营积弊既清，营制常态改善"
+      }
+    ]
+  },
+  "resistance": {
+    "administrativeDifficulty": 75,
+    "affectedInterestGroups": ["yan-dang"],
+    "expectedOpposition": ["yan-dang"]
+  },
+  "legitimacy": { "baseImpact": 1, "politicalCost": 8 },
+  "meta": {
+    "sourceIds": ["ming-shi", "guoque"],
+    "confirmation": "gameplay-adjusted",
+    "notes": "明末京营占役虚冒积弊与历朝清查为史实（《明史·兵志》京营条）；崇祯初具体清查规模史料记载分散，本模板为合理推测 + 游戏建模。占役势家以阉党代指（Phase 5 派系粒度所限）。文字表述待 Phase 7 复核。"
+  }
+}

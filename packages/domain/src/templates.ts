@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ModifierSchema, TemplateMetaSchema } from "./common";
+import { RuleSchema } from "./rule-dsl";
 
 const IdSchema = z.string().trim().min(1);
 const NameSchema = z.string().trim().min(1);
@@ -171,14 +172,25 @@ export const EventChainSchema = z
   .strict();
 export type EventChain = z.infer<typeof EventChainSchema>;
 
+/**
+ * 规则包 v2（Phase 5，ADR-022）：结构化条件树 + 白名单 effect 的规则 DSL。
+ * Phase 0 的字符串表达式 condition 形态已废弃并随数据文件一并迁移。
+ */
 export const RulePackSchema = z
   .object({
     packId: IdSchema,
     description: z.string().trim().min(1),
-    modifiers: z.array(ModifierSchema).min(1),
+    dslVersion: z.literal(2),
+    rules: z.array(RuleSchema).min(1),
     meta: TemplateMetaSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((pack, context) => {
+    const ids = pack.rules.map((rule) => rule.id);
+    if (new Set(ids).size !== ids.length) {
+      context.addIssue({ code: "custom", path: ["rules"], message: "规则 id 不得重复" });
+    }
+  });
 export type RulePack = z.infer<typeof RulePackSchema>;
 
 export const WorldbookEntrySchema = z

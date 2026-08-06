@@ -5,6 +5,7 @@ import {
   GameEventSchema,
   HistoricalSourceSchema,
   InstitutionPackSchema,
+  PolicyTemplateSchema,
   RulePackSchema,
   ScenarioSchema,
   WorldbookSchema,
@@ -178,6 +179,15 @@ function addParsedFile(state: ValidationState, relativePath: string, raw: unknow
     if (value) {
       state.catalog.rulePacks.push(value);
       registerMeta(state, file, value.packId, value.meta);
+    }
+    return;
+  }
+  if (relativePath.startsWith("policies/")) {
+    const value = parseWithSchema(state, file, raw, PolicyTemplateSchema);
+    if (value) {
+      state.catalog.policyTemplates.push(value);
+      state.files.set(value, file);
+      registerMeta(state, file, value.id, value.meta);
     }
     return;
   }
@@ -441,6 +451,84 @@ async function validateReferences(state: ValidationState, dataRoot: string): Pro
       }
     });
   }
+
+  // Phase 5：政策模板引用闭环（机构/官职/派系/朝代）+ 数值标注纪律
+  const institutionIds = new Set(
+    state.catalog.institutionPacks.flatMap((pack) =>
+      pack.institutions.map((institution) => institution.id),
+    ),
+  );
+  validateUniqueIds(state, state.catalog.policyTemplates, "PolicyTemplate");
+  for (const template of state.catalog.policyTemplates) {
+    const file = state.files.get(template) ?? "data/unknown";
+    if (!dynasties.has(template.dynastyId)) {
+      addReferenceIssue(
+        state,
+        file,
+        template.id,
+        "dynastyId",
+        `referenced dynasty "${template.dynastyId}" does not exist`,
+      );
+    }
+    if (!institutionIds.has(template.responsibleInstitutionId)) {
+      addReferenceIssue(
+        state,
+        file,
+        template.id,
+        "responsibleInstitutionId",
+        `referenced institution "${template.responsibleInstitutionId}" does not exist`,
+      );
+    }
+    template.allowedOfficeIds.forEach((officeId, index) => {
+      if (!offices.has(officeId)) {
+        addReferenceIssue(
+          state,
+          file,
+          template.id,
+          `allowedOfficeIds[${index}]`,
+          `referenced office "${officeId}" does not exist`,
+        );
+      }
+    });
+    const factionReferences = [
+      ...template.resistance.affectedInterestGroups.map(
+        (id, index) => [`resistance.affectedInterestGroups[${index}]`, id] as const,
+      ),
+      ...template.resistance.expectedOpposition.map(
+        (id, index) => [`resistance.expectedOpposition[${index}]`, id] as const,
+      ),
+    ];
+    for (const [path, factionId] of factionReferences) {
+      if (!factions.has(factionId)) {
+        addReferenceIssue(
+          state,
+          file,
+          template.id,
+          path,
+          `referenced faction "${factionId}" does not exist`,
+        );
+      }
+    }
+    // 政策模板全部数值为游戏建模（成本/难度/合法性），必须标注 gameplay-adjusted
+    if (template.meta.confirmation !== "gameplay-adjusted") {
+      addReferenceIssue(
+        state,
+        file,
+        template.id,
+        "meta.confirmation",
+        "政策模板含游戏建模数值，meta.confirmation 必须为 gameplay-adjusted",
+      );
+    }
+    if (template.meta.sourceIds.length < 2) {
+      addReferenceIssue(
+        state,
+        file,
+        template.id,
+        "meta.sourceIds",
+        "政策模板必须至少关联 2 条史料来源",
+      );
+    }
+  }
 }
 
 export async function validateDataDirectory(dataRootInput: string | URL): Promise<DataCatalog> {
@@ -456,6 +544,7 @@ export async function validateDataDirectory(dataRootInput: string | URL): Promis
       events: [],
       rulePacks: [],
       worldbooks: [],
+      policyTemplates: [],
     },
     issues: [],
     metaOwners: [],

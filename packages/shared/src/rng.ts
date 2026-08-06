@@ -37,3 +37,16 @@ export class SeededRng {
     return items[Math.floor(this.next() * items.length)] as T;
   }
 }
+
+/**
+ * FNV-1a 32 位字符串散列：用于从标识串派生确定性 RNG 种子
+ * （会议调度 tie-break、政策结算派生随机流等）。
+ */
+export function fnv1a(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}

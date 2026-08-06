@@ -4,6 +4,7 @@ import {
   type CharacterMemoryCandidate,
   type CharacterTemplate,
   type EngineMeetingType,
+  type GameCommand,
   type GameState,
   type Institution,
   type MeetingAgendaItem,
@@ -37,10 +38,12 @@ import {
   type MeetingDirectorResult,
   type SpeakerCandidateInput,
 } from "@mandate/meeting-engine";
+import { sha256Hex, stableStringify } from "@mandate/game-engine";
 import type {
   CharacterMemoryRepository,
   GameStateService,
   MeetingRepository,
+  PreparedCommandTransition,
 } from "@mandate/save-system";
 import { randomUUID } from "node:crypto";
 import type { RuntimeConfig } from "../config/index";
@@ -120,6 +123,8 @@ interface ScenarioTemplates {
   characters: CharacterTemplate[];
   offices: Office[];
   institutions: Institution[];
+  /** Phase 5：政策模板 ID（recommend-policy 候选映射用） */
+  policyTemplateIds: string[];
 }
 
 const RESPONSE_MODE_LABELS: Record<CharacterResponseMode, string> = {
@@ -176,6 +181,7 @@ export class MeetingService {
         characters: structuredClone(bundle.characters) as CharacterTemplate[],
         offices: structuredClone(bundle.offices) as Office[],
         institutions: structuredClone(bundle.institutions) as Institution[],
+        policyTemplateIds: bundle.policyTemplates.map((template) => template.id),
       }));
       this.templatesByScenario.set(scenarioId, cached);
     }
@@ -218,8 +224,7 @@ export class MeetingService {
     const visibility =
       input.visibility ?? (input.type === "secret-council" ? "private" : "meeting");
 
-    // GameState 最小投影（经 StateEngine，revision+1）
-    await this.options.gameStateService.commitCommand({
+    const command = {
       commandId: `cmd_meeting_create_${this.idFactory()}`,
       commandType: "meeting.create",
       saveId,
@@ -233,7 +238,7 @@ export class MeetingService {
         visibility,
       },
       createdAt: this.clock.now().toISOString(),
-    });
+    } as GameCommand;
 
     const now = this.clock.now().toISOString();
     let session: MeetingSessionState = {
@@ -269,7 +274,9 @@ export class MeetingService {
       challengedCharacterIds: [],
       runtimeFlags: [],
     }));
-    this.options.meetings.createSession(session, participants, []);
+    await this.options.gameStateService.commitCommandsAtomically([command], () => {
+      this.options.meetings.createSession(session, participants, []);
+    });
     return session;
   }
 
@@ -322,7 +329,7 @@ export class MeetingService {
     const { state } = await this.loadSaveContext(saveId);
     this.assertRevision(state, input.expectedRevision);
 
-    const result = await this.options.gameStateService.commitCommand({
+    const command = {
       commandId: `cmd_meeting_start_${this.idFactory()}`,
       commandType: "meeting.start",
       saveId,
@@ -330,14 +337,28 @@ export class MeetingService {
       actor: { type: "system", id: "meeting-director" },
       payload: { meetingId },
       createdAt: this.clock.now().toISOString(),
-    });
+    } as GameCommand;
 
     const expected = session.meetingVersion;
     session = transitionMeeting(session, { type: "meeting.start-preparation" }).next;
     session = transitionMeeting(session, { type: "meeting.start" }).next;
-    session = { ...session, startedAtRevision: result.revision };
-    this.options.meetings.updateSession(session, expected);
-    this.appendSystemTurn(session, "opening", "皇帝驾临，会议开始。", result.revision);
+    const startedRevision = input.expectedRevision + 1;
+    session = { ...session, startedAtRevision: startedRevision };
+    const openingTurn = this.systemTurnRecord(
+      { ...session, turnNumber: session.turnNumber + 1 },
+      "opening",
+      "皇帝驾临，会议开始。",
+      startedRevision,
+    );
+    const finalSession = {
+      ...session,
+      turnNumber: session.turnNumber + 1,
+      meetingVersion: session.meetingVersion + 1,
+    };
+    await this.options.gameStateService.commitCommandsAtomically([command], () => {
+      this.options.meetings.appendTurn(openingTurn);
+      this.options.meetings.updateSession(finalSession, expected);
+    });
     return this.requireSession(saveId, meetingId);
   }
 
@@ -692,6 +713,9 @@ export class MeetingService {
           currentTurnNumber: session.turnNumber,
           responseModeLabel: RESPONSE_MODE_LABELS[request.responseMode],
           ...(request.responseMode === "answer" ? { addressedByLabel: "皇帝" } : {}),
+          relatedPolicyTemplateIds: (agendaItem?.relatedEntityIds ?? []).filter((id) =>
+            templates.policyTemplateIds.includes(id),
+          ),
           transcript: visibleTurns.map((turn) => ({
             turnId: turn.turnId,
             speakerLabel: labels[turn.speakerId] ?? turn.speakerId,
@@ -720,6 +744,30 @@ export class MeetingService {
       this.options.meetings.updateSession(session, expected);
       throw error;
     }
+
+    // Provider 返回后重新读取 head；只允许阶段 A 的同一预留在同一世界版本上进入阶段 B。
+    const latestState = await this.options.gameStateService.loadState(saveId);
+    const latestSession = this.options.meetings.getSession(session.meetingId);
+    const latestPending = latestSession?.pendingAgentAction;
+    if (
+      latestState.revision !== state.revision ||
+      !latestSession ||
+      latestSession.meetingVersion !== session.meetingVersion ||
+      latestSession.status !== "waiting-for-agent" ||
+      latestSession.currentSpeakerId !== request.characterId ||
+      latestPending?.actionId !== request.actionId ||
+      latestPending.characterId !== request.characterId
+    ) {
+      throw new ApiError(
+        409,
+        "CHARACTER_CONTEXT_STALE",
+        "会议 Agent 上下文已过期，请基于当前世界状态恢复 pending action",
+      );
+    }
+    if (latestState.characters[request.characterId]?.status !== "active") {
+      throw new ApiError(409, "CHARACTER_NOT_AVAILABLE", `人物当前不可用：${request.characterId}`);
+    }
+    session = latestSession;
 
     // 阶段 B：原子提交（回合 + 会议 head）
     const output = agentResult.output;
@@ -781,7 +829,14 @@ export class MeetingService {
         status: agendaItem.status === "open" ? "discussing" : agendaItem.status,
       });
     }
-    this.recordOutcomeCandidates(next, state, turn, output);
+    this.recordOutcomeCandidates(
+      next,
+      state,
+      turn,
+      output,
+      templates.policyTemplateIds,
+      agendaItem,
+    );
     this.persistAgentMemories(saveId, request.characterId, state.revision, output);
     this.options.logger.info({
       event: "meeting_agent_turn",
@@ -812,11 +867,35 @@ export class MeetingService {
     meetingId: string,
     input: RulingInput,
   ): Promise<MeetingStepResult> {
+    const requestHash = sha256Hex(
+      stableStringify({
+        agendaItemId: input.agendaItemId,
+        selectedOutcomeCandidateIds: input.selectedOutcomeCandidateIds,
+        text: input.text ?? null,
+      }),
+    );
+    const replayRuling = (): MeetingStepResult | null => {
+      if (!input.idempotencyKey) return null;
+      const prior = this.options.meetings.getRulingByIdempotencyKey(
+        saveId,
+        meetingId,
+        input.idempotencyKey,
+      );
+      if (!prior) return null;
+      if (prior.requestHash !== requestHash) {
+        throw new ApiError(409, "IDEMPOTENCY_KEY_CONFLICT", "同一会议裁决幂等键对应了不同请求");
+      }
+      return prior.result as MeetingStepResult;
+    };
+    const replayed = replayRuling();
+    if (replayed) return replayed;
     let session = this.requireSession(saveId, meetingId);
     if (session.meetingVersion !== input.expectedMeetingVersion) {
       throw new ApiError(409, "MEETING_VERSION_STALE", "meetingVersion 过期");
     }
-    let { state } = await this.loadSaveContext(saveId);
+    const context = await this.loadSaveContext(saveId);
+    let state = context.state;
+    const policyTemplateIds = context.templates.policyTemplateIds;
     this.assertRevision(state, input.expectedRevision);
 
     const agendaItem = this.requireAgenda(meetingId, input.agendaItemId);
@@ -835,11 +914,11 @@ export class MeetingService {
       return candidate;
     });
 
-    // 白名单映射 → StateEngine 提交（唯一世界写路径）
-    let baseRevision = state.revision;
+    // 先在内存中按顺序预演全部白名单命令；任一失败时不触碰 SQLite。
+    const prepared: PreparedCommandTransition[] = [];
     let acceptedCommands = 0;
     for (const candidate of selected) {
-      const mapping = mapOutcomeToCommand(candidate, state);
+      const mapping = mapOutcomeToCommand(candidate, state, { policyTemplateIds });
       if (!mapping.ok) {
         if (candidate.type === "no-action" || candidate.type === "agenda-deferral") {
           continue; // 无命令语义的候选：接受即记录
@@ -850,30 +929,18 @@ export class MeetingService {
           mapping.reason,
         );
       }
-      await this.options.gameStateService.commitCommand({
+      const command = {
         ...mapping.command,
         commandId: `cmd_ruling_${this.idFactory()}`,
-        baseRevision,
+        baseRevision: state.revision,
         actor: { type: "system", id: "meeting-director" },
         createdAt: this.clock.now().toISOString(),
-      } as never);
-      baseRevision += 1;
+      } as GameCommand;
+      const item = await this.options.gameStateService.prepareCommand(state, command);
+      prepared.push(item);
       acceptedCommands += 1;
-      state = await this.options.gameStateService.loadState(saveId);
+      state = item.transition.nextState;
     }
-
-    for (const candidate of selected) {
-      this.options.meetings.updateOutcomeStatus(candidate.outcomeCandidateId, "accepted");
-    }
-    for (const candidate of outcomes.filter(
-      (o) =>
-        o.agendaItemId === input.agendaItemId &&
-        !input.selectedOutcomeCandidateIds.includes(o.outcomeCandidateId) &&
-        (o.status === "draft" || o.status === "presented"),
-    )) {
-      this.options.meetings.updateOutcomeStatus(candidate.outcomeCandidateId, "rejected");
-    }
-    this.options.meetings.upsertAgendaItem({ ...agendaItem, status: "resolved" });
 
     const expected = session.meetingVersion;
     if (session.status === "resolving") {
@@ -897,20 +964,50 @@ export class MeetingService {
       session,
       "player-ruling",
       input.text ?? `圣裁：准${selected.map((c) => c.title).join("、") || "如议"}`,
-      baseRevision,
+      state.revision,
       input.agendaItemId,
     );
-    try {
-      this.options.meetings.appendTurn(turn);
-    } catch (error) {
-      throw this.mapRepositoryError(error);
-    }
-    this.options.meetings.updateSession(session, expected);
-    return {
+    const result: MeetingStepResult = {
       ...this.stepResult(session, "player-ruling", "裁决已生效"),
       newTurn: turn,
       acceptedCommands,
     };
+    try {
+      this.options.gameStateService.commitPreparedCommandsAtomically(prepared, () => {
+        for (const candidate of selected) {
+          this.options.meetings.updateOutcomeStatus(candidate.outcomeCandidateId, "accepted");
+        }
+        for (const candidate of outcomes.filter(
+          (outcome) =>
+            outcome.agendaItemId === input.agendaItemId &&
+            !input.selectedOutcomeCandidateIds.includes(outcome.outcomeCandidateId) &&
+            (outcome.status === "draft" || outcome.status === "presented"),
+        )) {
+          this.options.meetings.updateOutcomeStatus(candidate.outcomeCandidateId, "rejected");
+        }
+        this.options.meetings.upsertAgendaItem({ ...agendaItem, status: "resolved" });
+        this.options.meetings.appendTurn(turn);
+        this.options.meetings.updateSession(session, expected);
+        if (input.idempotencyKey) {
+          this.options.meetings.insertRuling({
+            rulingId: `ruling_${this.idFactory()}`,
+            saveId,
+            meetingId,
+            agendaItemId: input.agendaItemId,
+            idempotencyKey: input.idempotencyKey,
+            requestHash,
+            stateRevision: state.revision,
+            result,
+            createdAt: this.clock.now().toISOString(),
+          });
+        }
+      });
+    } catch (error) {
+      const replayAfterRace = replayRuling();
+      if (replayAfterRace) return replayAfterRace;
+      throw this.mapRepositoryError(error);
+    }
+    return result;
   }
 
   async pauseMeeting(
@@ -933,13 +1030,47 @@ export class MeetingService {
     return session;
   }
 
+  async cancelMeeting(
+    saveId: string,
+    meetingId: string,
+    input: { expectedRevision: number; reason?: string },
+  ): Promise<MeetingSessionState> {
+    const session = this.requireSession(saveId, meetingId);
+    const reason = input.reason ?? "圣意取消";
+    const expected = session.meetingVersion;
+    // 先在会话侧验证转换合法（draft/scheduled/preparing/paused/failed → cancelled），
+    // 再提交世界投影命令，最后落会话，避免命令成功而会话转换非法的不一致。
+    const next = transitionMeeting(session, { type: "meeting.cancel", reason }).next;
+    await this.options.gameStateService.commitCommandsAtomically(
+      [
+        {
+          commandId: `cmd_meeting_cancel_${this.idFactory()}`,
+          commandType: "meeting.cancel",
+          saveId,
+          baseRevision: input.expectedRevision,
+          actor: { type: "system", id: "meeting-director" },
+          payload: { meetingId, reason },
+          createdAt: this.clock.now().toISOString(),
+        },
+      ],
+      () => {
+        this.options.meetings.updateSession(next, expected);
+      },
+    );
+    return next;
+  }
+
   async concludeMeeting(
     saveId: string,
     meetingId: string,
     input: StepInput,
   ): Promise<MeetingStepResult> {
     let session = this.requireSession(saveId, meetingId);
+    if (session.meetingVersion !== input.expectedMeetingVersion) {
+      throw new ApiError(409, "MEETING_VERSION_STALE", "meetingVersion 过期");
+    }
     const { state, templates } = await this.loadSaveContext(saveId);
+    this.assertRevision(state, input.expectedRevision);
     const agenda = this.options.meetings.listAgendaItems(meetingId);
     const now = this.clock.now().toISOString();
 
@@ -951,11 +1082,10 @@ export class MeetingService {
       templates: templates.characters,
       createdAt: now,
     });
-    this.options.meetings.insertLeakAssessment(leak);
     const leakEventCandidateIds =
       leak.deterministicRoll?.triggered === true ? [`event_leak_${meetingId}`] : [];
 
-    const commandResult = await this.options.gameStateService.commitCommand({
+    const command = {
       commandId: `cmd_meeting_conclude_${this.idFactory()}`,
       commandType: "meeting.conclude",
       saveId,
@@ -966,62 +1096,59 @@ export class MeetingService {
         ...(leakEventCandidateIds.length > 0 ? { leakEventCandidateIds } : {}),
       },
       createdAt: now,
-    });
+    } as GameCommand;
 
     const expected = session.meetingVersion;
     session = transitionMeeting(session, { type: "meeting.conclude" }).next;
+    const concludedRevision = input.expectedRevision + 1;
     session = {
       ...session,
-      concludedAtRevision: commandResult.revision,
+      concludedAtRevision: concludedRevision,
       turnNumber: session.turnNumber + 1,
     };
-    const turn = this.systemTurnRecord(
-      session,
-      "adjournment",
-      "会议礼成，散。",
-      commandResult.revision,
-    );
+    const turn = this.systemTurnRecord(session, "adjournment", "会议礼成，散。", concludedRevision);
     try {
-      this.options.meetings.appendTurn(turn);
+      await this.options.gameStateService.commitCommandsAtomically([command], () => {
+        this.options.meetings.insertLeakAssessment(leak);
+        this.options.meetings.appendTurn(turn);
+        this.options.meetings.updateSession(session, expected);
+
+        const { turns } = this.options.meetings.listTurns(meetingId, { limit: 200 });
+        const outcomes = this.options.meetings.listOutcomeCandidates(meetingId);
+        const minutes = generateMeetingMinutes({
+          session,
+          turns,
+          outcomes,
+          deferredAgendaItemIds: agenda
+            .filter((item) => item.status === "deferred")
+            .map((item) => item.agendaItemId),
+          speakerLabels: this.speakerLabels(templates),
+          stateRevision: concludedRevision,
+          createdAt: now,
+          idFactory: this.idFactory,
+        });
+        this.options.meetings.insertMinutes(minutes.official);
+        if (minutes.privateMinutes) this.options.meetings.insertMinutes(minutes.privateMinutes);
+
+        const acceptedOutcomes = outcomes.filter((outcome) => outcome.status === "accepted");
+        for (const characterId of session.participantIds) {
+          if (characterId === "emperor") continue;
+          const visible = this.visibleTurnsFor(session, characterId);
+          const candidate = buildMeetingSummaryMemoryCandidate(
+            session,
+            visible,
+            acceptedOutcomes,
+            this.speakerLabels(templates),
+          );
+          if (candidate) {
+            this.persistApprovedCandidates(saveId, characterId, concludedRevision, [candidate], {
+              sourceMeetingId: meetingId,
+            });
+          }
+        }
+      });
     } catch (error) {
       throw this.mapRepositoryError(error);
-    }
-    this.options.meetings.updateSession(session, expected);
-
-    // 纪要（规则生成，两层）
-    const { turns } = this.options.meetings.listTurns(meetingId, { limit: 200 });
-    const outcomes = this.options.meetings.listOutcomeCandidates(meetingId);
-    const minutes = generateMeetingMinutes({
-      session,
-      turns,
-      outcomes,
-      deferredAgendaItemIds: agenda
-        .filter((item) => item.status === "deferred")
-        .map((item) => item.agendaItemId),
-      speakerLabels: this.speakerLabels(templates),
-      stateRevision: commandResult.revision,
-      createdAt: now,
-      idFactory: this.idFactory,
-    });
-    this.options.meetings.insertMinutes(minutes.official);
-    if (minutes.privateMinutes) this.options.meetings.insertMinutes(minutes.privateMinutes);
-
-    // 会议记忆：按各参与者实际可见回合分化生成
-    const acceptedOutcomes = outcomes.filter((o) => o.status === "accepted");
-    for (const characterId of session.participantIds) {
-      if (characterId === "emperor") continue;
-      const visible = this.visibleTurnsFor(session, characterId);
-      const candidate = buildMeetingSummaryMemoryCandidate(
-        session,
-        visible,
-        acceptedOutcomes,
-        this.speakerLabels(templates),
-      );
-      if (candidate) {
-        this.persistApprovedCandidates(saveId, characterId, commandResult.revision, [candidate], {
-          sourceMeetingId: meetingId,
-        });
-      }
     }
 
     return this.stepResult(session, "conclude-meeting", "会议已结束并生成纪要");
@@ -1210,6 +1337,8 @@ export class MeetingService {
     state: GameState,
     turn: MeetingTurnRecord,
     output: MeetingCharacterOutput,
+    policyTemplateIds: readonly string[] = [],
+    agendaItem?: MeetingAgendaItem,
   ): void {
     if (!session.currentAgendaItemId && !turn.agendaItemId) return;
     const agendaItemId = turn.agendaItemId ?? session.currentAgendaItemId!;
@@ -1218,6 +1347,12 @@ export class MeetingService {
       const targetCharacter = action.targetEntityIds.find((id) => state.characters[id]);
       const isAppointment = action.type === "recommend-appointment" && targetCharacter;
       const targetOffice = action.targetEntityIds.find((id) => state.offices[id]);
+      // Phase 5：荐策命中已装载政策模板（发言引用或议程关联实体）→ 生成 policy.propose 预览
+      const policyTemplateId =
+        action.type === "recommend-policy"
+          ? (action.targetEntityIds.find((id) => policyTemplateIds.includes(id)) ??
+            agendaItem?.relatedEntityIds.find((id) => policyTemplateIds.includes(id)))
+          : undefined;
       const candidateType =
         action.type === "recommend-appointment"
           ? targetOffice
@@ -1239,7 +1374,12 @@ export class MeetingService {
               reason: action.summary,
             },
           }
-        : undefined;
+        : policyTemplateId
+          ? {
+              commandType: "policy.propose",
+              payload: { templateId: policyTemplateId, reason: action.summary },
+            }
+          : undefined;
       const candidate: MeetingOutcomeCandidate = {
         outcomeCandidateId: `outcome_${this.idFactory()}`,
         meetingId: session.meetingId,

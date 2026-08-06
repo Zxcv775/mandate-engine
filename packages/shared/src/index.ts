@@ -5,8 +5,8 @@ export * from "./id";
 /** 产品版本：服务端、前端与未来存档迁移共同使用的单一来源。 */
 export const ENGINE_INFO = {
   name: "mandate-engine",
-  version: "0.4.0",
-  phase: 4,
+  version: "0.5.0",
+  phase: 5,
 } as const;
 
 /** 兼容 Phase 0 已公开的常量名。 */

@@ -1,0 +1,178 @@
+.plab-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.plab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.plab-toolbar,
+.plab-compose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.plab-toolbar label,
+.plab-compose label,
+.plab-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.plab-toolbar select,
+.plab-toolbar input,
+.plab-compose select,
+.plab-controls select,
+.plab-controls input {
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.plab-days {
+  width: 64px;
+}
+
+.plab-budget {
+  width: 96px;
+}
+
+.plab-columns {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.plab-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plab-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+}
+
+.plab-list button.active {
+  outline: 2px solid #2f5d3a;
+}
+
+.plab-list button em {
+  margin-left: auto;
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.plab-badge {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #ded7c4;
+  white-space: nowrap;
+}
+
+.plab-badge-implementing,
+.plab-badge-issued {
+  background: #cfe3cf;
+}
+
+.plab-badge-blocked,
+.plab-badge-failed {
+  background: #e7c9c1;
+}
+
+.plab-badge-completed {
+  background: #cdd9ea;
+}
+
+.plab-badge-suspended,
+.plab-badge-cancelled {
+  background: #e0dcd2;
+}
+
+.plab-origin {
+  font-size: 0.75rem;
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+.plab-detail h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0;
+}
+
+.plab-blocked {
+  color: #8a3a2b;
+}
+
+.plab-reports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 0.88rem;
+}
+
+.plab-reports li span {
+  opacity: 0.6;
+  margin-right: 8px;
+}
+
+.plab-debug pre {
+  max-height: 320px;
+  overflow: auto;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 8px;
+}
+
+.plab-empty {
+  opacity: 0.6;
+  padding: 24px;
+}
+
+.plab-error {
+  color: #8a3a2b;
+  font-weight: 600;
+}
+
+.plab-footer {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  padding-top: 10px;
+}

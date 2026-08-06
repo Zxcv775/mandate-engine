@@ -91,3 +91,18 @@ jobs:
 
       - name: Test meeting outcomes and phase 4 integration loops
         run: npm run test:meeting-integration
+
+      - name: Validate policy and rule data
+        run: npm run check:policies
+
+      - name: Test rule engine and policy schemas
+        run: npm run test:rule-engine
+
+      - name: Test policy lifecycle and tick resolution
+        run: npm run test:policy-lifecycle
+
+      - name: Test policy security matrix
+        run: npm run test:policy-security
+
+      - name: Test phase 5 integration loops
+        run: npm run test:policy-integration

@@ -4,6 +4,7 @@ import {
   CreateSaveRequestSchema,
   ExportSaveRequestSchema,
   ImportSaveRequestSchema,
+  MAX_SAVE_IMPORT_BASE64_LENGTH,
   RepairRequestSchema,
   RollbackRequestSchema,
   SaveChangesQuerySchema,
@@ -15,6 +16,7 @@ import type { GameStateService } from "@mandate/save-system";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { successResponse } from "./response";
+import { ApiError } from "../errors/api-error";
 
 const StrictEmptyBodySchema = z.object({}).strict();
 
@@ -33,6 +35,10 @@ function parseBase64(value: string): Uint8Array {
 
 export function registerSaveRoutes(app: FastifyInstance, service: GameStateService): void {
   app.post("/api/saves/import", async (request) => {
+    const rawPackage = (request.body as { packageBase64?: unknown } | null)?.packageBase64;
+    if (typeof rawPackage === "string" && rawPackage.length > MAX_SAVE_IMPORT_BASE64_LENGTH) {
+      throw new ApiError(422, "SAVE_PACKAGE_INVALID", "存档包超过允许的 archive 大小");
+    }
     const body = ImportSaveRequestSchema.parse(request.body);
     const data = await service.importSave({
       bytes: parseBase64(body.packageBase64),

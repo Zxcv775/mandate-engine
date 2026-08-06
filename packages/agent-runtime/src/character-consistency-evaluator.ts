@@ -63,10 +63,20 @@ const SYSTEM_LEAK_PATTERNS: readonly RegExp[] = [
   /\bSQL\b/i,
 ];
 
-/** 游戏数值直述：忠诚度 72 之类 */
+/** 游戏内部数值直述：覆盖人格、能力、运行态与规则评分，以及中英文数字格式。 */
+const INTERNAL_NUMERIC_LABEL =
+  "(?:人格|能力|胆识|谨慎|野心|操守|务实|傲气|体恤|多疑|耐性|喜怒不形|忠诚|好感|压力|恐惧|信任|士气|稳定|合法性|internal\\s+score|administration\\s+score|resistance\\s+score|行政评分|阻力评分)";
+const INTERNAL_NUMBER =
+  "(?:[0-9０-９]+(?:[.．][0-9０-９]+)?\\s*[%％]?|百分之[零〇一二三四五六七八九十百两]+|[零〇一二三四五六七八九十百两]{1,8})";
 const NUMERIC_LEAK_PATTERNS: readonly RegExp[] = [
-  /(?:忠诚|好感|压力|士气|稳定|合法性)[度值]?\s*(?:[:：为是]|达到?)?\s*[0-9０-９]+/,
-  /[0-9０-９]+\s*[点分]\s*的?\s*(?:忠诚|好感|压力)/,
+  new RegExp(
+    `${INTERNAL_NUMERIC_LABEL}(?:度|值|分数|评分)?\\s*(?:[:：]|值为|数值是|评分为|为|是|达到?)?\\s*${INTERNAL_NUMBER}`,
+    "i",
+  ),
+  new RegExp(
+    `${INTERNAL_NUMBER}\\s*(?:点|分|的)?\\s*${INTERNAL_NUMERIC_LABEL}(?:度|值|分数|评分)?`,
+    "i",
+  ),
 ];
 
 /** 宣称已改变世界状态：Agent 无写权限，此类话必须拦截 */
@@ -128,7 +138,7 @@ export function evaluateCharacterConsistency(
   }
 
   for (const pattern of NUMERIC_LEAK_PATTERNS) {
-    if (pattern.test(speech)) {
+    if (pattern.test(allText)) {
       violations.push({
         code: "NUMERIC_LEAK",
         severity: "error",

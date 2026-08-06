@@ -111,6 +111,14 @@ export function resumeMeeting(saveId: string, meetingId: string) {
   return post(`/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/resume`, {});
 }
 
+export function cancelMeeting(
+  saveId: string,
+  meetingId: string,
+  payload: { expectedRevision: number; reason?: string },
+) {
+  return post(`/api/saves/${enc(saveId)}/meetings/${enc(meetingId)}/cancel`, payload);
+}
+
 export interface MeetingTurnView {
   turnId: string;
   turnNumber: number;

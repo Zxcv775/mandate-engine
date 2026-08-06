@@ -187,7 +187,11 @@ export function resolveKnownCharacter(
     : knowledgeItem(value, "reported", 55, "rumor", []);
 }
 
-/** 政策可见性：草案只对责任衙门可见；已批准/执行中为朝廷公开信息 */
+/**
+ * 政策可见性（Phase 5 生命周期）：
+ * 草案/待批只对负责人可见；颁行后为朝廷公开信息；
+ * 公开值只含玩家可见快照（进度为奏报口径），hidden 真实值不入任何角色视图。
+ */
 export function resolveKnownPolicy(
   context: AccessContext,
   policy: PolicyRuntimeState,
@@ -195,18 +199,18 @@ export function resolveKnownPolicy(
   | CharacterKnowledgeItem<{
       policyId: string;
       status: string;
-      responsibleOfficeIds: string[];
+      responsibleCharacterIds: string[];
+      overallProgress: number;
     }>
   | undefined {
   const value = {
     policyId: policy.policyId,
     status: policy.status,
-    responsibleOfficeIds: [...policy.responsibleOfficeIds],
+    responsibleCharacterIds: [...policy.responsibleCharacterIds],
+    overallProgress: policy.overallProgress,
   };
-  const isResponsible =
-    context.selfRuntime.officeId !== null &&
-    policy.responsibleOfficeIds.includes(context.selfRuntime.officeId);
-  if (policy.status === "draft") {
+  const isResponsible = policy.responsibleCharacterIds.includes(context.selfRuntime.characterId);
+  if (policy.status === "draft" || policy.status === "proposed") {
     return isResponsible
       ? knowledgeItem(value, "known", 80, "official", policy.sourceIds)
       : undefined;
