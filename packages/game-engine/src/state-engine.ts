@@ -33,7 +33,7 @@ import {
 import { planPolicyResolution, type PolicyResolutionArtifacts } from "./policy-resolution";
 import { applyMutations, invertMutation, validateMutatedState } from "./mutation";
 import { createDeterministicRandomSource, type RandomSource } from "./rng";
-import { hashState } from "./stable-json";
+import { hashState, stableStringify } from "./stable-json";
 
 export interface TimeAdvanceContext {
   readonly state: Readonly<GameState>;
@@ -333,11 +333,11 @@ export class StateEngine {
       } else if (command.commandType === "policy.issue") {
         mutations.push(...planPolicyIssue(state, command, assets));
       } else if (command.commandType === "policy.adjust") {
-        mutations.push(...planPolicyAdjust(state, command));
+        mutations.push(...planPolicyAdjust(state, command, assets));
       } else if (command.commandType === "policy.suspend") {
         mutations.push(...planPolicySuspend(state, command));
       } else if (command.commandType === "policy.resume") {
-        mutations.push(...planPolicyResume(state, command));
+        mutations.push(...planPolicyResume(state, command, assets));
       } else if (command.commandType === "policy.cancel") {
         mutations.push(...planPolicyCancel(state, command, assets));
       } else {
@@ -350,6 +350,17 @@ export class StateEngine {
       throw new StateEngineError(
         "COMMAND_NOT_SUPPORTED",
         `命令 ${command.commandType} 不属于普通世界状态变更`,
+      );
+    }
+
+    const meaningfulMutations = mutations.filter(
+      (item) => stableStringify(item.before) !== stableStringify(item.after),
+    );
+    mutations.splice(0, mutations.length, ...meaningfulMutations);
+    if (mutations.length === 0) {
+      throw new StateEngineError(
+        command.commandType === "policy.adjust" ? "POLICY_NO_CHANGES" : "COMMAND_INVALID",
+        "命令没有产生任何语义变化",
       );
     }
 

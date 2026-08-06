@@ -77,6 +77,7 @@ const CHILD_TABLES: readonly TableDefinition[] = [
       "actor_id",
       "status",
       "idempotency_key",
+      "request_hash",
       "summary_json",
       "created_at",
       "committed_at",
@@ -137,6 +138,10 @@ const CHILD_TABLES: readonly TableDefinition[] = [
       "backup_snapshot_id",
       "applied_at",
     ],
+  },
+  {
+    table: "save_rollback_events",
+    columns: ["event_id", "save_id", "target_revision", "result_revision", "created_at"],
   },
 ];
 
@@ -202,12 +207,18 @@ function tableExists(database: DatabaseSync, table: string): boolean {
  */
 const MEETING_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ignore" }[] = [
   { table: "meeting_sessions", strategy: "replace" },
+  { table: "meeting_session_versions", strategy: "ignore" },
   { table: "meeting_participants", strategy: "replace" },
+  { table: "meeting_participant_versions", strategy: "ignore" },
   { table: "meeting_agenda_items", strategy: "replace" },
+  { table: "meeting_agenda_item_versions", strategy: "ignore" },
   { table: "meeting_turns", strategy: "ignore" },
   { table: "meeting_outcome_candidates", strategy: "replace" },
+  { table: "meeting_outcome_candidate_versions", strategy: "ignore" },
   { table: "meeting_minutes", strategy: "replace" },
   { table: "meeting_leak_assessments", strategy: "replace" },
+  { table: "meeting_leak_assessment_versions", strategy: "ignore" },
+  { table: "meeting_rulings", strategy: "ignore" },
 ];
 
 /** Phase 5：政策明细表随存档导入导出（append-only → 主键去重合并） */
@@ -215,6 +226,7 @@ const POLICY_IMPORT_TABLES: readonly { table: string; strategy: "replace" | "ign
   { table: "policy_stage_results", strategy: "ignore" },
   { table: "policy_reports", strategy: "ignore" },
   { table: "policy_deviation_log", strategy: "ignore" },
+  { table: "policy_cost_applications", strategy: "ignore" },
 ];
 
 function copyPolicyRows(
@@ -236,7 +248,9 @@ function copyPolicyRows(
         ? "result_id"
         : table === "policy_reports"
           ? "report_id"
-          : "deviation_id";
+          : table === "policy_deviation_log"
+            ? "deviation_id"
+            : "cost_id";
     const insert = target.prepare(
       `INSERT OR ${strategy === "replace" ? "REPLACE" : "IGNORE"} INTO ${table}
        (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
@@ -343,9 +357,16 @@ function insertRows(
   saveId: string,
   predicate: (row: Record<string, SQLInputValue>) => boolean = () => true,
 ): void {
+  if (!tableExists(source, definition.table)) return;
+  const sourceColumns = new Set(
+    (source.prepare(`PRAGMA table_info(${definition.table})`).all() as Array<{ name: string }>).map(
+      (column) => column.name,
+    ),
+  );
+  const readableColumns = definition.columns.filter((column) => sourceColumns.has(column));
   const columns = definition.columns.join(", ");
   const rows = source
-    .prepare(`SELECT ${columns} FROM ${definition.table} WHERE save_id = ?`)
+    .prepare(`SELECT ${readableColumns.join(", ")} FROM ${definition.table} WHERE save_id = ?`)
     .all(saveId) as unknown as Array<Record<string, SQLInputValue>>;
   const insert = target.prepare(
     `INSERT INTO ${definition.table} (${columns}) VALUES (${definition.columns

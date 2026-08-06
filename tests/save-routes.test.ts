@@ -1,4 +1,8 @@
-import { ApiErrorResponseSchema } from "@mandate/domain";
+import {
+  ApiErrorResponseSchema,
+  MAX_SAVE_IMPORT_BASE64_LENGTH,
+  SAVE_IMPORT_HTTP_BODY_LIMIT,
+} from "@mandate/domain";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../apps/server/src/app";
 import { parseRuntimeConfig } from "../apps/server/src/config/index";
@@ -68,7 +72,7 @@ describe("Phase 2 save API", () => {
           idempotencyKey: "api-idem",
         },
       });
-      expect(repeated.json().data).toEqual(command.json().data);
+      expect(repeated.json().data).toEqual({ ...command.json().data, idempotent: true });
 
       const advanced = await app.inject({
         method: "POST",
@@ -233,6 +237,32 @@ describe("Phase 2 save API", () => {
         error: { code: "SAVE_NOT_FOUND" },
       });
       expect(response.body).not.toContain(marker);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("aligns DTO and HTTP import limits and maps oversized bodies to 413", async () => {
+    const app = await buildApp({ config, logger: false });
+    try {
+      const dtoOversized = await app.inject({
+        method: "POST",
+        url: "/api/saves/import",
+        payload: { packageBase64: "A".repeat(MAX_SAVE_IMPORT_BASE64_LENGTH + 4) },
+      });
+      expect(dtoOversized.statusCode).toBe(422);
+      expect(dtoOversized.json().error.code).toBe("SAVE_PACKAGE_INVALID");
+
+      const httpOversized = await app.inject({
+        method: "POST",
+        url: "/api/saves/import",
+        payload: { packageBase64: "A".repeat(SAVE_IMPORT_HTTP_BODY_LIMIT) },
+      });
+      expect(httpOversized.statusCode).toBe(413);
+      expect(httpOversized.json()).toMatchObject({
+        ok: false,
+        error: { code: "REQUEST_BODY_TOO_LARGE" },
+      });
     } finally {
       await app.close();
     }

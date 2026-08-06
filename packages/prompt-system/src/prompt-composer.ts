@@ -125,6 +125,16 @@ function describeScale(value: number): string {
   return "极低";
 }
 
+export type CharacterTraitBand = "极低" | "较低" | "中等" | "较高" | "很高";
+
+export function qualitativeBand(value: number): CharacterTraitBand {
+  if (value >= 80) return "很高";
+  if (value >= 60) return "较高";
+  if (value >= 40) return "中等";
+  if (value >= 20) return "较低";
+  return "极低";
+}
+
 function joinList(values: readonly string[]): string {
   return values.length > 0 ? values.join("；") : "（无）";
 }
@@ -173,7 +183,7 @@ export function renderPersonalityData(template: CharacterTemplate): string {
   ];
   const rules = template.behaviorRules;
   return [
-    `性情刻度：${scales.map(([label, value]) => `${label}${describeScale(value)}(${value})`).join("，")}`,
+    `性情刻度：${scales.map(([label, value]) => `${label}：${qualitativeBand(value)}`).join("，")}`,
     `所重：${joinList(p.values)}`,
     `所惧：${joinList(p.fears)}`,
     `所欲：${joinList(p.desires)}`,

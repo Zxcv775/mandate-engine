@@ -63,7 +63,15 @@
     "test:policy-security": "vitest run tests/policy-security.test.ts",
     "test:policy-integration": "vitest run tests/phase5-integration.test.ts",
     "benchmark:phase5": "tsx scripts/benchmark-phase5.ts",
-    "check:phase5": "npm run check:phase4 && npm run check:policies && npm run test:rule-engine && npm run test:policy-lifecycle && npm run test:policy-security && npm run test:policy-integration"
+    "check:phase5": "npm run check:phase4 && npm run check:policies && npm run test:rule-engine && npm run test:policy-lifecycle && npm run test:policy-security && npm run test:policy-integration",
+    "test:review-rollback": "vitest run tests/review-rollback.test.ts tests/review-rollback-session-history.test.ts tests/review-session-history-migration.test.ts",
+    "test:review-meeting-atomicity": "vitest run tests/review-meeting-atomicity.test.ts",
+    "test:review-idempotency": "vitest run tests/review-idempotency.test.ts tests/review-ruling-timeline-idempotency.test.ts",
+    "test:review-agent-stale": "vitest run tests/review-agent-stale.test.ts",
+    "test:review-import-security": "vitest run tests/review-import-security.test.ts tests/review-zip-local-header-consistency.test.ts",
+    "test:review-policy-costs": "vitest run tests/policy-lifecycle.test.ts tests/policy-resolution.test.ts tests/rule-engine.test.ts tests/review-policy-resume-responsibility.test.ts tests/review-policy-responsibility-noop.test.ts",
+    "test:review-safe-share": "vitest run tests/phase4-integration.test.ts tests/save-import-export.test.ts tests/review-safe-share-policy-origin.test.ts",
+    "check:review-fixes": "npm run test:review-rollback && npm run test:review-meeting-atomicity && npm run test:review-idempotency && npm run test:review-agent-stale && npm run test:review-import-security && npm run test:review-policy-costs && npm run test:review-safe-share"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

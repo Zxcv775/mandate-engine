@@ -69,6 +69,12 @@ export const AdjustPolicyRequestSchema = z
     (payload) =>
       payload.additionalBudget !== undefined || payload.responsibleCharacterIds !== undefined,
     "至少提供追加预算或负责人之一",
+  )
+  .refine(
+    (payload) =>
+      payload.additionalBudget === undefined ||
+      Object.values(payload.additionalBudget).some((value) => (value ?? 0) > 0),
+    "追加预算至少包含一项正数",
   );
 export type AdjustPolicyRequest = z.infer<typeof AdjustPolicyRequestSchema>;
 

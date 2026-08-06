@@ -12,5 +12,6 @@ export * from "./repository";
 export * from "./security";
 export * from "./service";
 export * from "./state-migrations";
+export * from "./timeline";
 export * from "./types";
 export * from "./validation";

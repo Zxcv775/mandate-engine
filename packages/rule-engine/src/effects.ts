@@ -1,6 +1,7 @@
 import type {
   GameState,
   ModifierState,
+  ModifierSource,
   ModifierTarget,
   ProposedMutation,
   RuleEffect,
@@ -31,6 +32,20 @@ export interface EffectPlanContext {
 export interface EffectPlanNote {
   readonly effectType: RuleEffect["type"];
   readonly note: string;
+}
+
+export function modifierSourceEquals(left: ModifierSource, right: ModifierSource): boolean {
+  if (left.kind !== right.kind) return false;
+  switch (left.kind) {
+    case "policy":
+      return right.kind === "policy" && left.policyId === right.policyId;
+    case "event":
+      return right.kind === "event" && left.eventId === right.eventId;
+    case "rule":
+      return right.kind === "rule" && left.ruleId === right.ruleId;
+    case "system":
+      return right.kind === "system" && left.label === right.label;
+  }
 }
 
 export interface EffectPlanResult {
@@ -273,7 +288,7 @@ export function planEffectMutations(
       }
       case "remove-modifier": {
         for (const modifier of Object.values(state.modifiers)
-          .filter((candidate) => JSON.stringify(candidate.source).includes(effect.bySource))
+          .filter((candidate) => modifierSourceEquals(candidate.source, effect.bySource))
           .sort((a, b) => a.modifierId.localeCompare(b.modifierId))) {
           mutations.push(
             mutation({

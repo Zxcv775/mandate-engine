@@ -42,7 +42,7 @@ import { SaveSystemError } from "./errors";
 import { importVerifiedPackage } from "./importer";
 import { buildSavePackage, parseSavePackage } from "./package-format";
 import { createExportPayload } from "./payload";
-import type { SqliteSaveRepository } from "./repository";
+import { commandRequestHash, type SqliteSaveRepository } from "./repository";
 import type { PolicyDetailRepository } from "./policy-repository";
 import { redactSensitiveString, redactSensitiveValue } from "./security";
 import {
@@ -52,6 +52,7 @@ import {
 } from "./state-migrations";
 import type { ChangeQuery, CheckpointInput, CommitResult } from "./types";
 import { validateSave } from "./validation";
+import { recordRollbackTimeline } from "./timeline";
 
 export interface CreateSaveInput {
   scenarioId: string;
@@ -67,6 +68,11 @@ export interface GameStateServiceOptions {
   stateEngine?: StateEngine;
   /** Phase 5：政策明细仓储（结算产物与状态变更同事务落库） */
   policyDetails?: PolicyDetailRepository;
+}
+
+export interface PreparedCommandTransition {
+  command: GameCommand;
+  transition: import("@mandate/game-engine").StateTransition;
 }
 
 export interface RollbackInput {
@@ -205,11 +211,20 @@ export class GameStateService {
       const prior = this.options.repository.findIdempotentResult(
         command.saveId,
         command.idempotencyKey,
+        commandRequestHash(command),
       );
       if (prior) return prior;
     }
     const save = await this.getSave(command.saveId);
     if (save.headRevision !== command.baseRevision) {
+      if (command.idempotencyKey) {
+        const concurrentPrior = this.options.repository.findIdempotentResult(
+          command.saveId,
+          command.idempotencyKey,
+          commandRequestHash(command),
+        );
+        if (concurrentPrior) return concurrentPrior;
+      }
       throw new SaveSystemError(
         "STATE_REVISION_CONFLICT",
         `revision 冲突：期望 ${save.headRevision}，收到 ${command.baseRevision}`,
@@ -236,6 +251,14 @@ export class GameStateService {
     } catch (error) {
       if (error instanceof StateEngineError) {
         if (error.code === "STATE_REVISION_CONFLICT") {
+          if (command.idempotencyKey) {
+            const concurrentPrior = this.options.repository.findIdempotentResult(
+              command.saveId,
+              command.idempotencyKey,
+              commandRequestHash(command),
+            );
+            if (concurrentPrior) return concurrentPrior;
+          }
           throw new SaveSystemError(error.code, error.message, error.details);
         }
         // Phase 4/5：会议与政策生命周期错误保留原码，供 API 层映射 404/409/422
@@ -246,6 +269,78 @@ export class GameStateService {
       }
       throw error;
     }
+  }
+
+  async prepareCommand(state: GameState, input: GameCommand): Promise<PreparedCommandTransition> {
+    const parsed = GameCommandSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new SaveSystemError("STATE_INVALID", "Command Schema 校验失败", parsed.error.issues);
+    }
+    const command = GameCommandSchema.parse(redactSensitiveValue(parsed.data));
+    if (command.saveId !== state.saveId || command.baseRevision !== state.revision) {
+      throw new SaveSystemError(
+        "STATE_REVISION_CONFLICT",
+        `预演 revision 冲突：期望 ${state.revision}，收到 ${command.baseRevision}`,
+      );
+    }
+    try {
+      const needsPolicyAssets =
+        command.commandType.startsWith("policy.") || command.commandType === "time.advance";
+      const context = needsPolicyAssets
+        ? { policyAssets: await this.loadPolicyAssets(state.scenarioId) }
+        : {};
+      return { command, transition: this.stateEngine.applyCommand(state, command, context) };
+    } catch (error) {
+      if (error instanceof StateEngineError) {
+        if (error.code === "STATE_REVISION_CONFLICT") {
+          throw new SaveSystemError(error.code, error.message, error.details);
+        }
+        if (error.code.startsWith("MEETING_") || error.code.startsWith("POLICY_")) {
+          throw new SaveSystemError(error.code as never, error.message, error.details);
+        }
+        throw new SaveSystemError("STATE_INVALID", error.message, error.details);
+      }
+      throw error;
+    }
+  }
+
+  commitPreparedCommandsAtomically(
+    prepared: readonly PreparedCommandTransition[],
+    extraWrites?: (results: readonly CommitResult[]) => void,
+  ): CommitResult[] {
+    return this.options.repository.runInTransaction(() => {
+      const results = prepared.map(({ command, transition }) => {
+        const artifacts = transition.policyResolution;
+        return this.options.repository.commitTransition(
+          command,
+          transition,
+          artifacts && this.options.policyDetails
+            ? {
+                extraWrites: () => this.options.policyDetails?.insertResolutionArtifacts(artifacts),
+              }
+            : {},
+        );
+      });
+      extraWrites?.(results);
+      return results;
+    });
+  }
+
+  async commitCommandsAtomically(
+    inputs: readonly GameCommand[],
+    extraWrites?: (results: readonly CommitResult[]) => void,
+  ): Promise<CommitResult[]> {
+    if (inputs.length === 0) {
+      return this.commitPreparedCommandsAtomically([], extraWrites);
+    }
+    let state = this.options.repository.loadHeadState(inputs[0]!.saveId);
+    const prepared: PreparedCommandTransition[] = [];
+    for (const input of inputs) {
+      const item = await this.prepareCommand(state, input);
+      prepared.push(item);
+      state = item.transition.nextState;
+    }
+    return this.commitPreparedCommandsAtomically(prepared, extraWrites);
   }
 
   private readonly policyAssetsCache = new Map<string, PolicyCommandAssets>();
@@ -363,6 +458,14 @@ export class GameStateService {
         if (!validation.valid) {
           throw new SaveSystemError("STATE_INVALID", "逻辑回滚后完整性校验失败", validation);
         }
+      },
+      extraWrites: () => {
+        recordRollbackTimeline(this.options.repository.database, {
+          saveId,
+          targetRevision: input.targetRevision,
+          resultRevision: transition.nextState.revision,
+          createdAt: command.createdAt,
+        });
       },
     });
     return { ...summary, transaction };

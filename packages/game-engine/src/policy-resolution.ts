@@ -21,7 +21,11 @@ import {
   type TriggeredDeviation,
 } from "@mandate/rule-engine";
 import { fnv1a } from "@mandate/shared";
-import { transitionPolicy, type PolicyCommandAssets } from "./policy-commands";
+import {
+  isPolicyResponsibilityValid,
+  transitionPolicy,
+  type PolicyCommandAssets,
+} from "./policy-commands";
 import { applyMutationsInPlaceUnsafe } from "./mutation";
 import { createDeterministicRandomSource } from "./rng";
 
@@ -58,10 +62,24 @@ export interface PolicyDeviationLogRecord {
   readonly discovered: boolean;
 }
 
+export interface PolicyCostApplicationRecord {
+  readonly policyId: string;
+  readonly saveId: string;
+  readonly tick: number;
+  readonly revision: number;
+  readonly resourceId: "treasuryTaels" | "grainReserveShi" | "administrativeCapacity";
+  readonly mode: "consume" | "occupy";
+  readonly required: number;
+  readonly applied: number;
+  readonly before: number;
+  readonly after: number;
+}
+
 export interface PolicyResolutionArtifacts {
   readonly stageResults: readonly PolicyStageResultRecord[];
   readonly reports: readonly PolicyReport[];
   readonly deviationLogs: readonly PolicyDeviationLogRecord[];
+  readonly costApplications: readonly PolicyCostApplicationRecord[];
 }
 
 export interface PolicyResolutionResult {
@@ -119,9 +137,19 @@ export function planPolicyResolution(
   const stageResults: PolicyStageResultRecord[] = [];
   const reports: PolicyReport[] = [];
   const deviationLogs: PolicyDeviationLogRecord[] = [];
+  const costApplications: PolicyCostApplicationRecord[] = [];
 
   // 1) Modifier 过期清理（留痕）
   recorder.push(planExpiredModifierCleanup(recorder.draft, tick));
+
+  const elapsedTicks = Math.max(1, options.elapsedTicks ?? 1);
+  const effectiveAdministrativeCapacity = resolveEffectiveValue(
+    recorder.draft,
+    { kind: "country" },
+    "administrativeCapacity",
+    tick,
+  ).value;
+  let remainingAdministrativeCapacity = effectiveAdministrativeCapacity * elapsedTicks;
 
   const policyIds = Object.keys(recorder.draft.policies).sort((a, b) => a.localeCompare(b));
   for (const policyId of policyIds) {
@@ -129,6 +157,17 @@ export function planPolicyResolution(
     if (!["issued", "implementing", "blocked"].includes(policy.status)) continue;
     const template = assets.templates.find((candidate) => candidate.id === policy.templateId);
     if (!template) continue;
+    if (
+      (policy.status === "issued" || policy.status === "blocked") &&
+      !isPolicyResponsibilityValid(
+        recorder.draft,
+        template,
+        policy.responsibleInstitutionId ?? template.responsibleInstitutionId,
+        policy.responsibleCharacterIds,
+      )
+    ) {
+      continue;
+    }
 
     const notes: string[] = [];
     const rawRng = createDeterministicRandomSource(
@@ -151,9 +190,10 @@ export function planPolicyResolution(
     let truth: PolicyTruth = structuredClone(truthBefore) as PolicyTruth;
 
     // 2) 维持成本：先扣政策预算，再扣国库；到位率决定资金系数
-    const elapsedTicks = Math.max(1, options.elapsedTicks ?? 1);
     const upkeepTaels = (template.cost.upkeepPerTick.treasuryTaels ?? 0) * elapsedTicks;
     const upkeepGrain = (template.cost.upkeepPerTick.grainReserveShi ?? 0) * elapsedTicks;
+    const upkeepAdministrativeCapacity =
+      (template.cost.upkeepPerTick.administrativeCapacity ?? 0) * elapsedTicks;
     let fundingRatio = 1;
     let countryTaels = recorder.draft.country.treasuryTaels;
     let countryGrain = recorder.draft.country.grainReserveShi;
@@ -161,7 +201,7 @@ export function planPolicyResolution(
     let paidFromTreasuryTaels = 0;
     let paidFromBudgetGrain = 0;
     let paidFromTreasuryGrain = 0;
-    if (upkeepTaels + upkeepGrain > 0 && policy.status !== "blocked") {
+    if (upkeepTaels + upkeepGrain > 0) {
       paidFromBudgetTaels = Math.min(working.remainingBudget.treasuryTaels, upkeepTaels);
       paidFromTreasuryTaels = Math.min(countryTaels, upkeepTaels - paidFromBudgetTaels);
       paidFromBudgetGrain = Math.min(working.remainingBudget.grainReserveShi, upkeepGrain);
@@ -171,17 +211,87 @@ export function planPolicyResolution(
       const required = upkeepTaels + upkeepGrain;
       fundingRatio = required === 0 ? 1 : paid / required;
     }
+    const administrativeBefore = remainingAdministrativeCapacity;
+    const allocatedAdministrativeCapacity = Math.min(
+      administrativeBefore,
+      upkeepAdministrativeCapacity,
+    );
+    const capacityRatio =
+      upkeepAdministrativeCapacity === 0
+        ? 1
+        : allocatedAdministrativeCapacity / upkeepAdministrativeCapacity;
+    fundingRatio = Math.min(fundingRatio, capacityRatio);
 
     // 3) 断供 → blocked；恢复供给的 blocked → 解除
     if (policy.status === "blocked") {
       const canFund =
         working.remainingBudget.treasuryTaels + countryTaels >= upkeepTaels &&
-        working.remainingBudget.grainReserveShi + countryGrain >= upkeepGrain;
+        working.remainingBudget.grainReserveShi + countryGrain >= upkeepGrain &&
+        administrativeBefore >= upkeepAdministrativeCapacity;
       if (!canFund) {
+        for (const [resourceId, required, before] of [
+          ["treasuryTaels", upkeepTaels, working.remainingBudget.treasuryTaels + countryTaels],
+          ["grainReserveShi", upkeepGrain, working.remainingBudget.grainReserveShi + countryGrain],
+          ["administrativeCapacity", upkeepAdministrativeCapacity, administrativeBefore],
+        ] as const) {
+          if (required > 0) {
+            costApplications.push({
+              policyId,
+              saveId: options.saveId,
+              tick,
+              revision: options.commitRevision,
+              resourceId,
+              mode: resourceId === "administrativeCapacity" ? "occupy" : "consume",
+              required,
+              applied: 0,
+              before,
+              after: before,
+            });
+          }
+        }
         continue; // 维持阻滞，本 tick 不结算
       }
       working = transitionPolicy(working, { type: "policy.unblock" }).next;
       notes.push("资源恢复，解除阻滞");
+    }
+    remainingAdministrativeCapacity -= allocatedAdministrativeCapacity;
+    for (const [resourceId, required, applied, before, mode] of [
+      [
+        "treasuryTaels",
+        upkeepTaels,
+        paidFromBudgetTaels + paidFromTreasuryTaels,
+        working.remainingBudget.treasuryTaels + countryTaels,
+        "consume",
+      ],
+      [
+        "grainReserveShi",
+        upkeepGrain,
+        paidFromBudgetGrain + paidFromTreasuryGrain,
+        working.remainingBudget.grainReserveShi + countryGrain,
+        "consume",
+      ],
+      [
+        "administrativeCapacity",
+        upkeepAdministrativeCapacity,
+        allocatedAdministrativeCapacity,
+        administrativeBefore,
+        "occupy",
+      ],
+    ] as const) {
+      if (required > 0) {
+        costApplications.push({
+          policyId,
+          saveId: options.saveId,
+          tick,
+          revision: options.commitRevision,
+          resourceId,
+          mode,
+          required,
+          applied,
+          before,
+          after: before - applied,
+        });
+      }
     }
     if (working.status === "issued") {
       working = transitionPolicy(working, { type: "policy.begin-implementation" }).next;
@@ -264,12 +374,7 @@ export function planPolicyResolution(
     }
 
     // 5) 有效值合成（Modifier 统一入口）
-    const effectiveAdmin = resolveEffectiveValue(
-      recorder.draft,
-      { kind: "country" },
-      "administrativeCapacity",
-      tick,
-    ).value;
+    const effectiveAdmin = effectiveAdministrativeCapacity;
     const effectiveResistance = resolveEffectiveValue(
       recorder.draft,
       { kind: "policy", policyId },
@@ -612,7 +717,7 @@ export function planPolicyResolution(
 
   return {
     mutations: recorder.mutations,
-    artifacts: { stageResults, reports, deviationLogs },
+    artifacts: { stageResults, reports, deviationLogs, costApplications },
   };
 }
 

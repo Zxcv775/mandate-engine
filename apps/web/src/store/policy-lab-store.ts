@@ -214,9 +214,12 @@ export const policyLabStore = createStore<PolicyLabState>()((set, get) => {
       await guarded(async () => {
         const { selectedSaveId, selected, headRevision, budgetTaels } = get();
         const budget = Number(budgetTaels);
+        if (!Number.isFinite(budget) || budget <= 0) {
+          throw new Error("请输入大于零的追加预算");
+        }
         await adjustPolicy(selectedSaveId!, selected!.policyId, {
           expectedRevision: headRevision!,
-          additionalBudget: { treasuryTaels: Number.isFinite(budget) && budget > 0 ? budget : 0 },
+          additionalBudget: { treasuryTaels: budget },
           reason: "追加预算（Lab）",
         });
         await get().refresh();

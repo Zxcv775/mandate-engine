@@ -1,4 +1,5 @@
 import type { LLMProvider } from "@mandate/llm-adapters";
+import { SAVE_IMPORT_HTTP_BODY_LIMIT } from "@mandate/domain";
 import { createScenarioLoader, type ScenarioLoader } from "@mandate/data-loader";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { Writable } from "node:stream";
@@ -77,6 +78,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { config } = options;
   const app = Fastify({
     logger: resolveLoggerOptions(config, options.logger),
+    bodyLimit: SAVE_IMPORT_HTTP_BODY_LIMIT,
   });
 
   const provider = options.provider ?? createLlmProvider(config.llm);

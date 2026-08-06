@@ -21,6 +21,7 @@ export type StateEngineErrorCode =
   | "POLICY_ALREADY_DECIDED"
   | "POLICY_COST_INSUFFICIENT"
   | "POLICY_ASSIGNEE_INVALID"
+  | "POLICY_NO_CHANGES"
   | "POLICY_LEGALITY_BLOCKED";
 
 export class StateEngineError extends Error {

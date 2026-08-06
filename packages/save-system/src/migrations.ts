@@ -441,6 +441,366 @@ CREATE INDEX idx_policy_deviation_log ON policy_deviation_log(save_id, policy_id
 PRAGMA user_version = 4;
 `;
 
+/**
+ * 审查修复：逻辑回滚保留完整审计数据，以 append-only 回滚事件定义当前时间线。
+ * policy_stage_results 改为按 revision 保留同 tick 的重推记录，避免覆盖旧世界线证据。
+ */
+const ROLLBACK_TIMELINE_SCHEMA = `
+ALTER TABLE command_transactions ADD COLUMN request_hash TEXT;
+
+CREATE TABLE save_rollback_events (
+  event_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  target_revision INTEGER NOT NULL CHECK (target_revision >= 0),
+  result_revision INTEGER NOT NULL CHECK (result_revision > target_revision),
+  created_at TEXT NOT NULL,
+  UNIQUE (save_id, result_revision)
+) STRICT;
+
+CREATE INDEX idx_save_rollback_events
+  ON save_rollback_events(save_id, result_revision, target_revision);
+
+ALTER TABLE policy_stage_results RENAME TO policy_stage_results_v4;
+
+CREATE TABLE policy_stage_results (
+  result_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  policy_id TEXT NOT NULL,
+  tick INTEGER NOT NULL CHECK (tick >= 0),
+  revision INTEGER NOT NULL CHECK (revision >= 0),
+  stage_index INTEGER NOT NULL CHECK (stage_index >= 0),
+  funding_ratio REAL NOT NULL CHECK (funding_ratio BETWEEN 0 AND 1),
+  breakdown_json TEXT NOT NULL CHECK (json_valid(breakdown_json)),
+  real_delta REAL NOT NULL,
+  reported_delta REAL NOT NULL,
+  rule_trace_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(rule_trace_json)),
+  notes_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(notes_json)),
+  created_at TEXT NOT NULL,
+  UNIQUE (save_id, policy_id, tick, revision)
+) STRICT;
+
+INSERT INTO policy_stage_results
+SELECT * FROM policy_stage_results_v4;
+
+DROP TABLE policy_stage_results_v4;
+
+CREATE INDEX idx_policy_stage_results
+  ON policy_stage_results(save_id, policy_id, tick, revision);
+
+PRAGMA user_version = 5;
+`;
+
+/** 审查修复：政策钱粮消耗与行政容量周期占用的统一 append-only 账本。 */
+const POLICY_COST_LEDGER_SCHEMA = `
+CREATE TABLE policy_cost_applications (
+  cost_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  policy_id TEXT NOT NULL,
+  tick INTEGER NOT NULL CHECK (tick >= 0),
+  revision INTEGER NOT NULL CHECK (revision >= 0),
+  resource_id TEXT NOT NULL CHECK (resource_id IN (
+    'treasuryTaels', 'grainReserveShi', 'administrativeCapacity')),
+  mode TEXT NOT NULL CHECK (mode IN ('consume', 'occupy')),
+  required REAL NOT NULL CHECK (required >= 0),
+  applied REAL NOT NULL CHECK (applied >= 0),
+  before_value REAL NOT NULL CHECK (before_value >= 0),
+  after_value REAL NOT NULL CHECK (after_value >= 0),
+  created_at TEXT NOT NULL,
+  UNIQUE (save_id, policy_id, tick, revision, resource_id)
+) STRICT;
+
+CREATE INDEX idx_policy_cost_applications
+  ON policy_cost_applications(save_id, policy_id, tick, revision);
+
+PRAGMA user_version = 6;
+`;
+
+const MEETING_RULING_IDEMPOTENCY_SCHEMA = `
+CREATE TABLE meeting_rulings (
+  ruling_id TEXT PRIMARY KEY,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  agenda_item_id TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL CHECK (length(request_hash) = 64),
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  result_json TEXT NOT NULL CHECK (json_valid(result_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+CREATE UNIQUE INDEX idx_meeting_rulings_idempotency
+  ON meeting_rulings(save_id, meeting_id, idempotency_key);
+CREATE INDEX idx_meeting_rulings_timeline
+  ON meeting_rulings(save_id, state_revision);
+
+PRAGMA user_version = 7;
+`;
+
+/** 审查修复：会议 session 采用 append-only 世界 revision 版本，逻辑回滚可恢复历史 head。 */
+const MEETING_SESSION_HISTORY_SCHEMA = `
+ALTER TABLE meeting_turns RENAME TO meeting_turns_v7;
+
+CREATE TABLE meeting_turns (
+  turn_id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  agenda_item_id TEXT,
+  turn_number INTEGER NOT NULL CHECK (turn_number >= 0),
+  type TEXT NOT NULL CHECK (type IN (
+    'opening', 'player-statement', 'player-question', 'request-to-speak',
+    'character-speech', 'character-answer', 'character-rebuttal', 'character-warning',
+    'chair-intervention', 'player-interruption', 'player-ruling',
+    'agenda-transition', 'adjournment')),
+  speaker_id TEXT NOT NULL,
+  addressed_character_ids_json TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(addressed_character_ids_json)),
+  public_text TEXT NOT NULL,
+  private_metadata_json TEXT
+    CHECK (private_metadata_json IS NULL OR json_valid(private_metadata_json)),
+  visibility TEXT NOT NULL CHECK (visibility IN ('court', 'meeting', 'private', 'sealed')),
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  meeting_version INTEGER NOT NULL CHECK (meeting_version >= 0),
+  action_id TEXT,
+  source_turn_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_turn_ids_json)),
+  prompt_versions_json TEXT
+    CHECK (prompt_versions_json IS NULL OR json_valid(prompt_versions_json)),
+  provider_trace_json TEXT
+    CHECK (provider_trace_json IS NULL OR json_valid(provider_trace_json)),
+  created_at TEXT NOT NULL,
+  UNIQUE (meeting_id, state_revision, turn_number)
+) STRICT;
+
+INSERT INTO meeting_turns SELECT * FROM meeting_turns_v7;
+DROP TABLE meeting_turns_v7;
+
+CREATE UNIQUE INDEX idx_meeting_turns_action
+  ON meeting_turns(action_id, state_revision) WHERE action_id IS NOT NULL;
+CREATE INDEX idx_meeting_turns_meeting ON meeting_turns(meeting_id, turn_number);
+CREATE INDEX idx_meeting_turns_speaker ON meeting_turns(meeting_id, speaker_id);
+CREATE INDEX idx_meeting_turns_agenda ON meeting_turns(meeting_id, agenda_item_id);
+
+CREATE TABLE meeting_session_versions (
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  meeting_version INTEGER NOT NULL CHECK (meeting_version >= 0),
+  session_json TEXT NOT NULL CHECK (json_valid(session_json)),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (meeting_id, state_revision, meeting_version)
+) STRICT;
+
+INSERT INTO meeting_session_versions (
+  meeting_id, save_id, state_revision, meeting_version, session_json, created_at
+)
+SELECT
+  meeting_id,
+  meeting_sessions.save_id,
+  (SELECT head_revision FROM saves WHERE saves.save_id = meeting_sessions.save_id),
+  meeting_version,
+  json_object(
+    'meetingId', meeting_id,
+    'saveId', meeting_sessions.save_id,
+    'type', type,
+    'status', status,
+    'title', title,
+    'purpose', purpose,
+    'createdAtRevision', created_at_revision,
+    'startedAtRevision', started_at_revision,
+    'concludedAtRevision', concluded_at_revision,
+    'meetingVersion', meeting_version,
+    'turnNumber', turn_number,
+    'participantIds', json(participant_ids_json),
+    'chairCharacterId', chair_character_id,
+    'agendaItemIds', json(agenda_item_ids_json),
+    'currentAgendaItemId', current_agenda_item_id,
+    'currentSpeakerId', current_speaker_id,
+    'pendingPlayerAction', json(pending_player_action_json),
+    'pendingAgentAction', json(pending_agent_action_json),
+    'limits', json(limits_json),
+    'usedTurns', used_turns,
+    'visibility', visibility,
+    'outcomeCandidateIds', json(outcome_candidate_ids_json),
+    'pauseReason', pause_reason,
+    'failureCode', failure_code,
+    'createdAt', created_at,
+    'updatedAt', updated_at
+  ),
+  updated_at
+FROM meeting_sessions;
+
+CREATE INDEX idx_meeting_session_versions_timeline
+  ON meeting_session_versions(save_id, meeting_id, state_revision DESC, meeting_version DESC);
+
+CREATE TABLE meeting_participant_versions (
+  version_id INTEGER PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  character_id TEXT NOT NULL,
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  entity_json TEXT NOT NULL CHECK (json_valid(entity_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+INSERT INTO meeting_participant_versions (
+  meeting_id, save_id, character_id, state_revision, entity_json, created_at
+)
+SELECT
+  participant.meeting_id,
+  session.save_id,
+  participant.character_id,
+  (SELECT head_revision FROM saves WHERE saves.save_id = session.save_id),
+  json_object(
+    'meetingId', participant.meeting_id,
+    'characterId', participant.character_id,
+    'role', role,
+    'attendance', attendance,
+    'speakingRights', speaking_rights,
+    'turnsSpoken', turns_spoken,
+    'lastSpokeAtTurn', last_spoke_at_turn,
+    'requestedToSpeak', json(CASE requested_to_speak WHEN 1 THEN 'true' ELSE 'false' END),
+    'grantedByEmperorAtTurn', granted_by_emperor_at_turn,
+    'challengedCharacterIds', json(challenged_character_ids_json),
+    'visibleUntilTurn', visible_until_turn,
+    'runtimeFlags', json(runtime_flags_json)
+  ),
+  session.updated_at
+FROM meeting_participants participant
+JOIN meeting_sessions session ON session.meeting_id = participant.meeting_id;
+
+CREATE INDEX idx_meeting_participant_versions_timeline
+  ON meeting_participant_versions(save_id, meeting_id, character_id, state_revision DESC, version_id DESC);
+
+CREATE TABLE meeting_agenda_item_versions (
+  version_id INTEGER PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  agenda_item_id TEXT NOT NULL,
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  entity_json TEXT NOT NULL CHECK (json_valid(entity_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+INSERT INTO meeting_agenda_item_versions (
+  meeting_id, save_id, agenda_item_id, state_revision, entity_json, created_at
+)
+SELECT
+  agenda.meeting_id,
+  session.save_id,
+  agenda.agenda_item_id,
+  (SELECT head_revision FROM saves WHERE saves.save_id = session.save_id),
+  json_object(
+    'agendaItemId', agenda_item_id,
+    'meetingId', agenda.meeting_id,
+    'title', agenda.title,
+    'description', description,
+    'topicIds', json(topic_ids_json),
+    'proposerId', proposer_id,
+    'status', agenda.status,
+    'priority', priority,
+    'sequence', sequence,
+    'maxTurns', max_turns,
+    'usedTurns', agenda.used_turns,
+    'relatedEntityIds', json(related_entity_ids_json),
+    'requiredOfficeIds', json(required_office_ids_json),
+    'visibility', agenda.visibility
+  ),
+  session.updated_at
+FROM meeting_agenda_items agenda
+JOIN meeting_sessions session ON session.meeting_id = agenda.meeting_id;
+
+CREATE INDEX idx_meeting_agenda_item_versions_timeline
+  ON meeting_agenda_item_versions(save_id, meeting_id, agenda_item_id, state_revision DESC, version_id DESC);
+
+CREATE TABLE meeting_outcome_candidate_versions (
+  version_id INTEGER PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  outcome_candidate_id TEXT NOT NULL,
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  entity_json TEXT NOT NULL CHECK (json_valid(entity_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+INSERT INTO meeting_outcome_candidate_versions (
+  meeting_id, save_id, outcome_candidate_id, state_revision, entity_json, created_at
+)
+SELECT
+  meeting_id,
+  save_id,
+  outcome_candidate_id,
+  (SELECT head_revision FROM saves WHERE saves.save_id = meeting_outcome_candidates.save_id),
+  json_object(
+    'outcomeCandidateId', outcome_candidate_id,
+    'meetingId', meeting_id,
+    'saveId', save_id,
+    'agendaItemId', agenda_item_id,
+    'type', type,
+    'title', title,
+    'summary', summary,
+    'proposerIds', json(proposer_ids_json),
+    'supporterIds', json(supporter_ids_json),
+    'opponentIds', json(opponent_ids_json),
+    'rationale', json(rationale_json),
+    'risks', json(risks_json),
+    'sourceTurnIds', json(source_turn_ids_json),
+    'status', status,
+    'commandPreview', json(command_preview_json),
+    'unsupportedCommand', json(CASE unsupported_command WHEN 1 THEN 'true' ELSE 'false' END),
+    'createdAtRevision', created_at_revision,
+    'createdAt', created_at
+  ),
+  created_at
+FROM meeting_outcome_candidates;
+
+CREATE INDEX idx_meeting_outcome_candidate_versions_timeline
+  ON meeting_outcome_candidate_versions(save_id, meeting_id, outcome_candidate_id, state_revision DESC, version_id DESC);
+
+CREATE TABLE meeting_leak_assessment_versions (
+  version_id INTEGER PRIMARY KEY,
+  meeting_id TEXT NOT NULL REFERENCES meeting_sessions(meeting_id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES saves(save_id) ON DELETE CASCADE,
+  state_revision INTEGER NOT NULL CHECK (state_revision >= 0),
+  entity_json TEXT NOT NULL CHECK (json_valid(entity_json)),
+  created_at TEXT NOT NULL
+) STRICT;
+
+INSERT INTO meeting_leak_assessment_versions (
+  meeting_id, save_id, state_revision, entity_json, created_at
+)
+SELECT
+  meeting_id,
+  save_id,
+  (SELECT head_revision FROM saves WHERE saves.save_id = meeting_leak_assessments.save_id),
+  json_object(
+    'meetingId', meeting_id,
+    'saveId', save_id,
+    'riskScore', risk_score,
+    'riskLevel', risk_level,
+    'contributingFactors', json(contributing_factors_json),
+    'deterministicRoll', json(deterministic_roll_json),
+    'potentialAudienceIds', json(potential_audience_ids_json),
+    'createdAtRevision', created_at_revision,
+    'createdAt', created_at
+  ),
+  created_at
+FROM meeting_leak_assessments;
+
+CREATE INDEX idx_meeting_leak_assessment_versions_timeline
+  ON meeting_leak_assessment_versions(save_id, meeting_id, state_revision DESC, version_id DESC);
+
+PRAGMA user_version = 8;
+`;
+
+/** 裁决幂等键只在当前逻辑时间线内唯一；历史时间线保留审计记录。 */
+const MEETING_RULING_TIMELINE_IDEMPOTENCY_SCHEMA = `
+DROP INDEX idx_meeting_rulings_idempotency;
+
+CREATE INDEX idx_meeting_rulings_timeline_idempotency
+  ON meeting_rulings(save_id, meeting_id, idempotency_key, state_revision DESC);
+
+PRAGMA user_version = 9;
+`;
+
 export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
   {
     id: "001-initial-save-schema",
@@ -469,6 +829,41 @@ export const DATABASE_MIGRATIONS: readonly DatabaseMigration[] = [
     fromVersion: 3,
     toVersion: 4,
     sql: POLICY_SCHEMA,
+  },
+  {
+    id: "005-rollback-timeline",
+    appVersion: "0.5.1",
+    fromVersion: 4,
+    toVersion: 5,
+    sql: ROLLBACK_TIMELINE_SCHEMA,
+  },
+  {
+    id: "006-policy-cost-ledger",
+    appVersion: "0.5.1",
+    fromVersion: 5,
+    toVersion: 6,
+    sql: POLICY_COST_LEDGER_SCHEMA,
+  },
+  {
+    id: "007-meeting-ruling-idempotency",
+    appVersion: "0.5.1",
+    fromVersion: 6,
+    toVersion: 7,
+    sql: MEETING_RULING_IDEMPOTENCY_SCHEMA,
+  },
+  {
+    id: "008-meeting-session-history",
+    appVersion: "0.5.2",
+    fromVersion: 7,
+    toVersion: 8,
+    sql: MEETING_SESSION_HISTORY_SCHEMA,
+  },
+  {
+    id: "009-meeting-ruling-timeline-idempotency",
+    appVersion: "0.5.3",
+    fromVersion: 8,
+    toVersion: 9,
+    sql: MEETING_RULING_TIMELINE_IDEMPOTENCY_SCHEMA,
   },
 ];
 

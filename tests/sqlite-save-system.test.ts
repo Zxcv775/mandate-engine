@@ -166,7 +166,8 @@ describe("Save application service", () => {
     await createDemo(system);
     const first = await system.service.commitCommand(adjustCommand(0, "idem_demo"));
     const repeated = await system.service.commitCommand(adjustCommand(0, "idem_demo"));
-    expect(repeated).toEqual(first);
+    expect(first.idempotent).toBe(false);
+    expect(repeated).toEqual({ ...first, idempotent: true });
     expect((await system.service.loadState("save_demo")).revision).toBe(1);
   });
 

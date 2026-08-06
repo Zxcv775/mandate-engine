@@ -299,7 +299,7 @@ describe("闭环二：直诏「清查京营占役」→ 偏差 → 暂停/复行
       payload: {
         expectedRevision: await revision(),
         responsibleInstitutionId: "bing-bu",
-        responsibleCharacterIds: ["wei-zhongxian", "cui-chengxiu"],
+        responsibleCharacterIds: ["cui-chengxiu"],
         additionalBudget: { treasuryTaels: 50_000 },
       },
     });

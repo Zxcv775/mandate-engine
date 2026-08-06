@@ -167,6 +167,8 @@ export const PolicyOriginSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
   z.object({ kind: z.literal("direct-decree") }).strict(),
+  /** safe-share 导出中保留政策客观状态，但不暴露其原始来源类型或标识。 */
+  z.object({ kind: z.literal("redacted") }).strict(),
 ]);
 export type PolicyOrigin = z.infer<typeof PolicyOriginSchema>;
 

@@ -10,6 +10,7 @@ export type ApiResponseMeta = z.infer<typeof ApiResponseMetaSchema>;
 
 export const ApiErrorCodeSchema = z.enum([
   "VALIDATION_ERROR",
+  "REQUEST_BODY_TOO_LARGE",
   "CONFIG_INVALID",
   "PROVIDER_UNAVAILABLE",
   "PROVIDER_REQUEST_FAILED",
@@ -21,6 +22,7 @@ export const ApiErrorCodeSchema = z.enum([
   "SAVE_ALREADY_EXISTS",
   "SAVE_ARCHIVED",
   "STATE_REVISION_CONFLICT",
+  "IDEMPOTENCY_KEY_CONFLICT",
   "STATE_INVALID",
   "STATE_LOG_INVALID",
   "ROLLBACK_TARGET_INVALID",
@@ -71,6 +73,7 @@ export const ApiErrorCodeSchema = z.enum([
   "POLICY_ALREADY_DECIDED",
   "POLICY_COST_INSUFFICIENT",
   "POLICY_ASSIGNEE_INVALID",
+  "POLICY_NO_CHANGES",
   "POLICY_LEGALITY_BLOCKED",
   "POLICY_VERSION_STALE",
   "RULE_NOT_FOUND",

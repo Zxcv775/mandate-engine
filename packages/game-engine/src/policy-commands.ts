@@ -40,6 +40,68 @@ export interface PolicyCommandAssets {
   >;
 }
 
+export function validatePolicyResponsibility(
+  state: Readonly<GameState>,
+  template: PolicyTemplate,
+  institutionId: string,
+  characterIds: readonly string[],
+): void {
+  if (institutionId !== template.responsibleInstitutionId) {
+    throw new StateEngineError(
+      "POLICY_ASSIGNEE_INVALID",
+      `责任机构必须为模板指定的 ${template.responsibleInstitutionId}`,
+    );
+  }
+  if (characterIds.length === 0 || new Set(characterIds).size !== characterIds.length) {
+    throw new StateEngineError("POLICY_ASSIGNEE_INVALID", "负责人不得为空或重复");
+  }
+  for (const characterId of characterIds) {
+    const character = state.characters[characterId];
+    if (!character || character.status !== "active") {
+      throw new StateEngineError("POLICY_ASSIGNEE_INVALID", `负责人不可用：${characterId}`);
+    }
+    if (
+      !character.officeId ||
+      !template.allowedOfficeIds.includes(character.officeId) ||
+      state.offices[character.officeId]?.holderCharacterId !== characterId
+    ) {
+      throw new StateEngineError(
+        "POLICY_ASSIGNEE_INVALID",
+        `负责人 ${characterId} 未实际担任责任机构允许官职`,
+      );
+    }
+  }
+}
+
+export function isPolicyResponsibilityValid(
+  state: Readonly<GameState>,
+  template: PolicyTemplate,
+  institutionId: string,
+  characterIds: readonly string[],
+): boolean {
+  try {
+    validatePolicyResponsibility(state, template, institutionId, characterIds);
+    return true;
+  } catch (error) {
+    if (error instanceof StateEngineError && error.code === "POLICY_ASSIGNEE_INVALID") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function compareStableIds(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** 第一位是主负责人；其余协办人的排列顺序不承载领域语义。 */
+function samePolicyResponsibility(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length || left[0] !== right[0]) return false;
+  const leftSecondary = [...left.slice(1)].sort(compareStableIds);
+  const rightSecondary = [...right.slice(1)].sort(compareStableIds);
+  return leftSecondary.every((characterId, index) => characterId === rightSecondary[index]);
+}
+
 /** 状态机事件（引擎内部；resolution 引擎另有 begin-implementation/block/complete/fail 等） */
 export type PolicyStateEvent =
   | { readonly type: "policy.submit" }
@@ -412,28 +474,12 @@ export function planPolicyIssue(
   assertNotTerminal(policy);
   const template = requireTemplate(assets, policy.templateId);
 
-  if (payload.responsibleInstitutionId !== template.responsibleInstitutionId) {
-    throw new StateEngineError(
-      "POLICY_ASSIGNEE_INVALID",
-      `责任机构必须为模板指定的 ${template.responsibleInstitutionId}`,
-    );
-  }
-  let holdsAllowedOffice = false;
-  for (const characterId of payload.responsibleCharacterIds) {
-    const character = state.characters[characterId];
-    if (!character || character.status !== "active") {
-      throw new StateEngineError("POLICY_ASSIGNEE_INVALID", `负责人不可用：${characterId}`);
-    }
-    if (character.officeId && template.allowedOfficeIds.includes(character.officeId)) {
-      holdsAllowedOffice = true;
-    }
-  }
-  if (!holdsAllowedOffice) {
-    throw new StateEngineError(
-      "POLICY_ASSIGNEE_INVALID",
-      `至少一名负责人须任职于模板允许的官职：${template.allowedOfficeIds.join("、")}`,
-    );
-  }
+  validatePolicyResponsibility(
+    state,
+    template,
+    payload.responsibleInstitutionId,
+    payload.responsibleCharacterIds,
+  );
 
   const startupTaels = template.cost.startup.treasuryTaels ?? 0;
   const startupGrain = template.cost.startup.grainReserveShi ?? 0;
@@ -537,9 +583,11 @@ export function planPolicyIssue(
 export function planPolicyAdjust(
   state: GameState,
   command: PolicyAdjustCommand,
+  assets: PolicyCommandAssets,
 ): ProposedMutation[] {
   const payload = command.payload;
   const policy = requirePolicy(state, payload.policyId);
+  const template = requireTemplate(assets, policy.templateId);
   assertNotTerminal(policy);
   if (
     !["issued", "implementing", "blocked", "partially-implemented", "suspended"].includes(
@@ -553,19 +601,26 @@ export function planPolicyAdjust(
   }
   const additionalTaels = payload.additionalBudget?.treasuryTaels ?? 0;
   const additionalGrain = payload.additionalBudget?.grainReserveShi ?? 0;
+  const willUnblock = policy.status === "blocked" && additionalTaels + additionalGrain > 0;
+  if (payload.responsibleCharacterIds || willUnblock) {
+    validatePolicyResponsibility(
+      state,
+      template,
+      policy.responsibleInstitutionId ?? template.responsibleInstitutionId,
+      payload.responsibleCharacterIds ?? policy.responsibleCharacterIds,
+    );
+  }
   if (state.country.treasuryTaels < additionalTaels) {
     throw new StateEngineError("POLICY_COST_INSUFFICIENT", "国库不足以追加预算");
   }
   if (state.country.grainReserveShi < additionalGrain) {
     throw new StateEngineError("POLICY_COST_INSUFFICIENT", "仓储不足以追加拨付");
   }
-  if (payload.responsibleCharacterIds) {
-    for (const characterId of payload.responsibleCharacterIds) {
-      const character = state.characters[characterId];
-      if (!character || character.status !== "active") {
-        throw new StateEngineError("POLICY_ASSIGNEE_INVALID", `负责人不可用：${characterId}`);
-      }
-    }
+  const sameResponsible =
+    payload.responsibleCharacterIds === undefined ||
+    samePolicyResponsibility(payload.responsibleCharacterIds, policy.responsibleCharacterIds);
+  if (additionalTaels + additionalGrain === 0 && sameResponsible) {
+    throw new StateEngineError("POLICY_NO_CHANGES", "政策调整没有任何语义变化");
   }
 
   let next: PolicyRuntimeState = {
@@ -579,7 +634,7 @@ export function planPolicyAdjust(
       : { responsibleCharacterIds: [...payload.responsibleCharacterIds] }),
   };
   // 追加预算即时解除资源型阻滞（其余阻滞由结算判断）
-  if (policy.status === "blocked" && additionalTaels + additionalGrain > 0) {
+  if (willUnblock) {
     next = transitionPolicy(next, { type: "policy.unblock" }).next;
   }
   const mutations: ProposedMutation[] = [
@@ -630,9 +685,17 @@ export function planPolicySuspend(
 export function planPolicyResume(
   state: GameState,
   command: PolicyResumeCommand,
+  assets: PolicyCommandAssets,
 ): ProposedMutation[] {
   const policy = requirePolicy(state, command.payload.policyId);
   assertNotTerminal(policy);
+  const template = requireTemplate(assets, policy.templateId);
+  validatePolicyResponsibility(
+    state,
+    template,
+    policy.responsibleInstitutionId ?? template.responsibleInstitutionId,
+    policy.responsibleCharacterIds,
+  );
   const next = transitionPolicy(policy, {
     type: "policy.resume",
     to: policy.lastResolutionTick === undefined ? "issued" : "implementing",

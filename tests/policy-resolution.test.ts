@@ -166,7 +166,7 @@ describe("政策执行结算（ADR-025）", () => {
     expect(replayState.rng.cursor).toBe(0);
   });
 
-  it("钱粮断绝 → blocked 留 blockedReason；追加预算解除并恢复推进", async () => {
+  it("钱粮断绝 → blocked；外部补资后的首 tick 正常付款再恢复推进", async () => {
     const system = await setup("save_blk", "blk-seed");
     let revision = await issuePolicy(system, "save_blk");
     let state = await system.service.loadState("save_blk");
@@ -197,7 +197,7 @@ describe("政策执行结算（ADR-025）", () => {
     expect(state.policies.p1!.status).toBe("blocked");
     expect(state.policies.p1!.blockedReason).toContain("钱粮");
 
-    // 补银入库 + 追加预算 → 解除阻滞
+    // 外部补充银粮，不走 policy.adjust；blocked 恢复的首 tick 必须重新计算并付款。
     await system.service.commitCommand(
       command("save_blk", "country.adjust-resource", revision, {
         resource: "treasuryTaels",
@@ -207,15 +207,21 @@ describe("政策执行结算（ADR-025）", () => {
     );
     revision += 1;
     await system.service.commitCommand(
-      command("save_blk", "policy.adjust", revision, {
-        policyId: "p1",
-        additionalBudget: { treasuryTaels: 100_000 },
-        reason: "加拨赈银",
+      command("save_blk", "country.adjust-resource", revision, {
+        resource: "grainReserveShi",
+        delta: 200_000,
+        reason: "开仓补粮（测试）",
       }),
     );
     revision += 1;
+    const funded = await system.service.loadState("save_blk");
+    const progressBefore = funded.policies.p1!.stageProgress;
+    revision = await advance(system, "save_blk", revision);
     state = await system.service.loadState("save_blk");
     expect(state.policies.p1!.status).toBe("implementing");
+    expect(state.policies.p1!.stageProgress).toBeGreaterThan(progressBefore);
+    expect(state.country.treasuryTaels).toBe(funded.country.treasuryTaels - 800);
+    expect(state.country.grainReserveShi).toBe(funded.country.grainReserveShi - 600);
   });
 
   it("偏差留痕：确定性触发进偏差日志，真实与奏报口径分离", async () => {
@@ -235,6 +241,65 @@ describe("政策执行结算（ADR-025）", () => {
     expect(new Set(truth.deviations.map((d) => d.type))).toEqual(
       new Set(deviations.map((d) => d.type)),
     );
+  });
+
+  it("行政容量按 policyId 稳定争用并进入统一占用账本", async () => {
+    const system = await setup("save_capacity", "capacity-seed");
+    let state = await system.service.loadState("save_capacity");
+    let revision = 0;
+    await system.service.commitCommand(
+      command("save_capacity", "country.adjust-resource", revision, {
+        resource: "administrativeCapacity",
+        delta: 10 - state.country.administrativeCapacity,
+        reason: "容量争用测试",
+      }),
+    );
+    revision += 1;
+    for (const policyId of ["p-a", "p-b"]) {
+      await system.service.commitCommand(
+        command("save_capacity", "policy.propose", revision++, {
+          policyId,
+          templateId: "policy-qinding-nian",
+          origin: { kind: "direct-decree" },
+        }),
+      );
+      await system.service.commitCommand(
+        command("save_capacity", "policy.approve", revision++, { policyId }),
+      );
+      await system.service.commitCommand(
+        command("save_capacity", "policy.issue", revision++, {
+          policyId,
+          responsibleInstitutionId: "nei-ge",
+          responsibleCharacterIds: ["huang-liji"],
+        }),
+      );
+    }
+    await advance(system, "save_capacity", revision);
+    const first = system.policyDetails.listStageResults("save_capacity", "p-a")[0]!;
+    const second = system.policyDetails.listStageResults("save_capacity", "p-b")[0]!;
+    expect(first.fundingRatio).toBe(1);
+    expect(second.fundingRatio).toBeCloseTo(4 / 6);
+    const ledger = system.policyDetails.listCostApplications("save_capacity");
+    expect(ledger.filter((entry) => entry.resourceId === "administrativeCapacity")).toEqual([
+      expect.objectContaining({
+        policyId: "p-a",
+        mode: "occupy",
+        required: 6,
+        applied: 6,
+        before: 10,
+        after: 4,
+      }),
+      expect.objectContaining({
+        policyId: "p-b",
+        mode: "occupy",
+        required: 6,
+        applied: 4,
+        before: 4,
+        after: 0,
+      }),
+    ]);
+    state = await system.service.loadState("save_capacity");
+    expect(state.country.administrativeCapacity).toBe(10);
   });
 });
 

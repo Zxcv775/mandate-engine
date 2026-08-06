@@ -3,9 +3,11 @@ import type { PolicyReport } from "@mandate/domain";
 import type {
   PolicyDeviationLogRecord,
   PolicyResolutionArtifacts,
+  PolicyCostApplicationRecord,
   PolicyStageResultRecord,
 } from "@mandate/game-engine";
 import type { Clock } from "@mandate/game-engine";
+import { currentTimelineRevisionPredicate } from "./timeline";
 
 /**
  * 政策明细仓储（migration 004，ADR-025）。
@@ -23,14 +25,14 @@ export class PolicyDetailRepository {
   insertResolutionArtifacts(artifacts: PolicyResolutionArtifacts): void {
     const now = this.clock.now().toISOString();
     const insertResult = this.database.prepare(
-      `INSERT OR REPLACE INTO policy_stage_results (
+      `INSERT INTO policy_stage_results (
          result_id, save_id, policy_id, tick, revision, stage_index, funding_ratio,
          breakdown_json, real_delta, reported_delta, rule_trace_json, notes_json, created_at
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const result of artifacts.stageResults) {
       insertResult.run(
-        `psr_${result.saveId}_${result.policyId}_${result.tick}`,
+        `psr_${result.saveId}_${result.policyId}_${result.tick}_${result.revision}`,
         result.saveId,
         result.policyId,
         result.tick,
@@ -46,14 +48,14 @@ export class PolicyDetailRepository {
       );
     }
     const insertReport = this.database.prepare(
-      `INSERT OR REPLACE INTO policy_reports (
+      `INSERT INTO policy_reports (
          report_id, save_id, policy_id, tick, revision, stage_index,
          reported_stage_progress, reported_overall_progress, audience, text, created_at
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const report of artifacts.reports) {
       insertReport.run(
-        report.reportId,
+        `${report.reportId}_r${report.revision}`,
         report.saveId,
         report.policyId,
         report.tick,
@@ -67,14 +69,14 @@ export class PolicyDetailRepository {
       );
     }
     const insertDeviation = this.database.prepare(
-      `INSERT OR REPLACE INTO policy_deviation_log (
+      `INSERT INTO policy_deviation_log (
          deviation_id, save_id, policy_id, tick, revision, deviation_type,
          magnitude, real_deviation, discovered, created_at
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     artifacts.deviationLogs.forEach((deviation, index) => {
       insertDeviation.run(
-        `pdl_${deviation.saveId}_${deviation.policyId}_${deviation.tick}_${index}`,
+        `pdl_${deviation.saveId}_${deviation.policyId}_${deviation.tick}_${deviation.revision}_${index}`,
         deviation.saveId,
         deviation.policyId,
         deviation.tick,
@@ -86,6 +88,51 @@ export class PolicyDetailRepository {
         now,
       );
     });
+    const insertCost = this.database.prepare(
+      `INSERT INTO policy_cost_applications (
+         cost_id, save_id, policy_id, tick, revision, resource_id, mode,
+         required, applied, before_value, after_value, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    artifacts.costApplications.forEach((entry) => {
+      insertCost.run(
+        `pca_${entry.saveId}_${entry.policyId}_${entry.tick}_${entry.revision}_${entry.resourceId}`,
+        entry.saveId,
+        entry.policyId,
+        entry.tick,
+        entry.revision,
+        entry.resourceId,
+        entry.mode,
+        entry.required,
+        entry.applied,
+        entry.before,
+        entry.after,
+        now,
+      );
+    });
+  }
+
+  listCostApplications(saveId: string, policyId?: string): PolicyCostApplicationRecord[] {
+    const rows = this.database
+      .prepare(
+        `SELECT * FROM policy_cost_applications
+         WHERE save_id = ? AND (? IS NULL OR policy_id = ?)
+           AND ${currentTimelineRevisionPredicate("policy_cost_applications.save_id", "policy_cost_applications.revision")}
+         ORDER BY tick, policy_id, resource_id`,
+      )
+      .all(saveId, policyId ?? null, policyId ?? null) as Array<Record<string, unknown>>;
+    return rows.map((row) => ({
+      saveId: String(row.save_id),
+      policyId: String(row.policy_id),
+      tick: Number(row.tick),
+      revision: Number(row.revision),
+      resourceId: String(row.resource_id) as PolicyCostApplicationRecord["resourceId"],
+      mode: String(row.mode) as PolicyCostApplicationRecord["mode"],
+      required: Number(row.required),
+      applied: Number(row.applied),
+      before: Number(row.before_value),
+      after: Number(row.after_value),
+    }));
   }
 
   /** 公开奏报（玩家 API）：audience=public，游标分页（tick 降序） */
@@ -101,6 +148,7 @@ export class PolicyDetailRepository {
       .prepare(
         `SELECT * FROM policy_reports
          WHERE save_id = ? AND policy_id = ? AND audience = ? AND tick < ?
+           AND ${currentTimelineRevisionPredicate("policy_reports.save_id", "policy_reports.revision")}
          ORDER BY tick DESC, report_id DESC LIMIT ?`,
       )
       .all(saveId, policyId, audience, cursor, limit + 1) as Array<Record<string, unknown>>;
@@ -127,7 +175,12 @@ export class PolicyDetailRepository {
     const rows = this.database
       .prepare(
         `SELECT * FROM policy_stage_results
-         WHERE save_id = ? AND policy_id = ? ORDER BY tick DESC LIMIT ?`,
+         WHERE save_id = ? AND policy_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "policy_stage_results.save_id",
+             "policy_stage_results.revision",
+           )}
+         ORDER BY tick DESC, revision DESC LIMIT ?`,
       )
       .all(saveId, policyId, Math.min(limit, 200)) as Array<Record<string, unknown>>;
     return rows.map((row) => ({
@@ -149,7 +202,12 @@ export class PolicyDetailRepository {
     const rows = this.database
       .prepare(
         `SELECT * FROM policy_deviation_log
-         WHERE save_id = ? AND policy_id = ? ORDER BY tick ASC`,
+         WHERE save_id = ? AND policy_id = ?
+           AND ${currentTimelineRevisionPredicate(
+             "policy_deviation_log.save_id",
+             "policy_deviation_log.revision",
+           )}
+         ORDER BY tick ASC, revision ASC`,
       )
       .all(saveId, policyId) as Array<Record<string, unknown>>;
     return rows.map((row) => ({

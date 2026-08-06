@@ -280,6 +280,34 @@ describe("一致性检查器单元规则", () => {
     expect(report.violations.some((v) => v.code === "NUMERIC_LEAK")).toBe(true);
   });
 
+  it.each([
+    ["publicReasoning", "谨慎评分为８０"],
+    ["claims", "其信任值为百分之七十"],
+    ["proposedActions", "administration score: 72%"],
+    ["memoryCandidates", "野心数值是七十五"],
+    ["uncertaintyNotes", "resistance score 为 66"],
+  ] as const)("数值泄露覆盖 %s 字段及中英文数字格式", (field, leakedText) => {
+    const output = buildMockCharacterOutput("support");
+    if (field === "publicReasoning") output.stance.publicReasoning = [leakedText];
+    if (field === "claims") output.claims[0] = { ...output.claims[0]!, claim: leakedText };
+    if (field === "proposedActions") {
+      output.proposedActions[0] = { ...output.proposedActions[0]!, summary: leakedText };
+    }
+    if (field === "memoryCandidates") {
+      output.memoryCandidates[0] = { ...output.memoryCandidates[0]!, content: leakedText };
+    }
+    if (field === "uncertaintyNotes") output.uncertaintyNotes = [leakedText];
+    const report = evaluateCharacterConsistency({
+      template,
+      view: view as never,
+      mode: "court-assembly",
+      output,
+      mustNotReveal: [],
+    });
+    expect(report.passed).toBe(false);
+    expect(report.violations.some((violation) => violation.code === "NUMERIC_LEAK")).toBe(true);
+  });
+
   it("现代语汇：少量为 warning，不阻断", () => {
     const report = evaluate("臣以为此项目须再议。");
     expect(report.passed).toBe(true);

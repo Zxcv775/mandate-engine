@@ -383,4 +383,49 @@ describe("policy.* 白名单命令（§8.2）", () => {
     const state = await system.service.loadState("save_policy");
     expect(state.policies.p1!.remainingBudget.treasuryTaels).toBe(5_000);
   });
+
+  it("adjust：active 但官职不合格的负责人被统一资格校验拒绝", async () => {
+    const system = await setup();
+    await proposeAndApprove(system);
+    await system.service.commitCommand(
+      command("policy.issue", 2, {
+        policyId: "p1",
+        responsibleInstitutionId: "hu-bu",
+        responsibleCharacterIds: ["huang-liji"],
+      }),
+    );
+    await expect(
+      system.service.commitCommand(
+        command("policy.adjust", 3, {
+          policyId: "p1",
+          responsibleCharacterIds: ["wei-zhongxian"],
+          reason: "换人",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "POLICY_ASSIGNEE_INVALID" });
+    expect((await system.service.loadState("save_policy")).revision).toBe(3);
+  });
+
+  it("adjust：零预算和完全相同负责人均为 POLICY_NO_CHANGES，revision/日志不增长", async () => {
+    const system = await setup();
+    await proposeAndApprove(system);
+    await system.service.commitCommand(
+      command("policy.issue", 2, {
+        policyId: "p1",
+        responsibleInstitutionId: "hu-bu",
+        responsibleCharacterIds: ["huang-liji"],
+      }),
+    );
+    const changesBefore = (await system.service.listChanges("save_policy", {})).length;
+    for (const payload of [
+      { policyId: "p1", additionalBudget: { treasuryTaels: 0 }, reason: "空拨" },
+      { policyId: "p1", responsibleCharacterIds: ["huang-liji"], reason: "原人" },
+    ]) {
+      await expect(
+        system.service.commitCommand(command("policy.adjust", 3, payload)),
+      ).rejects.toMatchObject({ code: "POLICY_NO_CHANGES" });
+    }
+    expect((await system.service.loadState("save_policy")).revision).toBe(3);
+    expect((await system.service.listChanges("save_policy", {})).length).toBe(changesBefore);
+  });
 });

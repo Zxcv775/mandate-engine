@@ -70,7 +70,12 @@ export interface SaveRepositoryContract {
   loadStateAtRevision(saveId: string, revision: number): GameState;
   loadChanges(saveId: string, fromRevision?: number, toRevision?: number): StateChangeLogEntry[];
   createCheckpoint(saveId: string, input: CheckpointInput): CheckpointMetadata;
-  findIdempotentResult(saveId: string, idempotencyKey: string): CommitResult | null;
+  findIdempotentResult(
+    saveId: string,
+    idempotencyKey: string,
+    requestHash: string,
+  ): CommitResult | null;
+  runInTransaction<T>(work: () => T): T;
   commitTransition(
     command: GameCommand,
     transition: import("@mandate/game-engine").StateTransition,

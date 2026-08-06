@@ -1,4 +1,8 @@
-import { SaveExportManifestSchema, type SaveExportManifest } from "@mandate/domain";
+import {
+  MAX_SAVE_ARCHIVE_BYTES,
+  SaveExportManifestSchema,
+  type SaveExportManifest,
+} from "@mandate/domain";
 import { sha256Hex, stableStringify } from "@mandate/game-engine";
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -11,6 +15,171 @@ import { SaveSystemError } from "./errors";
 const REQUIRED_ENTRIES = ["manifest.json", "payload.sqlite", "checksums.json"] as const;
 const ENCRYPTED_FORMAT = "mandate-encrypted-save";
 const SCRYPT_COST = 16_384;
+const SUPPORTED_ZIP_GENERAL_PURPOSE_FLAGS = 0;
+
+export interface SaveImportLimits {
+  maxArchiveBytes: number;
+  maxEntryCount: number;
+  maxEntryUncompressedBytes: number;
+  maxTotalUncompressedBytes: number;
+  maxCompressionRatio: number;
+  maxFileNameLength: number;
+  maxDirectoryDepth: number;
+}
+
+export const DEFAULT_SAVE_IMPORT_LIMITS: Readonly<SaveImportLimits> = {
+  maxArchiveBytes: MAX_SAVE_ARCHIVE_BYTES,
+  maxEntryCount: REQUIRED_ENTRIES.length,
+  maxEntryUncompressedBytes: 64 * 1024 * 1024,
+  maxTotalUncompressedBytes: 64 * 1024 * 1024 + 128 * 1024,
+  maxCompressionRatio: 200,
+  maxFileNameLength: 64,
+  maxDirectoryDepth: 0,
+};
+
+interface ZipEntryMetadata {
+  name: string;
+  compressedSize: number;
+  uncompressedSize: number;
+}
+
+function invalidArchive(reason: string): never {
+  throw new SaveSystemError("SAVE_PACKAGE_INVALID", `存档 ZIP 元数据无效：${reason}`);
+}
+
+function readZipMetadata(bytes: Uint8Array, limits: SaveImportLimits): ZipEntryMetadata[] {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  const minimum = Math.max(0, bytes.length - 65_557);
+  for (let offset = bytes.length - 22; offset >= minimum; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) {
+      eocd = offset;
+      break;
+    }
+  }
+  if (eocd < 0) invalidArchive("缺少中央目录");
+  const currentDisk = view.getUint16(eocd + 4, true);
+  const centralDirectoryDisk = view.getUint16(eocd + 6, true);
+  const entriesOnDisk = view.getUint16(eocd + 8, true);
+  const entryCount = view.getUint16(eocd + 10, true);
+  const centralSize = view.getUint32(eocd + 12, true);
+  const centralOffset = view.getUint32(eocd + 16, true);
+  if (
+    entriesOnDisk === 0xffff ||
+    entryCount === 0xffff ||
+    centralSize === 0xffffffff ||
+    centralOffset === 0xffffffff
+  ) {
+    invalidArchive("不支持 ZIP64");
+  }
+  if (currentDisk !== 0 || centralDirectoryDisk !== 0 || entriesOnDisk !== entryCount) {
+    invalidArchive("只支持单磁盘且中央目录计数必须一致");
+  }
+  if (entryCount > limits.maxEntryCount || centralOffset + centralSize > eocd) {
+    invalidArchive("entry 数量或目录边界超限");
+  }
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const seen = new Set<string>();
+  const entries: ZipEntryMetadata[] = [];
+  const localRanges: Array<{ start: number; end: number }> = [];
+  let total = 0;
+  let offset = centralOffset;
+  try {
+    for (let index = 0; index < entryCount; index += 1) {
+      if (offset + 46 > eocd || view.getUint32(offset, true) !== 0x02014b50) {
+        invalidArchive("中央目录项损坏");
+      }
+      const flags = view.getUint16(offset + 8, true);
+      const compressionMethod = view.getUint16(offset + 10, true);
+      const crc32 = view.getUint32(offset + 16, true);
+      const compressedSize = view.getUint32(offset + 20, true);
+      const uncompressedSize = view.getUint32(offset + 24, true);
+      const nameLength = view.getUint16(offset + 28, true);
+      const extraLength = view.getUint16(offset + 30, true);
+      const commentLength = view.getUint16(offset + 32, true);
+      const localOffset = view.getUint32(offset + 42, true);
+      const end = offset + 46 + nameLength + extraLength + commentLength;
+      if (
+        flags !== SUPPORTED_ZIP_GENERAL_PURPOSE_FLAGS ||
+        ![0, 8].includes(compressionMethod) ||
+        compressedSize === 0xffffffff ||
+        uncompressedSize === 0xffffffff ||
+        localOffset === 0xffffffff ||
+        end > eocd ||
+        localOffset + 30 > centralOffset
+      ) {
+        invalidArchive("加密项或目录边界无效");
+      }
+      const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
+      if (
+        name.length === 0 ||
+        name.length > limits.maxFileNameLength ||
+        name.includes("\0") ||
+        name.startsWith("/") ||
+        name.startsWith("\\") ||
+        /^[A-Za-z]:/.test(name) ||
+        name.split(/[\\/]/).includes("..") ||
+        name.split(/[\\/]/).length - 1 > limits.maxDirectoryDepth
+      ) {
+        invalidArchive("entry 路径非法");
+      }
+      if (seen.has(name)) invalidArchive("entry 重复");
+      seen.add(name);
+      if (!REQUIRED_ENTRIES.includes(name as (typeof REQUIRED_ENTRIES)[number])) {
+        invalidArchive("包含未知 entry");
+      }
+      if (
+        uncompressedSize > limits.maxEntryUncompressedBytes ||
+        uncompressedSize / Math.max(compressedSize, 1) > limits.maxCompressionRatio
+      ) {
+        invalidArchive("entry 展开大小或压缩率超限");
+      }
+      total += uncompressedSize;
+      if (total > limits.maxTotalUncompressedBytes) invalidArchive("总展开大小超限");
+      if (view.getUint32(localOffset, true) !== 0x04034b50) invalidArchive("本地文件头损坏");
+      const localFlags = view.getUint16(localOffset + 6, true);
+      const localCompressionMethod = view.getUint16(localOffset + 8, true);
+      const localCrc32 = view.getUint32(localOffset + 14, true);
+      const localCompressedSize = view.getUint32(localOffset + 18, true);
+      const localUncompressedSize = view.getUint32(localOffset + 22, true);
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const localNameStart = localOffset + 30;
+      const localNameEnd = localNameStart + localNameLength;
+      const dataStart = localNameEnd + localExtraLength;
+      const dataEnd = dataStart + compressedSize;
+      if (
+        localFlags !== flags ||
+        localCompressionMethod !== compressionMethod ||
+        localCrc32 !== crc32 ||
+        localCompressedSize !== compressedSize ||
+        localUncompressedSize !== uncompressedSize ||
+        localNameLength !== nameLength ||
+        localNameEnd > centralOffset ||
+        dataStart > centralOffset ||
+        dataEnd > centralOffset
+      ) {
+        invalidArchive("本地文件头与中央目录不一致或数据边界无效");
+      }
+      const localName = decoder.decode(bytes.subarray(localNameStart, localNameEnd));
+      if (localName !== name) invalidArchive("本地文件名与中央目录不一致");
+      localRanges.push({ start: localOffset, end: dataEnd });
+      entries.push({ name, compressedSize, uncompressedSize });
+      offset = end;
+    }
+  } catch (error) {
+    if (error instanceof SaveSystemError) throw error;
+    invalidArchive("目录编码或边界无效");
+  }
+  if (offset !== centralOffset + centralSize) invalidArchive("中央目录长度不一致");
+  localRanges.sort((left, right) => left.start - right.start);
+  for (let index = 1; index < localRanges.length; index += 1) {
+    if (localRanges[index]!.start < localRanges[index - 1]!.end) {
+      invalidArchive("本地 entry 数据区域重叠");
+    }
+  }
+  return entries;
+}
 
 interface PackageChecksums {
   algorithm: "sha256";
@@ -143,10 +312,17 @@ export function buildSavePackage(
   return password ? encryptPackage(archive, password) : archive;
 }
 
-export function parseSavePackage(bytes: Uint8Array, password?: string): ParsedSavePackage {
+export function parseSavePackage(
+  bytes: Uint8Array,
+  password?: string,
+  limits: SaveImportLimits = DEFAULT_SAVE_IMPORT_LIMITS,
+): ParsedSavePackage {
   const packageHash = sha256Hex(bytes);
   try {
+    if (bytes.byteLength > limits.maxArchiveBytes) invalidArchive("archive 大小超限");
     const plain = decryptPackage(bytes, password);
+    if (plain.byteLength > limits.maxArchiveBytes) invalidArchive("解密后 archive 大小超限");
+    const metadata = readZipMetadata(plain, limits);
     const entries = unzipSync(plain);
     const entryNames = Object.keys(entries);
     if (
@@ -159,6 +335,11 @@ export function parseSavePackage(bytes: Uint8Array, password?: string): ParsedSa
     }
     for (const name of REQUIRED_ENTRIES) {
       if (!entries[name]) throw new Error(`missing ${name}`);
+    }
+    for (const item of metadata) {
+      if (entries[item.name]?.byteLength !== item.uncompressedSize) {
+        throw new Error("entry size mismatch");
+      }
     }
     const manifestBytes = entries["manifest.json"] as Uint8Array;
     const payload = entries["payload.sqlite"] as Uint8Array;

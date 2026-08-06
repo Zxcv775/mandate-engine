@@ -32,6 +32,8 @@ export function PolicyLab() {
   const running = ["issued", "implementing", "blocked", "partially-implemented"].includes(
     selected?.status ?? "",
   );
+  const adjustmentBudget = Number(state.budgetTaels);
+  const adjustable = running && Number.isFinite(adjustmentBudget) && adjustmentBudget > 0;
   const suspendable = running;
   const resumable = selected?.status === "suspended";
   const cancellable =
@@ -142,7 +144,11 @@ export function PolicyLab() {
                 {STATUS_LABELS[selected.status] ?? selected.status}
               </span>
               <span className="plab-origin">
-                {selected.origin.kind === "direct-decree" ? "直诏" : "会议来源"}
+                {selected.origin.kind === "direct-decree"
+                  ? "直诏"
+                  : selected.origin.kind === "meeting"
+                    ? "会议来源"
+                    : "来源已脱敏"}
               </span>
             </h2>
             <p>
@@ -204,7 +210,7 @@ export function PolicyLab() {
               </button>
               <button
                 type="button"
-                disabled={state.busy || !running}
+                disabled={state.busy || !adjustable}
                 onClick={() => void state.adjust()}
               >
                 调整 adjust

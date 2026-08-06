@@ -231,6 +231,22 @@ export class CharacterService {
       return mapAgentError(error);
     }
 
+    // Provider 调用期间世界状态可能已前进。过期结果不得写入对话或人物记忆。
+    const latestState = await this.options.gameStateService.loadState(saveId);
+    if (latestState.revision !== request.expectedRevision) {
+      return mapAgentError(
+        new CharacterAgentError(
+          "CHARACTER_CONTEXT_STALE",
+          `人物上下文已过期：期望 revision ${request.expectedRevision}，当前为 ${latestState.revision}`,
+        ),
+      );
+    }
+    if (!CharacterService.isAvailable(latestState, characterId)) {
+      return mapAgentError(
+        new CharacterAgentError("CHARACTER_NOT_AVAILABLE", `人物当前不可用：${characterId}`),
+      );
+    }
+
     // 记忆候选：Schema 校验 → Memory Policy → 落库（Agent 无直接写权限）
     const existing = this.options.memories.listMemories(saveId, characterId, {
       limit: 200,

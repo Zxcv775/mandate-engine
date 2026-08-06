@@ -243,6 +243,40 @@ describe("解释器顺序与 trace（ADR-022）", () => {
       ),
     ).toThrowError(expect.objectContaining({ code: "RULE_EFFECT_UNSUPPORTED" }));
   });
+
+  it("remove-modifier 以 discriminated source 精确匹配，不命中相似 ID 或不同 kind", () => {
+    const state = makeFixtureState();
+    state.modifiers = {
+      "m-p1": makeModifier({
+        modifierId: "m-p1",
+        source: { kind: "policy", policyId: "policy-1" },
+      }),
+      "m-p10": makeModifier({
+        modifierId: "m-p10",
+        source: { kind: "policy", policyId: "policy-10" },
+      }),
+      "m-event": makeModifier({
+        modifierId: "m-event",
+        source: { kind: "event", eventId: "policy-1" },
+      }),
+      "m-rule": makeModifier({
+        modifierId: "m-rule",
+        source: { kind: "rule", ruleId: "policy-1" },
+      }),
+    };
+    const plan = planEffectMutations(
+      state,
+      [
+        {
+          type: "remove-modifier",
+          bySource: { kind: "policy", policyId: "policy-1" },
+          reason: "精确撤销",
+        },
+      ],
+      { tick: 1, sourceKind: "system", sourceId: "test" },
+    );
+    expect(plan.mutations.map((item) => item.path)).toEqual(["/modifiers/m-p1"]);
+  });
 });
 
 describe("规则注册表 Manifest（Snapshot 规格）", () => {

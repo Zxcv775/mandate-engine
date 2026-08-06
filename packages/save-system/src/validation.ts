@@ -185,6 +185,10 @@ export function validateSave(
     .all(saveId) as Array<{ revision: number }>;
   const headRevision = Number(save.head_revision);
   const hasHeadSnapshot = snapshotRevisionRows.some((row) => Number(row.revision) === headRevision);
+  const anchorRevision = Math.min(
+    headRevision,
+    ...snapshotRevisionRows.map((row) => Number(row.revision)),
+  );
   const committedRevisions = new Set(
     transactionRows
       .filter((row) => row.status === "committed")
@@ -192,9 +196,10 @@ export function validateSave(
   );
   const missingRevisions = hasHeadSnapshot
     ? []
-    : Array.from({ length: headRevision }, (_, index) => index + 1).filter(
-        (revision) => !committedRevisions.has(revision),
-      );
+    : Array.from(
+        { length: Math.max(0, headRevision - anchorRevision) },
+        (_, index) => anchorRevision + index + 1,
+      ).filter((revision) => !committedRevisions.has(revision));
   checks.push(
     check(
       "REVISION_CONTINUITY",

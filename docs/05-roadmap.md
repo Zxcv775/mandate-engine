@@ -87,7 +87,10 @@
   政策 API + Policy Lab；`check:phase5` 全绿。
 - 调整：政策创建走"模板 + 白名单命令"而非自然语言 Policy Parser——LLM 只在会议中
   荐策（propose-policy 候选），Parser 式自由立策留待后续阶段评审。
-- 见 ADR-022~026 与 `docs/09-phase-5-implementation.md`。
+- 代码审查加固：回滚时间线投影、会议共享事务、幂等竞态、Agent 陈旧响应、safe-share、
+  ZIP 导入边界、政策责任校验/成本账本/无操作防线等见 `docs/10-review-fixes.md`；
+  migration 005/006/007 仅扩展审计、投影与裁决幂等，不进入 Phase 6。
+- 见 ADR-022~026、`docs/09-phase-5-implementation.md` 与 `docs/10-review-fixes.md`。
 
 ## Phase 6 · 事件和时间推进
 

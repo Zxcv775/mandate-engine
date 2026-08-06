@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ModifierSourceSchema } from "./modifier";
 import { ModifierTemplateSchema } from "./modifier";
 
 /**
@@ -153,8 +154,8 @@ export const RuleEffectSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("remove-modifier"),
-      /** 按来源清除：policyId / eventId / ruleId */
-      bySource: IdSchema,
+      /** 按完整 discriminated source 清除，禁止模糊 ID 匹配。 */
+      bySource: ModifierSourceSchema,
       reason: TextSchema,
     })
     .strict(),

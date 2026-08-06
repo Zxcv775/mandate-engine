@@ -133,9 +133,13 @@ officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
 ### Policy（政策）
 
 - 用途：玩家决策的结构化载体，规则结算的输入。
-- 主要字段：`id`、`name`、`description`、`status`（draft / issued / executing / suspended / repealed）、`targetRegionIds`（或 "all"）、`modifiers`、`legitimacyCost`、`executionResistance`、`issuedAtGameDate?`。
-- 关系：由 ImperialDecree 颁布；产生 Modifier 作用于状态；在会议中获得合法性修正。
-- 归属：**运行时**。LLM 可写：**仅限草案**（draft，须经制度校验与玩家裁决）。
+- 模板：`PolicyTemplate` 定义类别、范围、责任机构/官职、启动与逐 tick 成本、阶段、效果、
+  阻力和合法性；位于 `data/policies/`，只读且带史料标注。
+- 运行态：`PolicyRuntimeState` 使用 11 态生命周期，保存责任人、阶段/总体进度、投入与剩余资源、
+  来源和最后结算 tick；真实进度与偏差位于 `hidden.policyTruth`。
+- 关系：会议裁决或皇帝直诏提出；八种 `policy.*` 白名单命令推进；规则引擎产生 Modifier、
+  阶段结果、成本应用、偏差与奏报。
+- 归属：**模板 + 运行时 + hidden 真实态**。LLM 可写：否；LLM 只可提出结构化候选，玩家裁决后由命令落地。
 
 ### ImperialDecree（圣旨/诏令）
 
@@ -183,8 +187,9 @@ officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
 ### Modifier（修正器）
 
 - 用途：**数据驱动规则的核心**——一切数值影响的统一表达。
-- 主要字段：`id`、`sourceId`（政策/人物/制度/事件）、`targetPath`（状态路径）、`operation`（add / multiply / set）、`value`、`durationTurns?`、`condition?`（白名单 DSL）、`reason?`。
-- 关系：由 Policy/Event/Institution 产生；由规则引擎合成与结算（FR-RULE-003）。
+- 主要字段：`modifierId`、结构化 `source`（policy/event/rule/system）、结构化 `target`、
+  指标白名单、`operation`（add/mul/clamp-min/clamp-max）、`value`、生效/过期 tick、叠加规则与来源。
+- 关系：由 Policy/Event/Rule/System 产生；按固定顺序与 ID 排序确定性合成；删除时按结构化来源精确匹配。
 - 归属：**运行时**。LLM 可写：否（草案中的 Modifier 须经规则引擎换算确认）。
 
 ### Memory（记忆）
@@ -226,31 +231,31 @@ officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
 
 ## 2. 实体—归属速查表
 
-| 类别        | 实体                                                                                                                                                                        |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 纯模板      | Dynasty、Scenario、Institution、EventChain、HistoricalSource                                                                                                                |
-| 模板+运行时 | Character、Office、Faction、Event                                                                                                                                           |
-| 纯运行时    | Country、Region、Relationship、Meeting、MeetingParticipant、Memorial、IntelligenceReport、Policy、ImperialDecree、Army、War、Memory、GameSession、GameState、StateChangeLog |
-| 值对象      | Resource、Modifier（随宿主）                                                                                                                                                |
+| 类别        | 实体                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 纯模板      | Dynasty、Scenario、Institution、EventChain、HistoricalSource                                                                                                        |
+| 模板+运行时 | Character、Office、Faction、Event、Policy                                                                                                                           |
+| 纯运行时    | Country、Region、Relationship、Meeting、MeetingParticipant、Memorial、IntelligenceReport、ImperialDecree、Army、War、Memory、GameSession、GameState、StateChangeLog |
+| 值对象      | Resource、Modifier（随宿主）                                                                                                                                        |
 
 ## 3. LLM 可写白名单（全集）
 
-| 内容                    | 落入实体                                           | 校验与落地                   |
-| ----------------------- | -------------------------------------------------- | ---------------------------- |
-| 发言/奏折/情报/叙事文本 | Meeting 发言、Memorial、IntelligenceReport、Memory | Schema + 系统写入            |
-| 政策草案                | Policy(status=draft)                               | Schema + 制度校验 + 玩家裁决 |
-| 记忆摘要                | Memory.content                                     | Memory Manager 写入          |
+| 内容                    | 落入实体                                           | 校验与落地                       |
+| ----------------------- | -------------------------------------------------- | -------------------------------- |
+| 发言/奏折/情报/叙事文本 | Meeting 发言、Memorial、IntelligenceReport、Memory | Schema + 系统写入                |
+| 政策候选文本/理由       | Meeting outcome candidate                          | Schema + 玩家裁决；不直写 Policy |
+| 记忆摘要                | Memory.content                                     | Memory Manager 写入              |
 
 除上表外，LLM 对任何实体字段均无写权限。
 
-## 4. Phase 2 运行时聚合
+## 4. 当前运行时聚合
 
 `packages/domain/src/state.ts` 是实际 GameState Schema 的唯一来源。顶层包含：
 
 - 版本与身份：`schemaVersion`、`stateVersion`、`saveId`、`scenarioId`、`dynastyId`；
 - 顺序：`revision`、`tick`、ISO `currentDate`；
 - 确定性：`rng.seed`（原始 seed 的 SHA-256）与 `rng.cursor`；
-- 运行态：`country`、`characters`、`offices`、`policies`、`regions`、`meetings`、`eventQueue`、`flags`；
+- 运行态：`country`、`characters`、`offices`、`policies`、`modifiers`、`regions`、`meetings`、`eventQueue`、`flags`；
 - 内部态：`hidden`；
 - 审计元数据：`meta.createdAt/updatedAt/sourceIds/sourceCatalogPresent`。
 
@@ -259,9 +264,10 @@ officeId, favor, loyaltyToEmperor, stress, lastUpdatedRevision, sourceIds }`。
 
 ## 5. Command 与 Mutation
 
-Phase 2 Command 是 strict discriminated union：`game.create`、`country.adjust-resource`、
-`character.assign-office`、`time.advance`、`checkpoint.create`、`save.rollback`。所有命令包含 saveId、
-baseRevision、actor、createdAt，可选 idempotencyKey。未知 commandType 或字段会在应用状态前拒绝。
+Command 是 strict discriminated union：除 Phase 2 的 `game.create`、`country.adjust-resource`、
+`character.assign-office`、`time.advance`、`checkpoint.create`、`save.rollback` 外，Phase 4/5 增加会议裁决映射与
+八种 `policy.*` 生命周期命令。所有命令包含 saveId、baseRevision、actor、createdAt，可选 idempotencyKey；
+幂等请求按 canonical actor + payload 哈希判同，同 key 不同请求返回冲突。未知 commandType 或字段会在应用前拒绝。
 
 Mutation 记录 aggregate/entity、operation、JSON Pointer path、before/after、reason、sourceIds、visibility 和 tags。
 Mutation Applier 只操作副本，拒绝不存在路径、before 不匹配和 `__proto__/prototype/constructor` 路径；完成后重新

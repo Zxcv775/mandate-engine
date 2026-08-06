@@ -3,6 +3,7 @@ export type SaveSystemErrorCode =
   | "SAVE_ALREADY_EXISTS"
   | "SAVE_ARCHIVED"
   | "STATE_REVISION_CONFLICT"
+  | "IDEMPOTENCY_KEY_CONFLICT"
   | "STATE_INVALID"
   | "STATE_LOG_INVALID"
   | "ROLLBACK_TARGET_INVALID"
@@ -30,6 +31,7 @@ export type SaveSystemErrorCode =
   | "POLICY_ALREADY_DECIDED"
   | "POLICY_COST_INSUFFICIENT"
   | "POLICY_ASSIGNEE_INVALID"
+  | "POLICY_NO_CHANGES"
   | "POLICY_LEGALITY_BLOCKED";
 
 export class SaveSystemError extends Error {

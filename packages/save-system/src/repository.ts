@@ -101,6 +101,16 @@ function json<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
+export function commandRequestHash(command: GameCommand): string {
+  return sha256Hex(
+    stableStringify({
+      commandType: command.commandType,
+      actor: command.actor,
+      payload: command.payload,
+    }),
+  );
+}
+
 function saveMetadataFromRow(
   row: SaveRow,
   currentDate: string,
@@ -441,13 +451,39 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
     }
   }
 
-  findIdempotentResult(saveId: string, idempotencyKey: string): CommitResult | null {
+  findIdempotentResult(
+    saveId: string,
+    idempotencyKey: string,
+    requestHash: string,
+  ): CommitResult | null {
     const row = this.database
       .prepare(
-        "SELECT summary_json FROM command_transactions WHERE save_id = ? AND idempotency_key = ? AND status = 'committed'",
+        "SELECT request_hash, summary_json FROM command_transactions WHERE save_id = ? AND idempotency_key = ? AND status = 'committed'",
       )
-      .get(saveId, idempotencyKey) as { summary_json: string } | undefined;
-    return row ? json<CommitResult>(row.summary_json) : null;
+      .get(saveId, idempotencyKey) as
+      { request_hash: string | null; summary_json: string } | undefined;
+    if (!row) return null;
+    // 旧数据库迁移前的记录没有指纹；保留其可重放行为。
+    if (row.request_hash !== null && row.request_hash !== requestHash) {
+      throw new SaveSystemError(
+        "IDEMPOTENCY_KEY_CONFLICT",
+        `幂等键已被不同请求占用：${idempotencyKey}`,
+      );
+    }
+    return { ...json<CommitResult>(row.summary_json), idempotent: true };
+  }
+
+  runInTransaction<T>(work: () => T): T {
+    if (this.database.isTransaction) return work();
+    try {
+      this.database.exec("BEGIN IMMEDIATE");
+      const result = work();
+      this.database.exec("COMMIT");
+      return result;
+    } catch (error) {
+      if (this.database.isTransaction) this.database.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   private lastLogHash(saveId: string): string | null {
@@ -556,8 +592,24 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
       mutationCount: transition.mutations.length,
       idempotent: false,
     };
+    const ownsTransaction = !this.database.isTransaction;
+    const outerSavepoint = "command_transition";
+    const requestHash = commandRequestHash(command);
     try {
-      this.database.exec("BEGIN IMMEDIATE");
+      if (ownsTransaction) this.database.exec("BEGIN IMMEDIATE");
+      else this.database.exec(`SAVEPOINT ${outerSavepoint}`);
+      if (command.idempotencyKey) {
+        const prior = this.findIdempotentResult(
+          command.saveId,
+          command.idempotencyKey,
+          requestHash,
+        );
+        if (prior) {
+          if (ownsTransaction) this.database.exec("COMMIT");
+          else this.database.exec(`RELEASE ${outerSavepoint}`);
+          return prior;
+        }
+      }
       this.database.exec("SAVEPOINT validate");
       const save = this.requireSaveRow(command.saveId);
       if (Number(save.head_revision) !== command.baseRevision) {
@@ -592,8 +644,8 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
         .prepare(
           `INSERT INTO command_transactions (
             tx_id, save_id, base_revision, target_revision, command_type, command_id,
-            actor_type, actor_id, status, idempotency_key, summary_json, created_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, '{}', ?)`,
+            actor_type, actor_id, status, idempotency_key, request_hash, summary_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, '{}', ?)`,
         )
         .run(
           txId,
@@ -605,6 +657,7 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
           command.actor.type,
           command.actor.id,
           command.idempotencyKey ?? null,
+          requestHash,
           now,
         );
       this.options.failureInjector?.("after_transaction");
@@ -648,10 +701,16 @@ export class SqliteSaveRepository implements SaveRepositoryContract {
       options.extraWrites?.();
       options.validateBeforeCommit?.();
       this.database.exec("RELEASE finalize");
-      this.database.exec("COMMIT");
+      if (ownsTransaction) this.database.exec("COMMIT");
+      else this.database.exec(`RELEASE ${outerSavepoint}`);
       return result;
     } catch (error) {
-      if (this.database.isTransaction) this.database.exec("ROLLBACK");
+      if (ownsTransaction) {
+        if (this.database.isTransaction) this.database.exec("ROLLBACK");
+      } else if (this.database.isTransaction) {
+        this.database.exec(`ROLLBACK TO ${outerSavepoint}`);
+        this.database.exec(`RELEASE ${outerSavepoint}`);
+      }
       throw error;
     }
   }

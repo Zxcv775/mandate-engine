@@ -337,6 +337,33 @@ describe(".mesave package", () => {
     expect(await target.service.validateSave("save_legacy")).toMatchObject({ valid: true });
   });
 
+  it("imports a database v4 payload that lacks review-era tables and columns", async () => {
+    const source = await setup("database-v4-source");
+    const target = await setup("database-v4-target");
+    await createAndAdvance(source);
+    source.database.exec(`
+      DROP TABLE meeting_rulings;
+      DROP TABLE policy_cost_applications;
+      DROP TABLE save_rollback_events;
+      ALTER TABLE command_transactions DROP COLUMN request_hash;
+      PRAGMA user_version = 4;
+    `);
+    const exported = await source.service.exportSave("save_demo", {
+      includeSourceMetadata: true,
+      safeShareMode: "none",
+    });
+
+    const imported = await target.service.importSave({ bytes: exported.bytes });
+
+    expect(imported).toMatchObject({ result: "fast_forward", saveId: "save_demo" });
+    expect(await target.service.validateSave("save_demo")).toMatchObject({ valid: true });
+    expect(
+      target.database
+        .prepare("SELECT request_hash FROM command_transactions WHERE save_id = ?")
+        .get("save_demo"),
+    ).toEqual({ request_hash: null });
+  });
+
   it("rejects damaged manifest/payload, unknown entries and future versions without partial writes", async () => {
     const source = await setup("invalid-source");
     await createAndAdvance(source);
